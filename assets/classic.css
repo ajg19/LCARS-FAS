@@ -4028,7 +4028,7 @@ footer:has(.footer-frame) {
    per-instance inline (matching that object's track colour), not here --
    this only covers the shared box chrome around it. */
 #on-orbit-map .leaflet-tooltip.orbit-marker-label {
-	background: rgba(0, 0, 0, 0.75);
+	background: transparent;
 	border: none;
 	box-shadow: none;
 	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
@@ -4042,7 +4042,7 @@ footer:has(.footer-frame) {
 }
 
 #on-orbit-map .leaflet-tooltip-right.orbit-marker-label::before {
-	border-right-color: rgba(0, 0, 0, 0.75);
+	border-right-color: transparent;
 }
 
 /* Graticule lat/lon labels (see renderGraticuleLatitudeLabels() and
