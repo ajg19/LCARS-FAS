@@ -1728,12 +1728,15 @@ function updateLivePositions() {
         const lonDeg = satellite.degreesLong(geodetic.longitude);
         const latlng = [latDeg, lonDeg];
 
+        // Altitude changes continuously (especially on elliptical orbits),
+        // so unlike the name, this has to be refreshed every tick, not
+        // just set once at marker creation.
+        const labelContent = `<span style="color:${style.color}">${name}<br>${Math.round(geodetic.height)} KM</span>`;
+
         const existingMarker = livePositionMarkers.get(noradID);
         if (existingMarker) {
-            // A bound, permanent tooltip already tracks the marker's
-            // position automatically -- only the dot itself needs moving
-            // here, not the label.
             existingMarker.setLatLng(latlng);
+            existingMarker.setTooltipContent(labelContent);
         } else {
             // Same colour as this object's track line, so each moving
             // dot (and its label) reads as belonging to its own track
@@ -1741,7 +1744,7 @@ function updateLivePositions() {
             const marker = L.circleMarker(latlng, {
                 radius: 5, color: style.color, weight: 1, fillColor: style.color, fillOpacity: 1,
             }).addTo(onOrbitMap);
-            marker.bindTooltip(`<span style="color:${style.color}">${name}</span>`, {
+            marker.bindTooltip(labelContent, {
                 permanent: true, direction: 'right', offset: [8, 0], className: 'orbit-marker-label',
             });
             livePositionMarkers.set(noradID, marker);
