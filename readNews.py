@@ -109,6 +109,26 @@ def extract_summary(html):
     return plain_text or None
 
 
+# RSS <pubDate> arrives as RFC 2822 text (e.g. "Wed, 29 Jul 2026
+# 23:15:30 +0000"). Storing that raw string (as this used to do) breaks
+# SQL-level chronological sorting -- ORDER BY on it is a plain string
+# comparison, and since the string starts with the weekday name, sort
+# order scrambles across day/month boundaries (confirmed live: "Thu, 30
+# Jul" sorts before "Wed, 29 Jul" alphabetically, despite being later).
+# Normalizing to ISO 8601 here makes both SQL's ORDER BY and any
+# client-side new Date(...) parse give the same, actually-correct answer.
+def normalize_pubdate_to_iso(raw_date):
+    if not raw_date:
+        return None
+    try:
+        parsed = parsedate_to_datetime(raw_date)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.isoformat()
+    except (TypeError, ValueError):
+        return None
+
+
 def parse_rss_feed(xml_text):
     articles = []
     for item_match in re.finditer(r'<item>([\s\S]*?)</item>', xml_text):
@@ -130,10 +150,11 @@ def parse_rss_feed(xml_text):
             else:
                 summary_source = None
 
+            raw_date = date_match.group(1).strip() if date_match else None
             articles.append({
                 'title': decode_entities(strip_cdata_wrapper(title_match.group(1))),
                 'url': decode_entities(strip_cdata_wrapper(link_match.group(1))),
-                'date': date_match.group(1).strip() if date_match else 'Unknown Date',
+                'date': normalize_pubdate_to_iso(raw_date) or 'Unknown Date',
                 'description': extract_summary(summary_source),
             })
     return articles
@@ -161,13 +182,15 @@ def fetch_all_feeds():
                 print('No valid items found. Skipping.')
                 continue
 
-            # Filter targeting elements exclusively from the last 7 days
+            # Filter targeting elements exclusively from the last 7 days.
+            # article['date'] is already ISO 8601 by this point (see
+            # normalize_pubdate_to_iso() / parse_rss_feed() above), not the
+            # raw RFC 2822 pubDate text, so this parses with fromisoformat()
+            # rather than parsedate_to_datetime().
             articles_within_last_week = []
             for article in all_articles:
                 try:
-                    pub_dt = parsedate_to_datetime(article['date'])
-                    if pub_dt.tzinfo is None:
-                        pub_dt = pub_dt.replace(tzinfo=timezone.utc)
+                    pub_dt = datetime.fromisoformat(article['date'])
                     if pub_dt >= one_week_ago:
                         articles_within_last_week.append(article)
                 except (TypeError, ValueError):

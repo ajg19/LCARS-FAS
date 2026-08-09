@@ -344,6 +344,20 @@ function formatNewsDate(dateStr) {
     return `${month}-${day} ${hours}:${minutes}`;
 }
 
+// SQL's ORDER BY published_date DESC only does a plain string comparison
+// -- published_date is stored as raw RFC 2822 text (e.g. "Wed, 29 Jul
+// 2026 23:15:30 +0000"), which starts with the weekday name, so sorting
+// it as a string scrambles true chronological order across day/month
+// boundaries (e.g. "Thu, 30 Jul" sorts before "Wed, 29 Jul" alphabetically,
+// even though Thursday is later -- confirmed live against the real DB).
+// Re-sorting here by an actually-parsed Date is what makes "most recent
+// first" true rather than approximate. Shared by both fetchAndRenderNews()
+// and fetchAndRenderFullNewsTable(), so the ticker and the full table can
+// never disagree on ordering.
+function sortNewsByDateDesc(items) {
+    return items.slice().sort((a, b) => new Date(b.published_date || b.date) - new Date(a.published_date || a.date));
+}
+
 // Fetch news records out of the SQLite backend pipeline
 async function fetchAndRenderNews() {
     try {
@@ -368,6 +382,8 @@ async function fetchAndRenderNews() {
                 console.error('Invalid data format:', result);
                 globalNewsData = [];
             }
+
+            globalNewsData = sortNewsByDateDesc(globalNewsData);
         }
 
         // Always safe to call now
@@ -464,6 +480,8 @@ async function fetchAndRenderFullNewsTable() {
                 console.error('Invalid data format:', result);
                 globalNewsData = [];
             }
+
+            globalNewsData = sortNewsByDateDesc(globalNewsData);
         }
 
         renderFullNewsTable(globalNewsData);
