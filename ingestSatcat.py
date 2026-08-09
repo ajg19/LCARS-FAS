@@ -309,13 +309,9 @@ def run_satcat_ingestion():
     print('=== SATCAT METADATA INGESTION COMPLETE ===\n')
 
 
-# 7. Run once daily -- deliberately far more conservative than the TLE
-# job's twice-daily cadence, since object type/owner/launch/decay data
-# changes on the order of days-to-never, not hours.
-POLL_INTERVAL_SEC = 60 * 60 * 24
-
+# 7. Run once and exit -- scheduling (once daily, deliberately more
+# conservative than the TLE job's twice-daily cadence since object type/
+# owner/launch/decay data changes on the order of days-to-never, not
+# hours) is owned by cron, not this script.
 if __name__ == '__main__':
     run_satcat_ingestion()
-    while True:
-        time.sleep(POLL_INTERVAL_SEC)
-        run_satcat_ingestion()

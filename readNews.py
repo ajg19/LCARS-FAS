@@ -149,7 +149,7 @@ def fetch_all_feeds():
         print(f'Processing: {feed["name"]}...')
 
         try:
-            request = urllib.request.Request(feed['url'], headers={'User-Agent': 'Mozilla/5.0 (compatible; LCARS-FAM/1.0)'})
+            request = urllib.request.Request(feed['url'], headers={'User-Agent': 'Mozilla/5.0 (compatible; LCARS-FAS/1.0)'})
             with urllib.request.urlopen(request) as response:
                 if response.status >= 400:
                     raise Exception(f'HTTP Error Status: {response.status}')
@@ -206,14 +206,9 @@ def fetch_all_feeds():
     print(f'=== ALL RSS SPACE FEEDS SYNCHED WITH LOCAL DB AT {now.strftime("%m/%d/%Y")} {now.strftime("%H:%M:%S")} ===\n')
 
 
-# 7. Poll the feeds every 30 minutes for new content
-POLL_INTERVAL_SEC = 60 * 30
-
+# 7. Run once and exit -- scheduling (every 30 minutes) is owned by cron,
+# not this script. See readNews.js's own self-looping version for the
+# original design this was ported from; that shape suits a persistent
+# process, not a cron-invoked one, so it was dropped here deliberately.
 if __name__ == '__main__':
-    # Execute immediately the first time this script is run
     fetch_all_feeds()
-
-    # Maintain interval process
-    while True:
-        time.sleep(POLL_INTERVAL_SEC)
-        fetch_all_feeds()

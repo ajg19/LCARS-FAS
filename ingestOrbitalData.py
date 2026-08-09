@@ -355,11 +355,8 @@ def run_ingestion():
     print(f'=== ORBITAL OBJECT INGESTION COMPLETE ({len(seen_ids)} objects touched) ===\n')
 
 
-# 12. Run twice daily, immediately on start
-POLL_INTERVAL_SEC = 60 * 60 * 12
-
+# 12. Run once and exit -- scheduling (twice daily) is owned by cron, not
+# this script. See readNews.py's own comment for why the self-looping
+# shape was dropped in this port.
 if __name__ == '__main__':
     run_ingestion()
-    while True:
-        time.sleep(POLL_INTERVAL_SEC)
-        run_ingestion()
