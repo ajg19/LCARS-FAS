@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<title>LCARS - FOR ALL MANKIND</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+	<meta name="format-detection" content="telephone=no">
+	<meta name="format-detection" content="date=no">
+	<link rel="stylesheet" type="text/css" href="assets/classic.css">
+</head>
+
+<body>
+	<section class="wrap-standard" id="column-3">
+		<div class="wrap">
+			<div class="left-frame-top">
+				<div class="panel-1">
+				<a href="./index.html"> LCARS-FAM </a>
+				</div>
+				
+
+				<div class="panel-2"><span class="hop"></span></div>
+			</div>
+			
+			<div class="right-frame-top">
+			<div class="banner"> FAM &#149; <span id="banner-section">MAIN</span> </div>
+				
+				<div class="data-cascade-button-group">
+
+					<div class="data-cascade-wrapper" id="default"></div>
+
+					<nav>
+						<button onclick="showNewsSection()">01-ALL</button>
+						<button onclick="playSoundAndRedirect('audio2', '#')">02</button>
+						<button onclick="playSoundAndRedirect('audio2', '#')">03</button>
+						<button onclick="playSoundAndRedirect('audio2', '#')">04</button>
+					</nav>
+					
+				</div>
+				
+				<div class="bar-panel first-bar-panel">
+					<div class="bar-1"></div>
+					<div class="bar-2"></div>
+					<div class="bar-3"></div>
+					<div class="bar-4"></div>
+					<div class="bar-5"></div>
+				</div>
+				
+			</div>
+		</div>
+		
+		<div class="wrap" id="gap">
+
+			<div class="left-frame">
+				<div>
+					<button class="panel-3 section-toggle" data-section="news" onclick="showNewsSection()">NEWS</button>
+					<button class="panel-4 section-toggle" data-section="on-orbit" onclick="openOnOrbitSection();">ON-<span class="hop"> ORBIT</span></button>
+					<button class="panel-5 section-toggle" data-section="deep-space" onclick="showSection('deep-space', 'DEEP SPACE')">DEEP<span class="hop">&nbsp;SPACE</span></button>
+					<button class="panel-6 section-toggle" data-section="launches" onclick="showSection('launches', 'LAUNCHES')">LAUNCHES</button>
+					<button class="panel-7 section-toggle" data-section="infrastructure" onclick="openInfrastructureSection();">GRND SGMNT</button>
+					<button class="panel-8 section-toggle" data-section="organisations" onclick="showSection('organisations', 'ORGANISATIONS')">ORG<span class="hop">ANISATIONS</span></button>
+					<button class="panel-9 section-toggle" data-section="sw-drivers" onclick="showSection('sw-drivers', 'WEATHER'); fetchAndSortGST();">WEATHER</button>
+					<button class="panel-10 section-toggle" data-section="eo" onclick="showSection('eo', 'EO')">EO</button>
+				</div>
+				<div class="bottom-fixed-group">
+					<button class="panel-ack section-toggle" data-section="acknowledgments" onclick="topFunction(); showSection('acknowledgments', 'ACKNOWLEDGMENTS')">ACK<span class="hop">NOWLEDGMENTS</span></button>
+					<button onclick="topFunction(); playSoundAndRedirect('audio4', '#')" id="topBtn"><span class="hop">scrn</span> top</button>
+				</div>
+			</div>
+
+			<div class="right-frame">
+			
+				<div class="bar-panel">
+					<div class="bar-6"></div>
+					<div class="bar-7">
+						<button id="news-back-btn" class="bar-7-back-button is-hidden" onclick="backToNewsList()" aria-label="Back"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></button>
+						<button id="map-zoom-in-btn" class="bar-zoom-button is-hidden" onclick="zoomMapIn()" aria-label="Zoom in"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button>
+					</div>
+					<div class="bar-8a">
+						<button id="map-zoom-out-btn" class="bar-zoom-button is-hidden" onclick="zoomMapOut()" aria-label="Zoom out"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></button>
+					</div>
+					<div class="bar-8b"></div>
+					<div class="bar-9"><button id="news-read-full-btn" class="bar-9-read-full-button is-hidden" onclick="openCurrentArticleInFull()">Read in full</button></div>
+					<div class="bar-10"></div>
+				</div>
+				
+				<main>
+
+					<div id="default-content">
+						<h1 id="live-feed-title">LOADING LIVE FEED&hellip;</h1>
+						<div class="iss-live-wrapper">
+							<div id="live-feed-player"></div>
+						</div>
+						<p id="live-feed-credit" class="live-feed-credit"></p>
+					</div>
+
+					<div data-section="sw-drivers" style="display:none;">
+						<h2>Space Weather Drivers</h2>
+						<p class="go-big">Geomagnetic storm and solar driver data (NASA DONKI).</p>
+						<p>Check the browser console for fetched GST data after pressing this button.</p>
+					</div>
+
+					<div data-section="sw-fcst" style="display:none;">
+						<h2>Space Weather Forecast</h2>
+						<p class="go-big">Forecast content placeholder.</p>
+					</div>
+
+					<div data-section="on-orbit" style="display:none;">
+						<div class="map-panel">
+							<div id="on-orbit-map" class="leaflet-map"></div>
+							<div class="location-overlay">
+								<div id="location-readout" class="location-readout">LOCATION: UNAVAILABLE</div>
+								<div id="utc-clock" class="location-readout">
+									<span class="loc-label">UTC:</span><span class="loc-value">--:--:--</span>
+								</div>
+							</div>
+							<div id="add-object-results-panel" class="add-object-results-panel is-hidden">
+								<div id="add-object-status" class="add-object-status"></div>
+								<table id="add-object-results-table" class="add-object-results-table"></table>
+							</div>
+						</div>
+					</div>
+
+					<div data-section="deep-space" style="display:none;">
+						<h2>Deep Space Network &amp; Interplanetary Missions</h2>
+						<p class="go-big">Deep space tracking placeholder.</p>
+					</div>
+
+					<div data-section="launches" style="display:none;">
+						<h2>Launch Database</h2>
+						<p class="go-big">Launch schedule and history placeholder.</p>
+					</div>
+
+					<div data-section="infrastructure" style="display:none;">
+						<div class="map-panel">
+							<div id="infrastructure-map" class="leaflet-map"></div>
+						</div>
+					</div>
+
+					<div data-section="organisations" style="display:none;">
+						<h2>Space Agencies &amp; Commercial Companies</h2>
+						<p class="go-big">Organisations directory placeholder.</p>
+					</div>
+
+					<div data-section="eo" style="display:none;">
+						<h2>Earth Observation</h2>
+						<p class="go-big">Earth observation imagery placeholder.</p>
+					</div>
+
+					<div data-section="news" style="display:none;">
+					<div id="news-table-wrapper"></div>
+					<div id="news-detail-wrapper" style="display:none;"></div>
+					</div>
+
+					<div data-section="acknowledgments" style="display:none;">
+						<p class="go-big">This project draws on the work, data and tools of a number of individuals and organisations. Their contributions are gratefully acknowledged here.</p>
+						<table class="ack-table">
+							<thead>
+								<tr>
+									<th>Name</th>
+									<th>Contribution</th>
+									<th>URL</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td>Jim Robertus</td>
+									<td>Creator of the LCARS Inspired Website Template used as the design foundation for this interface</td>
+									<td><a href="https://www.thelcars.com">www.thelcars.com</a></td>
+								</tr>
+								<tr>
+									<td>Claude (Anthropic)</td>
+									<td>LLM development partner &mdash; system design, implementation, testing and debugging</td>
+									<td><a href="https://claude.ai">claude.ai</a></td>
+								</tr>
+								<tr>
+									<td>Dr Al Gill</td>
+									<td>Project Lead</td>
+									<td><a href="https://www.linkedin.com/in/alasdairgill/">linkedin.com/in/alasdairgill</a></td>
+								</tr>
+								<tr>
+									<td>Qwen</td>
+									<td>Industry research and translation</td>
+									<td><a href="https://qwen.ai/">qwen.ai</a></td>
+								</tr>
+								<tr>
+									<td>Gemini</td>
+									<td>Advice on datasources, libraries and APIs</td>
+									<td><a href="https://gemini.google.com">gemini.google.com</a></td>
+								</tr>
+								<tr>
+									<td>satellite.js (Shashwat Kandadai, UCSC)</td>
+									<td>SGP4/SDP4 orbital propagation used for ground track computation</td>
+									<td><a href="https://github.com/shashwatak/satellite-js">github.com/shashwatak/satellite-js</a></td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+
+					</main>
+
+				<footer>
+				</footer>
+				
+			</div>
+		</div>
+	</section>	
+	
+	<script type="text/javascript" src="assets/lcars.js"></script>
+
+	<div class="headtrim"> </div>
+	<div class="baseboard"> </div>
+</body>
+</html>

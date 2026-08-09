@@ -1,0 +1,228 @@
+# Iceland Space Agency: Public Space Data GUI Project Proposal
+
+This document outlines a comprehensive proposal for a publicly available Graphical User Interface (GUI) designed to visualize public domain space-related data. The project aims to serve as an educational outreach tool for the public while simultaneously demonstrating Iceland's technical capabilities to prospective commercial satellite operators for the ground segment business park.
+
+## 1. Orbital Mechanics & Spacecraft Tracking
+*   **Interactive 3D LEO Globe:** A WebGL-based visualization of active satellites, constellations, and trackable debris using real-time Two-Line Element (TLE) sets.
+*   **Dynamic Ground Track Plotting:** Tools to map the historical and projected sine-wave footprints of specific spacecraft, featuring a time-scrubber to fast-forward or rewind orbital paths.
+*   **Localized Overhead Pass Predictor:** A geolocation widget allowing users to input an Icelandic town or coordinates to receive countdowns and alerts for naked-eye visible satellite passes (e.g., ISS, Hubble).
+*   **Deep Space & NEO Monitoring:** Trackers for Near-Earth Object (NEO) close approaches and a live status board of the Deep Space Network (DSN) showing which interplanetary missions are currently downlinking data.
+*   **Orbital Mechanics Sandbox:** An educational tool allowing users to manipulate variables like altitude and inclination to observe real-time changes to a satellite's ground track and orbital period.
+
+## 2. Space Weather & Aurora Forecasting (Icelandic Geographic Advantage)
+*   **Dynamic Aurora Oval Overlay:** A live, color-coded heatmap of the northern hemisphere displaying the auroral boundary and probability intensity based on the NOAA OVATION model.
+*   **Solar Event & CME Tracker:** A visual radar tracking Coronal Mass Ejections (CMEs) and X-class/M-class solar flares, complete with a "Time of Arrival" countdown for Earth's magnetosphere.
+*   **High-Latitude Ionosphere Monitor:** Visualizations of ionospheric scintillation and polar cap absorption, highlighting Iceland's strategic vulnerability and research value regarding space weather impacts on high-frequency communications and GPS.
+*   **Magnetic Deflection Gauges:** Real-time dashboard metrics for the planetary Kp-index, overlaid with data from regional North Atlantic geomagnetic stations.
+
+## 3. Ground Segment & Infrastructure Visualization
+*   **Ground Station Line-of-Sight Visualizer:** A 3D representation of the "data cones" extending from Icelandic ground stations into space. The interface visually indicates when a polar-orbiting satellite enters this cone (Acquisition of Signal) to demonstrate the high contact frequency unique to high-latitude infrastructure.
+*   **Business Park Commercial Showcase:** A passive, interactive map highlighting the physical locations of the proposed ground segment business park, partner facilities, and fiber-optic backbone connections, serving as direct outreach to prospective commercial satellite operators.
+
+## 4. Earth Observation & Climate (Remote Sensing)
+*   **Icelandic Glacial & Volcanic Monitoring:** Time-lapse sliders utilizing optical imagery to track the retreat of Vatnajökull, combined with Synthetic Aperture Radar (SAR/InSAR) overlays to show ground inflation/deflation around active volcanic systems like Fagradalsfjall.
+*   **Oceanographic Data Layers:** Visualizations of sea surface temperatures and chlorophyll concentrations around Iceland, demonstrating the downstream economic value of space data for the local fishing and maritime industries.
+*   **Thematic Map Overlays:** User-togglable layers for sea ice extent, vegetation indices (NDVI), and thermal anomalies.
+
+## 5. Education, Outreach & Media
+*   **"Who is in Space" Counter:** A high-visibility landing metric displaying the current headcount, names, and nationalities of humans off-planet.
+*   **CubeSat & University Spotlight:** Dedicated dashboards for small satellites built by academic institutions, detailing mission parameters and battery health.
+*   **Launch & Media Feeds:** Integration of live global rocket launch schedules and a searchable gallery of public-domain space imagery and video.
+*   **Contextual Glossary:** Hover-over tooltips providing plain-English definitions and visual diagrams for technical terms (e.g., TLE, Right Ascension, Kp-index).
+
+---
+
+## Verified Data Sources & APIs
+
+### Orbital Data & Tracking
+*   **CelesTrak:** The primary public source for TLE sets and SGP4 propagation data.
+    *   URL: [https://celestrak.org/](https://celestrak.org/)
+*   **Space-Track.org:** The official US Space Command repository for historical and predictive orbital data (requires free registration for API access).
+    *   URL: [https://www.space-track.org/](https://www.space-track.org/)
+*   **Launch Library 2 API:** Provides comprehensive data on upcoming space launches, rockets, and missions.
+    *   URL: [https://thespacedevs.com/llapi](https://thespacedevs.com/llapi)
+
+### Space Weather & Aurora
+*   **NOAA Space Weather Prediction Center (SWPC):** Provides JSON/XML feeds for the Kp-index, solar wind speed/density, X-ray flux, and the OVATION aurora forecast model.
+    *   URL: [https://www.swpc.noaa.gov/](https://www.swpc.noaa.gov/)
+*   **NASA DONKI (Space Weather API):** Detailed data on CMEs, solar flares, and geomagnetic storms.
+    *   URL: [https://api.nasa.gov/](https://api.nasa.gov/)
+
+### Earth Observation & Remote Sensing
+*   **Copernicus Data Space Ecosystem:** APIs and browser access for Sentinel-1 (Radar) and Sentinel-2 (Optical) imagery.
+    *   URL: [https://documentation.dataspace.copernicus.eu/APIs.html](https://documentation.dataspace.copernicus.eu/APIs.html)
+*   **NASA Worldview & GIBS:** Global Imagery Browse Services for near-real-time satellite imagery and time-lapse capabilities.
+    *   URLs: [https://worldview.earthdata.nasa.gov/](https://worldview.earthdata.nasa.gov/) | [https://gibs.earthdata.nasa.gov/](https://gibs.earthdata.nasa.gov/)
+*   **USGS EarthExplorer:** The primary portal for accessing Landsat optical and thermal data.
+    *   URL: [https://earthexplorer.usgs.gov/](https://earthexplorer.usgs.gov/)
+
+### Visualization Frameworks (Frontend)
+*   **CesiumJS:** The industry-standard open-source JavaScript library for 3D geospatial and orbital visualization in the browser.
+    *   URL: [https://cesium.com/cesiumjs/](https://cesium.com/cesiumjs/)
+*   **Globe.gl / Three.js:** Alternative WebGL libraries for rendering 3D globes and point-cloud data.
+    *   URL: [https://github.com/vasturiano/globe.gl](https://github.com/vasturiano/globe.gl)
+
+
+
+I would like to produce a publicly available GUI for public domain space-related data, even where this may require an API to access. I am thinking of things like visualising traffic in LEO, plotting the ground track of specific spacecraft, space weather and aurora forecasting. Please make me a bulleted list of things that could be incorporated into this project. The idea is partly to raise the profile of the Iceland Space Agency and partly to act as outreach
+
+Building a public-facing space data dashboard is a brilliant double-move for the Iceland Space Agency. It serves as an educational outreach tool for the public while subtly demonstrating to international aerospace companies (like the ones you want to attract to your ground segment business park) that Iceland possesses the local tech talent and data pipeline capability to handle advanced geospatial architectures.
+
+The list below outlines features, visualization layers, and the corresponding public-domain APIs that could be incorporated into the GUI.
+
+1. Low Earth Orbit (LEO) & Satellite Tracking
+Live 3D Orbital Traffic Map: A WebGL-based, rotatable globe mapping the thousands of active satellites, spent rocket stages, and trackable space debris currently in LEO.
+
+Data Source: Use CelesTrak API or Space-Track.org to pull real-time Two-Line Element (TLE) orbital data.  
+GitHub
+
+Spacecraft Ground Track Plotting: Allow users to pick notable spacecraft (e.g., the International Space Station, Hubble, or Earth observation satellites like Sentinel-2) and view their sine-wave-like footprint mapped over a flat 2D projection of Earth.
+
+Localized Overhead Flyover Predictor: An outreach-focused widget where users input an Icelandic town or coordinates, and the GUI outputs an alert list showing when bright satellites will be visible to the naked eye.
+
+Data Source: Open Notify API (specifically for the ISS) or Heavens-Above scrape models.
+
+"Who is in Space Right Now?" Counter: A simple, high-visibility landing metric showing the current headcount of humans off-planet, their names, nationality, and current spacecraft.
+
+2. Space Weather & Aurora Forecasting (The Iceland Advantage)
+Because of Iceland’s geographic positioning beneath the auroral oval, this section should be a crown jewel of the GUI.
+
+The Dynamic Aurora Oval Overlay: A live, color-coded heatmap mapped onto the northern hemisphere showing the current boundary and probability intensity of the Northern Lights.
+
+Data Source: NOAA Space Weather Prediction Center (SWPC) text/JSON feeds for the OVATION auroral forecast model .
+
+Solar Flare & CME Blast Tracking: A visual "coronagraph" or solar storm radar tracking Coronal Mass Ejections (CMEs) from the sun, complete with an estimated "Time of Arrival" countdown for when solar particles will hit Earth's magnetosphere.
+
+Data Source: NASA’s DONKI (Space Weather Database of Notifications, Knowledge, and Information) API or NOAA’s cloud-based SPOT portal .  
+National Centers for Environmental Information - NOAA
+
+Magnetic Deflection Gauges (Kp-Index): A set of retro, clean dashboard gauges tracking the planetary Kp-Index (0 to 9 scale). You could highlight the local impact by overlaying data from regional geomagnetic stations across the North Atlantic.
+
+3. Ground Segment & Downstream Applications
+This ties directly into your space business park, providing a passive commercial showcase for what the park supports.
+
+Ground Station Overhead Windows: A visualization showing line-of-sight "cones" extending into space above Iceland. When a LEO satellite passes through this cone, the UI flashes "Data Link Active," demonstrating how high-latitude stations achieve near-constant contact loops with polar-orbiting satellites.
+
+Near-Real-Time Satellite Imagery Feed: A modular map tile layer showing the most recent passes over Iceland from open environmental monitoring satellites, allowing the public to see recent changes in glacier coverage, volcanic activity, or sea ice.
+
+Data Source: NASA's GIBS (Global Imagery Browse Services) or the ESA Copernicus Open Access Hub.  
+NASA
+
+4. Deep Space & Near-Earth Objects (NEOs)
+The Cosmic "Close Approach" Tracker: A high-end visualization or dashboard ticker showing asteroids and comets scheduled to make a close transit past Earth within the next 30 days.
+
+Data Source: NASA JPL’s NeoWs (Near Earth Object Web Service) API .  
+NASA
+
+Deep Space Network (DSN) Live View: A replica or stylized window mirroring which deep-space missions (like Voyager, James Webb, or Mars rovers) are currently downlinking data to Earth's massive parabolic dishes.
+
+UI/UX Design Recommendations for Outreach:
+Keep it "Lightweight and Web-Based": Build the GUI using a stack like React paired with CesiumJS or Three.js for smooth, interactive 3D globe rendering without forcing users to install bulky desktop software.
+
+The "Iceland Space Agency" Branded Skin: Wrap the entire GUI in a sleek, dark-mode "Cyber-Arctic" aesthetic—using volcanic blacks, ice blues, and neon auroral greens—positioning the dashboard as an official, high-tech command center run directly out of your agency.
+
+Core Orbital & Tracking Visualizations
+Interactive 3D LEO Traffic Map: A real-time, 3D globe rendering of active satellites and debris in Low Earth Orbit. Allow users to filter by satellite type (e.g., Starlink, weather, scientific, debris) to visualize the density of space traffic.
+Dynamic Ground Tracks: Plot the historical and future ground tracks of specific satellites. Include a "time scrubber" slider so users can fast-forward or rewind a satellite's path over the next 24 hours or the past week.
+"What's Overhead Now?" Geolocation Tool: A feature that uses the user's browser geolocation to show exactly which satellites (including the ISS, Hubble, or specific weather satellites) are passing over their exact location in real-time, complete with a countdown to the next pass.
+Orbital Mechanics Sandbox: A simplified tool where users can tweak variables like altitude and inclination to see how they change a satellite's ground track, orbital period, and coverage area.
+Iceland-Specific & ISA Branding Features
+Aurora Borealis Forecasting Dashboard: Integrate real-time aurora oval maps and the planetary Kp-index. Overlay a map of Iceland highlighting optimal viewing locations by factoring in local cloud cover and light pollution maps (directing people away from Reykjavik).
+Ground Station Pass Visualizer: Map the physical locations of Iceland Space Agency (and partner) ground stations. Visualize real-time or predicted "Acquisition of Signal" (AOS) and "Loss of Signal" (LOS) windows, showing the public exactly which satellites the Icelandic infrastructure is currently talking to as they pass overhead.
+Polar Ionosphere & Space Weather Monitor: Because of Iceland's high latitude, it is highly susceptible to ionospheric scintillation and polar cap absorption. Visualize data specific to the high-latitude ionosphere to highlight why Iceland's geographic position is strategically vital for space research.
+Space Weather & Environment
+Real-Time Solar Wind & Magnetosphere: Visualize the solar wind hitting Earth's magnetosphere using data from the DSCOVR satellite at the L1 Lagrange point. Show the bow shock and magnetotail dynamically reacting to solar wind pressure.
+Solar Flare & Coronal Mass Ejection (CME) Tracker: A timeline of recent X-class and M-class solar flares, showing their origin point on the sun and the predicted arrival time of the resulting CME at Earth.
+Radiation Belt Mapping: Visualize the Van Allen radiation belts, showing how they swell and shrink in response to geomagnetic storms, and overlay satellite orbits to show when spacecraft are passing through high-radiation zones (South Atlantic Anomaly).
+Earth Observation & Climate (Remote Sensing)
+Icelandic Glacial Retreat Time-Lapse: A side-by-side or time-slider comparison tool using optical satellite imagery (e.g., Sentinel-2 or Landsat) to show the retreat of Vatnajökull or other major Icelandic glaciers over the last 20 years.
+Volcanic Deformation Radar: Use Synthetic Aperture Radar (SAR) interferometry (InSAR) data to show ground deformation (inflation/deflation) around active Icelandic volcanic systems like Fagradalsfjall or Grímsvötn in the weeks leading up to eruptions.
+Sea Surface Temperature & Phytoplankton: Visualize oceanographic data around Iceland, which is critical for the local fishing industry, showing how marine heatwaves or cold blobs affect chlorophyll concentrations.
+Educational & Outreach Mechanics
+"Adopt a Satellite" / CubeSat Tracker: Highlight small satellites built by universities or small nations. Provide a "dashboard" for each CubeSat explaining its mission, its current battery health, and its orbital parameters.
+Space Debris "Close Call" Visualizer: A simplified visualization of conjunction events (when two objects pass close to each other in LEO) to educate the public on the Kessler Syndrome and the importance of space sustainability.
+Contextual Pop-up Glossary: Ensure that every technical term (TLE, Inclination, Right Ascension, Kp-index, SAR) has a hover-over tooltip with a plain-English definition and a simple visual diagram.
+Recommended Public Domain APIs & Data Sources
+Orbital Data (TLEs): CelesTrak (maintained by Dr. T. Kelso) for the definitive, public domain Two-Line Element sets required to calculate satellite positions via SGP4 propagators. Space-Track.org (US Space Command) also offers a robust, free API for historical and predictive orbital data.
+Space Weather: NOAA Space Weather Prediction Center (SWPC) provides free JSON/XML feeds for the Kp-index, solar wind speed/density, and X-ray flux. NASA DONKI (Space Weather API) provides detailed data on CMEs, solar flares, and geomagnetic storms.
+Aurora Data: NOAA OVATION Prime model provides the actual data for the aurora ovals, which can be rendered as a heatmap over the polar regions.
+Earth Observation: ESA Copernicus Open Access Hub and Sentinel Hub offer extensive APIs for accessing Sentinel-1 (Radar) and Sentinel-2 (Optical) imagery. USGS EarthExplorer is the equivalent for Landsat data.
+Mapping/GUI Frameworks: For the frontend, utilize CesiumJS (the industry standard for 3D geospatial visualization in the browser) or Three.js combined with Globe.gl. For 2D maps, Leaflet or Mapbox GL JS are highly capable.
+
+
+This is an excellent project that can effectively combine the Iceland Space Agency's unique geographical advantages with powerful public outreach. I have categorized potential features into practical and thematic groups based on available data sources and interactive tools.
+
+🛰️ LEO Visualization & Spacecraft Tracking
+This core feature would provide a real-time, 3D view of satellite traffic in Low Earth Orbit (LEO), especially over Iceland.
+
+Interactive 3D Globe: Build a web-based visualization of Earth with active satellites, debris, and constellations plotted using their current orbital elements. You can obtain this data via free public APIs like Celestrak, the world's oldest source for orbital element sets.
+
+Live TLE Feeds: Integrate Celestrak data to update satellite positions in near real-time.
+
+Ground Track Plotting: Allow users to search for a specific spacecraft (e.g., the ISS) and plot its ground track, showing its path over Iceland and the world.
+
+Satellite Filtering: Enable users to filter satellites by type (e.g., Starlink, OneWeb, scientific, military) to declutter the visualization.
+
+🌌 Space Weather & Aurora Forecasting
+This leverages Iceland's prime location for aurora viewing and highlights the Sun's impact on Earth.
+
+Real-Time Solar Monitor: Display current solar wind speed, density, and temperature, sourced from the NOAA/SWPC, which many aurora apps rely on.
+
+Aurora Map & Forecast: Create an interactive map showing the predicted aurora oval and its visibility from Iceland. The key data to display is the Kp-index, with a 3-day forecast and historical data.
+
+Solar Event Alerts: Implement a notification system for geomagnetic storms, solar flares, and coronal mass ejections (CMEs), similar to features found in dedicated solar weather apps.
+
+Educational Feed: Provide plain-language explanations of solar events and how they create auroras on Earth to demystify the science.
+
+🌍 Earth Observation
+This feature demonstrates the practical applications of space technology for monitoring our planet.
+
+Iceland Satellite Imagery: Integrate with the Copernicus Open Access Hub or NASA's Worldview to display recent high-resolution satellite imagery of Iceland. These APIs provide free, open access to data from the Sentinel and Landsat missions.
+
+Time-Lapse Viewer: Allow users to view a time-lapse of changes to a specific location, such as a glacier retreat in Iceland or vegetation changes.
+
+Data Overlays: Offer thematic overlays like sea surface temperature, ice cover, or vegetation indices (NDVI).
+
+🚀 Education & Media Library
+This section uses public-domain assets to make the project visually engaging and educational.
+
+NASA Media Library: Build a searchable gallery of public-domain images, videos, and audio from the NASA API. This catalog contains hundreds of thousands of assets, perfect for educational content.
+
+Launch Data: Add a live feed of upcoming rocket launches, complete with mission details, using the free Launch Library 2 API.
+
+Augmented Reality (AR) Integration: Consider a simple web-based AR feature that uses a smartphone camera to visualize a spacecraft's orbit or an aurora overlay in the real sky, similar to educational projects used for the ESA's Ariel mission.
+
+🌍 Specific Focus for the Iceland Space Agency
+To maximize the project's impact for raising the Agency's profile, you could add:
+
+Icelandic Ground Station Status: Show the status of ground stations in Iceland and which satellites they are currently communicating with.
+
+"Visible Passes" from Iceland: A feature that tells users when a specific satellite (e.g., the ISS) will be visible over their town in Iceland. This is a powerful and personal connection to space.
+
+Collaborator Spotlight: Showcase Icelandic universities and companies involved in the space sector.
+
+Copernicus & GMES: Highlight Iceland's participation in the Copernicus Programme, showing local data and applications.
+
+🛠️ Technical Implementation Suggestions
+Data APIs: Make extensive use of the free and open APIs listed on NASA's portal and by other organizations to retrieve all the data you need.
+
+Web Technologies: Use standard web technologies like HTML, JavaScript, and a framework like React or Vue.js for the frontend. Use a server-side language (like Python or Node.js) to handle API calls and data processing.
+
+3D Visualization: CesiumJS is a powerful, open-source JavaScript library that is ideal for building web-based 3D globes and visualizing satellite orbits and ground tracks.
+
+Code Sharing: Consider releasing the project's source code under an open-source license to foster collaboration and demonstrate transparency.
+
+I hope this detailed list provides a solid foundation for your ambitious and exciting project. It has the potential to be a fantastic public resource and a significant asset for the Iceland Space Agency.
+
+
+ORBITAL PLOTTING
+================
+
+Use Cesium.js for rendering
+
+STAR CHARTS
+===========
+
+Get the raw data from the CosmoScout VR Gaia-Stars project - merges three trad datasets from the 1990s epoch (good for bright stars) with the more accurate (spectroscopically and position-wise) Gaia dataset.
+
+Use the .js library plotly to render the star chart as it does most of the work for you
