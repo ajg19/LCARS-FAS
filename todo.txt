@@ -23,3 +23,7 @@ TO DO - LCARS-FAS
   unsupervised -- answers whether GoDaddy shared hosting reaps
   long-running background processes not registered with
   Application Manager.
+
+* DONE (2026-08-12) - .git/hooks/post-commit now auto-pushes every
+  commit to origin (AJG - laptop -> GitHub ajg19/LCARS-FAS) and
+  prints a clear success/failure message.
