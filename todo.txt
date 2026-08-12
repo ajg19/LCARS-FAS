@@ -26,4 +26,5 @@ TO DO - LCARS-FAS
 
 * DONE (2026-08-12) - .git/hooks/post-commit now auto-pushes every
   commit to origin (AJG - laptop -> GitHub ajg19/LCARS-FAS) and
-  prints a clear success/failure message.
+  prints a clear success/failure message. Also logs each result to
+  .git/hooks/push.log for a persistent history.
