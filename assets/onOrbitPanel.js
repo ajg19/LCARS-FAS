@@ -681,7 +681,20 @@ async function fetchAndRenderOrbitalObjectsList() {
     if (overlayEl) {
         overlayEl.style.display = '';
     }
+    // showSection() (lcars.js) only sets zoom-button visibility once per
+    // section-entry, based on sectionId alone -- it has no way to know
+    // on-orbit's own payload area toggles between the map and a results
+    // table internally, so this (the shared "back to map" path, reached
+    // from both ADD OBJ's and DEL OBJ's close paths and section
+    // re-entry) is what actually restores them.
+    ['map-zoom-in-btn', 'map-zoom-out-btn'].forEach((id) => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.classList.remove('is-hidden');
+        }
+    });
     addObjectSelectedIds.clear();
+    delObjViewActive = false;
 
     if (plottedNoradIds.length === 0) {
         wrapper.innerHTML = '';
@@ -884,6 +897,16 @@ const INCLINATION_BAND_FILTER_OPTIONS = [
 
 let addObjectFilterOptionsCache = null; // { owners, groups } -- fetched once per page load, not once per form open
 let addObjectSelectedIds = new Set(); // noradIDs highlighted in the current results table
+
+// Wired to the DEL OBJ button -- true while its read-only plotted-objects
+// view (shares #add-object-results-panel with ADD OBJ) is showing. No DOM
+// element to check for presence the way ADD OBJ checks for #add-object-form,
+// since DEL OBJ's view has no form -- this flag is that signal instead.
+// Reset to false wherever the shared results panel gets handed back to
+// ADD OBJ or the resting state (fetchAndRenderOrbitalObjectsList(),
+// toggleAddObjectForm()'s open path), so the two views can never think
+// they're both/neither active at once.
+let delObjViewActive = false;
 
 async function fetchAddObjectFilterOptions() {
     if (addObjectFilterOptionsCache) {
@@ -1126,14 +1149,153 @@ async function toggleAddObjectForm() {
     if (overlayEl) {
         overlayEl.style.display = 'none';
     }
+    // See the matching restore in fetchAndRenderOrbitalObjectsList() --
+    // showSection() only sets zoom-button visibility once per section
+    // entry, not per payload-area change within on-orbit.
+    ['map-zoom-in-btn', 'map-zoom-out-btn'].forEach((id) => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.classList.add('is-hidden');
+        }
+    });
     resultsPanel.classList.remove('is-hidden');
     document.getElementById('add-object-status').textContent = 'SET FILTERS AND SEARCH, OR SEARCH WITH NONE SET FOR ALL OBJECTS.';
     document.getElementById('add-object-results-table').innerHTML = '';
     addObjectSelectedIds.clear();
+    // In case DEL OBJ's view (which shares this same results panel) was
+    // open -- switching straight to ADD OBJ needs to clear its flag too,
+    // not just DEL OBJ's own toggle-off path.
+    delObjViewActive = false;
 
     const options = await fetchAddObjectFilterOptions();
     wrapper.innerHTML = renderAddObjectFormMarkup(options);
     runAddObjectSearch();
+}
+
+// Wired to the DEL OBJ button. Toggle, same shape as toggleAddObjectForm()
+// -- shows every currently-plotted object (plottedNoradIds) in the main
+// payload area, reusing ADD OBJ's own sortable results-table rendering
+// (renderAddObjectResultsTable()/...FromState()) rather than a separate
+// display format. While open, two extra buttons (DEL SELECTION, CLEAR --
+// see the on-orbit registerPanelControls() call below) appear in the
+// control panel; renderControlAreaButtons() is called on both the open
+// and close paths here specifically to rebuild that button *set*, not
+// just refresh existing buttons' labels -- the generic per-click
+// refreshAllLabels() in lcars.js can't add/remove buttons, only relabel
+// ones already on screen.
+async function toggleDelObjView() {
+    const resultsPanel = document.getElementById('add-object-results-panel');
+    if (!resultsPanel) {
+        return;
+    }
+
+    if (delObjViewActive) {
+        delObjViewActive = false;
+        fetchAndRenderOrbitalObjectsList();
+        renderControlAreaButtons('on-orbit');
+        return;
+    }
+
+    const mapEl = document.getElementById('on-orbit-map');
+    const overlayEl = document.querySelector('.location-overlay');
+    if (mapEl) {
+        mapEl.style.display = 'none';
+    }
+    if (overlayEl) {
+        overlayEl.style.display = 'none';
+    }
+    // See the matching restore in fetchAndRenderOrbitalObjectsList() --
+    // showSection() only sets zoom-button visibility once per section
+    // entry, not per payload-area change within on-orbit.
+    ['map-zoom-in-btn', 'map-zoom-out-btn'].forEach((id) => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.classList.add('is-hidden');
+        }
+    });
+    resultsPanel.classList.remove('is-hidden');
+    document.getElementById('add-object-results-table').innerHTML = '';
+    addObjectSelectedIds.clear();
+    delObjViewActive = true;
+    renderControlAreaButtons('on-orbit');
+
+    await renderDelObjResults();
+}
+
+// Fetches and displays the current plottedNoradIds in DEL OBJ's results
+// table -- split out of toggleDelObjView() so DEL SELECTION can also call
+// this to refresh the table after removing objects, without re-running
+// (and thereby re-toggling off) the rest of the view-opening logic.
+//
+// Also refreshes #default's own plotted-objects list (renderOrbitalObjectsList())
+// on every call, not just the results table -- that list lives in the top
+// banner area, a completely different part of the page from the main
+// payload's results table, so it stays visible and needs to stay in sync
+// too, especially after a delete removes rows from it.
+//
+// showStatusMessages suppresses the routine LOADING/NO OBJECTS PLOTTED
+// text -- deleteSelectedPlottedObjects() passes false, since a delete
+// should read as quiet/immediate, not flash a loading message for what's
+// already a near-instant local operation. Errors always show regardless
+// of this flag; that's real diagnostic information, not routine status.
+async function renderDelObjResults(showStatusMessages = true) {
+    const status = document.getElementById('add-object-status');
+
+    if (plottedNoradIds.length === 0) {
+        if (status) {
+            status.textContent = showStatusMessages ? 'NO OBJECTS PLOTTED.' : '';
+        }
+        renderAddObjectResultsTable([], false);
+        const wrapper = document.getElementById('default');
+        if (wrapper) {
+            wrapper.innerHTML = '';
+        }
+        return;
+    }
+
+    if (status && showStatusMessages) {
+        status.textContent = 'LOADING PLOTTED OBJECTS...';
+    }
+    try {
+        const response = await fetch(`api/orbital-objects?ids=${plottedNoradIds.join(',')}`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        const objects = await response.json();
+        renderAddObjectResultsTable(objects, false);
+        renderOrbitalObjectsList(objects);
+        if (status && !showStatusMessages) {
+            status.textContent = '';
+        }
+    } catch (error) {
+        console.error('Could not load plotted objects for DEL OBJ view:', error);
+        if (status) {
+            status.textContent = 'ERR: COULD NOT LOAD PLOTTED OBJECTS.';
+        }
+    }
+}
+
+// Wired to the DEL SELECTION button (only shown while DEL OBJ's view is
+// open -- see registerPanelControls() below). Removes every currently-
+// highlighted object from plottedNoradIds, persists it, and redraws the
+// table with whatever's left. Also refreshes an already-visible ground
+// track, mirroring addSelectedResultsToPlottedList()'s own pattern --
+// a deleted object's track/live marker needs to disappear immediately
+// too, not just its row here.
+async function deleteSelectedPlottedObjects() {
+    if (addObjectSelectedIds.size === 0) {
+        return;
+    }
+
+    plottedNoradIds = plottedNoradIds.filter((id) => !addObjectSelectedIds.has(id));
+    savePlottedNoradIds(plottedNoradIds);
+    addObjectSelectedIds.clear();
+
+    if (groundTrackVisible) {
+        await renderGroundTracksForPlottedList();
+    }
+
+    await renderDelObjResults(false);
 }
 
 // Wired to the ADD SELECTION button. Adds every currently-highlighted
@@ -1236,6 +1398,7 @@ async function runAddObjectSearch() {
 const ADD_OBJECT_COLUMNS = [
     { label: 'NORAD ID', numeric: true, getValue: (obj) => obj.noradID, format: (v) => v },
     { label: 'NAME', numeric: false, getValue: (obj) => obj.name || '', format: (v) => v || '--' },
+    { label: 'OBJ TYPE', numeric: false, getValue: (obj) => obj.objectType || '', format: (v) => v || '--' },
     { label: 'COUNTRY', numeric: false, getValue: (obj) => obj.owner || '', format: (v) => v || '--' },
     { label: 'INCL', numeric: true, getValue: (obj) => parseInclinationDeg(obj.line2), format: (v) => Number.isFinite(v) ? `${v.toFixed(1)}°` : '--' },
     { label: 'PERIGEE', numeric: true, getValue: (obj) => obj.perigee, format: (v) => Number.isFinite(v) ? `${Math.round(v).toLocaleString('en-US')} KM` : '--' },
@@ -1638,6 +1801,18 @@ let livePositionInterval = null;
 let footprintLayers = new Map(); // noradID -> L.Polygon
 let footprintsVisible = false;
 
+// Wired to the SHW ALT button -- toggles the altitude line under each
+// object's name in its ground-track label. Defaults off.
+let showAltitude = false;
+
+// Wired to the SHW ALT button. updateLivePositions() reads showAltitude
+// directly on its next tick (it already refreshes every label's content
+// every second via setTooltipContent()), so there's nothing else to
+// force here -- flipping the flag is enough.
+function toggleAltitudeDisplay() {
+    showAltitude = !showAltitude;
+}
+
 function clearFootprintLayers() {
     footprintLayers.forEach((layer) => onOrbitMap.removeLayer(layer));
     footprintLayers.clear();
@@ -1730,8 +1905,11 @@ function updateLivePositions() {
 
         // Altitude changes continuously (especially on elliptical orbits),
         // so unlike the name, this has to be refreshed every tick, not
-        // just set once at marker creation.
-        const labelContent = `<span style="color:${style.color}">${name}<br>${Math.round(geodetic.height)} KM</span>`;
+        // just set once at marker creation. showAltitude (SHW ALT button)
+        // just omits the second line -- no separate re-render path needed,
+        // since this whole block already runs every tick regardless.
+        const altitudeLine = showAltitude ? `<br>${Math.round(geodetic.height)} KM` : '';
+        const labelContent = `<span style="color:${style.color}">${name}${altitudeLine}</span>`;
 
         const existingMarker = livePositionMarkers.get(noradID);
         if (existingMarker) {
@@ -1771,37 +1949,67 @@ function updateLivePositions() {
     });
 }
 
-// Registers this panel's six control-area buttons with lcars.js's generic
+// Registers this panel's control-area buttons with lcars.js's generic
 // updateControlArea() dispatcher. Reproduces the old hardcoded
 // CONTROL_AREA_BUTTON_LABELS['on-orbit']/ON_ORBIT_BUTTON_COLORS-driven
-// branch's behaviour exactly, aside from one fix: ADD OBJ/USR LOCN/GRD
-// TRCK/SHW FOOT wired to their handlers, GRD TRCK and SHW FOOT both with
-// a dynamic ON/OFF label now that GRD TRCK is a real toggle (BUG-001 --
-// it previously just re-rendered on every click, never turning off).
-// DEL OBJ/IN VIEW deliberately left with no onClick -- they were inert
-// placeholders before this refactor and stay that way here, not "fixed"
-// as a side effect of it. defaultAreaMode: 'custom' reproduces the old
+// branch's behaviour exactly, aside from these fixes: ADD OBJ/USR LOCN/GRD
+// TRCK/SHW FOOT/SHW ALT/DEL OBJ wired to their handlers, GRD TRCK/SHW
+// FOOT/SHW ALT all with a dynamic ON/OFF label now that GRD TRCK is a
+// real toggle (BUG-001 -- it previously just re-rendered on every click,
+// never turning off). defaultAreaMode: 'custom' reproduces the old
 // sectionId === 'on-orbit' branch in updateControlArea() that called
 // fetchAndRenderOrbitalObjectsList() instead of a label or key grid.
+//
+// buttons is a function, not a plain array, specifically so DEL
+// SELECTION/CLEAR can appear only while DEL OBJ's view is open
+// (delObjViewActive) -- lcars.js's renderControlAreaButtons() evaluates
+// this fresh every time it's called, including the extra calls
+// toggleDelObjView() makes itself on open/close, so the button set never
+// goes stale.
 registerPanelControls('on-orbit', {
     defaultAreaMode: 'custom',
     renderDefaultArea: fetchAndRenderOrbitalObjectsList,
-    buttons: [
-        { label: 'ADD OBJ', color: 'var(--golden-orange)', onClick: toggleAddObjectForm },
-        {
-            label: 'GRD TRCK',
-            color: 'var(--bluey)',
-            getText: () => `GRD TRCK - ${groundTrackVisible ? 'ON' : 'OFF'}`,
-            onClick: toggleGroundTrack,
-        },
-        {
-            label: 'SHW FOOT',
-            color: 'var(--sky)',
-            getText: () => `SHW FOOT - ${footprintsVisible ? 'ON' : 'OFF'}`,
-            onClick: toggleFootprints,
-        },
-        { label: 'DEL OBJ', color: 'var(--orange)' },
-        { label: 'IN VIEW', color: 'var(--butterscotch)' },
-        { label: 'USR LOCN', color: 'var(--peach)', onClick: toggleUserLocationForm },
-    ],
+    buttons: () => {
+        const buttons = [
+            { label: 'ADD OBJ', color: 'var(--golden-orange)', onClick: toggleAddObjectForm },
+            {
+                label: 'GRD TRCK',
+                color: 'var(--bluey)',
+                getText: () => `GRD TRCK - ${groundTrackVisible ? 'ON' : 'OFF'}`,
+                onClick: toggleGroundTrack,
+            },
+            {
+                label: 'SHW FOOT',
+                color: 'var(--sky)',
+                getText: () => `SHW FOOT - ${footprintsVisible ? 'ON' : 'OFF'}`,
+                onClick: toggleFootprints,
+            },
+            { label: 'DEL OBJ', color: 'var(--orange)', onClick: toggleDelObjView },
+            { label: 'USR LOCN', color: 'var(--peach)', onClick: toggleUserLocationForm },
+            {
+                label: 'SHW ALT',
+                color: 'var(--butterscotch)',
+                getText: () => `SHW ALT - ${showAltitude ? 'ON' : 'OFF'}`,
+                onClick: toggleAltitudeDisplay,
+            },
+        ];
+
+        if (delObjViewActive) {
+            // Warm/destructive red for the actual delete action, matching
+            // LCARS convention elsewhere in this app; blue for CLEAR since
+            // it's a non-destructive selection-utility action -- same
+            // pairing already used for ADD OBJ's own SELECT ALL/CLEAR.
+            // Shared group -- renderControlAreaButtons() (lcars.js) stacks
+            // same-group buttons vertically in one shared div rather than
+            // each taking its own slot in nav's row, and unshifting the
+            // pair (in this order, so DEL SELECTION ends up on top) puts
+            // that div at the left of the row.
+            buttons.unshift(
+                { label: 'DEL SELECTION', color: 'var(--red)', group: 'del-obj-actions', onClick: deleteSelectedPlottedObjects },
+                { label: 'CLEAR', color: 'var(--sky)', group: 'del-obj-actions', onClick: clearAddObjectSelection },
+            );
+        }
+
+        return buttons;
+    },
 });

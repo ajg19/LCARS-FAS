@@ -1,0 +1,25 @@
+TO DO - LCARS-FAS
+
+* SHW ALT button: check the ON/OFF label stays in sync with whether
+  altitude is actually being displayed under object names (e.g. toggle
+  off then on, and check after GRD TRCK is toggled off/on too).
+
+* Add sort arrows (like the ADD OBJ / DEL OBJ results table) to the
+  control panel's own persistent objects table (#default).
+
+* Check whether the code that renders the list of selected/plotted
+  objects is duplicated across places (e.g. renderOrbitalObjectsList
+  and the ADD OBJ / DEL OBJ results table rendering) and refactor to a
+  single shared place if so.
+
+* Write a script to deploy LCARS-FAS to GoDaddy (automate the
+  scp/tar upload + re-sync we've been doing by hand). DONE -
+  deployToGoDaddy.sh
+
+* Check on nodePersistenceTest.js -- started via SSH on GoDaddy
+  2026-08-10 ~02:28 (unsupervised, no daemon manager, just
+  `nohup node nodePersistenceTest.js &`), writing to
+  persistenceTest.log every 60s. See how long it's survived
+  unsupervised -- answers whether GoDaddy shared hosting reaps
+  long-running background processes not registered with
+  Application Manager.

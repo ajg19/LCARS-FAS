@@ -181,6 +181,109 @@ function showSection(sectionId, label) {
 // two rows -- column count is derived from however many buttons this
 // section needs, rather than a fixed 3-wide grid, so a 9-button section
 // (5+4) and a 6-button section (3+3) both still land on two rows.
+// Renders just the nav button strip, independently of the #default
+// wrapper's own content -- split out of updateControlArea() so a panel
+// can force its button *set* to rebuild (not just refresh existing
+// buttons' labels, which refreshAllLabels() below already handles) when
+// something other than a section change alters which buttons should be
+// showing -- e.g. DEL OBJ's view adding DEL SELECTION/CLEAR while it's
+// open. Calling the full updateControlArea() for that would also re-run
+// the panel's renderDefaultArea(), which for on-orbit is
+// fetchAndRenderOrbitalObjectsList() -- exactly the function that resets
+// DEL OBJ's own view state, so it would immediately undo the thing this
+// was meant to enable. This function touches only the nav strip.
+//
+// panel.buttons may be a plain array (every other panel today) or a
+// function returning one (on-orbit, so the set can depend on
+// delObjViewActive) -- evaluated fresh on every call either way, so a
+// function-valued buttons list is never stale.
+function renderControlAreaButtons(sectionId) {
+    const panel = panelControlRegistry[sectionId];
+    const nav = document.querySelector('.data-cascade-button-group nav');
+    const groupsArea = document.getElementById('control-area-groups');
+    if (!nav) {
+        return;
+    }
+
+    nav.classList.add('nav-grid-dynamic');
+    const buttons = panel ? (typeof panel.buttons === 'function' ? panel.buttons() : panel.buttons) : null;
+    // Only ungrouped buttons actually live in nav's own flex-wrap row (see
+    // below), so its column math must only count those -- grouped ones
+    // render into #control-area-groups instead, a true DOM sibling of nav,
+    // not one of its flex items. Counting every button here regardless of
+    // grouping was tried first and produced a real layout bug: a button
+    // that's twice the height of its row-mates (two stacked, one slot)
+    // leaves dead space beside it that the fixed-height siblings don't
+    // stretch to fill, which reads as a phantom extra row even though the
+    // wrap math itself was technically correct.
+    const ungroupedCount = buttons ? buttons.filter((info) => !info.group).length : 6;
+    nav.style.setProperty('--nav-columns', Math.ceil(ungroupedCount / 2));
+    nav.innerHTML = '';
+    if (groupsArea) {
+        groupsArea.innerHTML = '';
+    }
+
+    if (buttons) {
+        // Collected up front so every button's label can be refreshed
+        // after ANY button's click, not just the one that was clicked --
+        // a handler can have side effects on a sibling button's state
+        // (e.g. GRD TRCK turning footprints off also changes what SHW
+        // FOOT's own label should read), and a button whose own label
+        // depends on state it doesn't own has no other way to find out
+        // it needs to redraw itself.
+        const setLabelFns = [];
+        const refreshAllLabels = () => setLabelFns.forEach((fn) => fn());
+
+        // Buttons sharing the same info.group string get wrapped together
+        // in one shared <div> (.control-area-button-group, stacked
+        // vertically via CSS) appended to #control-area-groups -- a
+        // sibling of nav, not a child of it, specifically so a tall
+        // grouped stack never has to coexist inside the same flex-wrap
+        // row as nav's own fixed-height individual buttons. Optional:
+        // most buttons have no group and append to nav as before.
+        // groupContainers keyed by group name so >2 buttons could share
+        // one group too, not just pairs.
+        const groupContainers = new Map();
+
+        buttons.forEach((info) => {
+            const button = document.createElement('button');
+            if (info.color) {
+                button.style.backgroundColor = info.color;
+            }
+            const setLabel = () => {
+                button.textContent = info.getText ? info.getText() : info.label;
+            };
+            setLabelFns.push(setLabel);
+            setLabel();
+            if (info.onClick) {
+                button.addEventListener('click', async () => {
+                    await info.onClick();
+                    refreshAllLabels();
+                });
+            }
+
+            if (info.group && groupsArea) {
+                let container = groupContainers.get(info.group);
+                if (!container) {
+                    container = document.createElement('div');
+                    container.className = 'control-area-button-group';
+                    groupContainers.set(info.group, container);
+                    groupsArea.appendChild(container);
+                }
+                container.appendChild(button);
+            } else {
+                nav.appendChild(button);
+            }
+        });
+    } else {
+        ['1', '2', '3', '4', '5', '6'].forEach((text) => {
+            const button = document.createElement('button');
+            button.textContent = text;
+            nav.appendChild(button);
+        });
+    }
+}
+
 function updateControlArea(sectionId, label) {
     const panel = panelControlRegistry[sectionId];
 
@@ -199,51 +302,7 @@ function updateControlArea(sectionId, label) {
         }
     }
 
-    const nav = document.querySelector('.data-cascade-button-group nav');
-    if (nav) {
-        nav.classList.add('nav-grid-dynamic');
-        const buttons = panel ? panel.buttons : null;
-        const buttonCount = buttons ? buttons.length : 6;
-        nav.style.setProperty('--nav-columns', Math.ceil(buttonCount / 2));
-        nav.innerHTML = '';
-
-        if (buttons) {
-            // Collected up front so every button's label can be refreshed
-            // after ANY button's click, not just the one that was clicked
-            // -- a handler can have side effects on a sibling button's
-            // state (e.g. GRD TRCK turning footprints off also changes
-            // what SHW FOOT's own label should read), and a button whose
-            // own label depends on state it doesn't own has no other way
-            // to find out it needs to redraw itself.
-            const setLabelFns = [];
-            const refreshAllLabels = () => setLabelFns.forEach((fn) => fn());
-
-            buttons.forEach((info) => {
-                const button = document.createElement('button');
-                if (info.color) {
-                    button.style.backgroundColor = info.color;
-                }
-                const setLabel = () => {
-                    button.textContent = info.getText ? info.getText() : info.label;
-                };
-                setLabelFns.push(setLabel);
-                setLabel();
-                if (info.onClick) {
-                    button.addEventListener('click', async () => {
-                        await info.onClick();
-                        refreshAllLabels();
-                    });
-                }
-                nav.appendChild(button);
-            });
-        } else {
-            ['1', '2', '3', '4', '5', '6'].forEach((text) => {
-                const button = document.createElement('button');
-                button.textContent = text;
-                nav.appendChild(button);
-            });
-        }
-    }
+    renderControlAreaButtons(sectionId);
 
     controlAreaSectionActive = true;
 }

@@ -1907,9 +1907,34 @@ nav.nav-grid-dynamic {
 	}
 }
 
+/* Sibling of nav (see index.html), not a child of it -- holds any
+   grouped button stacks (see .control-area-button-group below) entirely
+   outside nav's own flex-wrap row. Tried living inside nav first; a
+   two-button-tall group sitting alongside nav's fixed-height individual
+   buttons left dead space beside it that those buttons don't stretch to
+   fill, which read as a phantom extra row even though nav's own wrap
+   math was technically still correct. display:flex (row) rather than a
+   single item, in case more than one group ever exists side by side. */
+.control-area-groups {
+	display: flex;
+	align-self: center;
+	gap: .5rem;
+}
+
+/* One button stack within .control-area-groups -- see
+   renderControlAreaButtons() (lcars.js) for how buttons sharing an
+   info.group land in the same one of these. */
+.control-area-button-group {
+	display: flex;
+	flex-direction: column;
+	gap: .65rem;
+	width: var(--nav-width);
+}
+
 nav a,
 nav button,
-.buttons button	{
+.buttons button,
+.control-area-button-group button	{
 	display: flex;
 	flex-direction: column;
 	justify-content: flex-end;
