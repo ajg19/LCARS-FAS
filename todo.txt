@@ -28,3 +28,22 @@ TO DO - LCARS-FAS
   commit to origin (AJG - laptop -> GitHub ajg19/LCARS-FAS) and
   prints a clear success/failure message. Also logs each result to
   .git/hooks/push.log for a persistent history.
+
+* DONE (2026-08-12) - Set up on-demand test + code-review workflow.
+  0_tests/test_server.py: pytest suite (see requirements-dev.txt),
+  WSGI-level smoke tests against server.py's 5 API endpoints + static
+  file serving + pure-logic unit tests, run against the real local
+  DBs, no mocks. `pytest 0_tests -v` to run.
+  Each run of either workflow writes a timestamped .md report:
+  0_testReports/YYMMDD_HHMMZ_testReport.md and
+  0_codeReviews/YYMMDD_HHMMZ_codeReview.md (UTC). Unlike push.log/
+  reviewLog.txt before it, these ARE committed + pushed (not
+  gitignored) so they're viewable on GitHub's web UI, rendered as
+  markdown.
+  Naming convention adopted repo-wide: any directory that's dev-only
+  and excluded from the GoDaddy deploy gets a "0_" prefix (sorts to
+  the top in Explorer, visually distinct) -- 0_documentation/,
+  0_tests/, 0_testReports/, 0_codeReviews/. documentation/ renamed
+  accordingly. ingestionDBs/ is NOT prefixed -- it's excluded from
+  the deploy *sync* to avoid clobbering the live DBs, but the
+  directory itself is very much meant to exist on the server.
