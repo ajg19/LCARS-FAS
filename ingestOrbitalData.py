@@ -1,20 +1,28 @@
 """Server side script maintaining a local cache of current orbital element
-(TLE) data for on-orbit objects.
+(OMM) data for on-orbit objects.
 
-Python port of ingestOrbitalData.js -- same schema, same CelesTrak/Space-
-Track/SatNOGS source priority, same source-priority-within-a-run logic via
-seenIds, same rate-limit-avoidance handling for CelesTrak (response body
+Python port of ingestOrbitalData.js -- same schema shape, same CelesTrak/
+Space-Track/SatNOGS source priority, same source-priority-within-a-run logic
+via seenIds, same rate-limit-avoidance handling for CelesTrak (response body
 checked for a benign "not updated"/"no data" message before the HTTP status
 is used to decide error vs. skip), same 12-hour poll interval.
 
+Migrated from the legacy TLE text format to CCSDS OMM (CelesTrak's
+FORMAT=json), matching the frontend's move to satellite.js's json2satrec()
+in place of twoline2satrec(). CelesTrak ran out of 5-digit catalog numbers
+on 2026-07-11; even the Alpha-5 letter-encoding that extends classic TLE
+lines has a hard ceiling (catalog #339,999), while OMM has none. The one
+exception is SatNOGS, the supplemental amateur/cubesat source, which only
+ever exposes raw TLE text (no JSON/OMM equivalent exists there) -- that
+path alone still decodes fixed TLE columns, isolated in tle_to_omm_fields().
+
 The companion SATCAT enrichment job (objectType/owner/launchDate/decayDate/
 rcsSize, on its own slower cadence) is a separate script, not implemented
-here -- this file only ever touches the TLE-derived columns.
+here -- this file only ever touches the orbital-element columns.
 """
 
 import json
 import os
-import re
 import sqlite3
 import time
 import urllib.error
@@ -52,37 +60,67 @@ db_path = os.path.join(BASE_DIR, 'ingestionDBs', 'orbitalObjects.db')
 db = sqlite3.connect(db_path, isolation_level=None)
 db.execute('PRAGMA journal_mode = WAL;')
 
-# 2. Set up schema
+# 2. Set up schema. OMM element columns replace the old line1/line2 TLE
+# text columns -- see the module docstring for why.
 db.execute('''
     CREATE TABLE IF NOT EXISTS orbital_objects (
-        noradID    INTEGER PRIMARY KEY,
-        name       TEXT,
-        line1      TEXT,
-        line2      TEXT,
-        epoch      TEXT,
-        objectType TEXT,
-        owner      TEXT,
-        launchDate TEXT,
-        decayDate  TEXT,
-        rcsSize    REAL,
-        period     REAL,
-        apogee     REAL,
-        perigee    REAL,
-        source     TEXT,
-        fetchedAt  DATETIME DEFAULT CURRENT_TIMESTAMP
+        noradID          INTEGER PRIMARY KEY,
+        name             TEXT,
+        objectID         TEXT,
+        epoch            TEXT,
+        meanMotion       REAL,
+        eccentricity     REAL,
+        inclination      REAL,
+        raOfAscNode      REAL,
+        argOfPericenter  REAL,
+        meanAnomaly      REAL,
+        bstar            REAL,
+        meanMotionDot    REAL,
+        meanMotionDdot   REAL,
+        objectType       TEXT,
+        owner            TEXT,
+        launchDate       TEXT,
+        launchSite       TEXT,
+        decayDate        TEXT,
+        rcsSize          REAL,
+        period           REAL,
+        apogee           REAL,
+        perigee          REAL,
+        source           TEXT,
+        fetchedAt        DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 ''')
 
-# period/apogee/perigee added after the table already existed in the wild --
-# CREATE TABLE IF NOT EXISTS above only covers a brand-new DB. Ignoring
-# "duplicate column" is the idempotent way to run this on every startup
-# regardless of whether the column is already there; any other error still
-# surfaces normally.
-for column in ('period REAL', 'apogee REAL', 'perigee REAL'):
+# Columns added after the table already existed in the wild -- CREATE TABLE
+# IF NOT EXISTS above only covers a brand-new DB. Ignoring "duplicate
+# column" is the idempotent way to run this on every startup regardless of
+# whether the column is already there; any other error still surfaces
+# normally. Includes the original period/apogee/perigee migration alongside
+# the OMM-element columns added by the TLE->OMM migration.
+NEW_COLUMNS = (
+    'period REAL', 'apogee REAL', 'perigee REAL',
+    'objectID TEXT', 'meanMotion REAL', 'eccentricity REAL', 'inclination REAL',
+    'raOfAscNode REAL', 'argOfPericenter REAL', 'meanAnomaly REAL', 'bstar REAL',
+    'meanMotionDot REAL', 'meanMotionDdot REAL', 'launchSite TEXT',
+)
+for column in NEW_COLUMNS:
     try:
         db.execute(f'ALTER TABLE orbital_objects ADD COLUMN {column};')
     except sqlite3.OperationalError as err:
         if 'duplicate column name' not in str(err).lower():
+            raise
+
+# Drop the legacy TLE text columns now that both ingestion and the frontend
+# (json2satrec, not twoline2satrec) are off them -- idempotent the same way
+# as the ADD COLUMN loop above, just for the opposite direction. Requires
+# SQLite >=3.35; older SQLite raises "near DROP: syntax error" instead of
+# a clean "no such column", so that's caught too.
+for column in ('line1', 'line2'):
+    try:
+        db.execute(f'ALTER TABLE orbital_objects DROP COLUMN {column};')
+    except sqlite3.OperationalError as err:
+        message = str(err).lower()
+        if 'no such column' not in message and 'syntax error' not in message:
             raise
 
 # orbital_object_groups: which CelesTrak group(s) each object currently
@@ -99,18 +137,19 @@ db.executescript('''
         ON orbital_object_groups(groupName);
 ''')
 
-# 3. Upsert statements. Deliberately touches only the TLE-derived columns --
+# 3. Upsert statement. Deliberately touches only the OMM-derived columns --
 # objectType/owner/launchDate/decayDate/rcsSize belong to the separate
-# SATCAT job and must survive untouched across every TLE refresh here.
-UPSERT_OBJECT_SQL = '''
-    INSERT INTO orbital_objects (noradID, name, line1, line2, epoch, source, fetchedAt)
-    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+# SATCAT job and must survive untouched across every element refresh here.
+OMM_COLUMNS = (
+    'noradID', 'name', 'objectID', 'epoch', 'meanMotion', 'eccentricity',
+    'inclination', 'raOfAscNode', 'argOfPericenter', 'meanAnomaly', 'bstar',
+    'meanMotionDot', 'meanMotionDdot', 'source',
+)
+UPSERT_OBJECT_SQL = f'''
+    INSERT INTO orbital_objects ({', '.join(OMM_COLUMNS)}, fetchedAt)
+    VALUES ({', '.join('?' * len(OMM_COLUMNS))}, CURRENT_TIMESTAMP)
     ON CONFLICT(noradID) DO UPDATE SET
-        name = excluded.name,
-        line1 = excluded.line1,
-        line2 = excluded.line2,
-        epoch = excluded.epoch,
-        source = excluded.source,
+        {', '.join(f'{col} = excluded.{col}' for col in OMM_COLUMNS if col != 'noradID')},
         fetchedAt = excluded.fetchedAt
 '''
 INSERT_GROUP_MEMBERSHIP_SQL = 'INSERT OR IGNORE INTO orbital_object_groups (noradID, groupName) VALUES (?, ?)'
@@ -133,22 +172,40 @@ CELESTRAK_GROUPS = [
 ]
 
 
-# 5. TLE line parsing helpers.
-
-# Classic 5-digit catalog numbers are plain digits in columns 3-7 of line 1.
-# Alpha-5 numbers (the scheme adopted once the catalog exceeds 99999)
-# replace the leading digit with a letter, I and O skipped.
-ALPHA5_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
-
-
-def parse_norad_id(line1):
-    raw = line1[2:7]
-    if raw[0].isdigit():
-        return int(raw)
-    letter_value = ALPHA5_LETTERS.find(raw[0].upper())
-    if letter_value == -1:
+# 5. OMM field mapping. CelesTrak and Space-Track both return the same
+# CCSDS-defined UPPER_SNAKE keys (confirmed against both APIs' actual
+# responses); this maps them onto our own camelCase DB columns.
+def omm_row_from_json(entry, source):
+    try:
+        norad_id = int(entry['NORAD_CAT_ID'])
+        epoch = entry['EPOCH']
+        if not epoch.endswith('Z'):
+            epoch = epoch + 'Z'
+    except (KeyError, TypeError, ValueError):
         return None
-    return (letter_value + 10) * 10000 + int(raw[1:])
+    return {
+        'noradID': norad_id,
+        'name': (entry.get('OBJECT_NAME') or '').strip(),
+        'objectID': entry.get('OBJECT_ID'),
+        'epoch': epoch,
+        'meanMotion': _to_float(entry.get('MEAN_MOTION')),
+        'eccentricity': _to_float(entry.get('ECCENTRICITY')),
+        'inclination': _to_float(entry.get('INCLINATION')),
+        'raOfAscNode': _to_float(entry.get('RA_OF_ASC_NODE')),
+        'argOfPericenter': _to_float(entry.get('ARG_OF_PERICENTER')),
+        'meanAnomaly': _to_float(entry.get('MEAN_ANOMALY')),
+        'bstar': _to_float(entry.get('BSTAR')),
+        'meanMotionDot': _to_float(entry.get('MEAN_MOTION_DOT')),
+        'meanMotionDdot': _to_float(entry.get('MEAN_MOTION_DDOT')),
+        'source': source,
+    }
+
+
+def _to_float(value):
+    try:
+        return float(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
 
 
 def to_iso_string(dt):
@@ -156,9 +213,23 @@ def to_iso_string(dt):
     return dt.strftime('%Y-%m-%dT%H:%M:%S.') + f'{dt.microsecond // 1000:03d}Z'
 
 
-# TLE epoch field (columns 19-32 of line 1) is a 2-digit year plus
-# fractional day-of-year, e.g. "24187.51782528". Years 57-99 are 1957-1999,
-# 00-56 are 2000-2056 -- the standard TLE pivot year.
+# 6. SatNOGS-only TLE decoder. SatNOGS (unlike CelesTrak/Space-Track) has no
+# JSON/OMM equivalent -- confirmed live against db.satnogs.org's API, which
+# only ever returns tle0/tle1/tle2 text -- so this is the one place fixed
+# TLE-column parsing survives, deliberately isolated to that one source.
+# Column positions match the TLE spec (and satellite.js's own
+# twoline2satrec parsing, so results agree with what that function would
+# have produced): line1 cols 33-43 (mean motion dot, plain decimal), 44-52
+# and 53-61 (mean motion ddot / bstar, assumed-decimal-point notation);
+# line2 cols 8-16/17-25/26-33/34-42/43-51/52-63 (inclination/RAAN/
+# eccentricity/arg of perigee/mean anomaly/mean motion).
+def _decode_assumed_decimal(field):
+    sign = '-' if field.startswith('-') else ''
+    mantissa = field[1:-2].strip() or '0'
+    exponent = field[-2:]
+    return float(f'{sign}0.{mantissa}E{exponent}')
+
+
 def parse_tle_epoch(line1):
     epoch_field = line1[18:32].strip()
     two_digit_year = int(epoch_field[0:2])
@@ -168,20 +239,23 @@ def parse_tle_epoch(line1):
     return to_iso_string(epoch_date)
 
 
-# 6. Parse a 3LE-format response body (name line + line1 + line2, repeated)
-# into {name, line1, line2} dicts.
-def parse_3le(text):
-    lines = [l.rstrip() for l in text.split('\n') if l.strip()]
-    objects = []
-    i = 0
-    while i + 2 < len(lines):
-        name = lines[i].strip()
-        line1 = lines[i + 1]
-        line2 = lines[i + 2]
-        if name and line1.startswith('1 ') and line2.startswith('2 '):
-            objects.append({'name': name, 'line1': line1, 'line2': line2})
-        i += 3
-    return objects
+def tle_to_omm_fields(norad_id, name, line1, line2, source):
+    return {
+        'noradID': norad_id,
+        'name': name,
+        'objectID': None,
+        'epoch': parse_tle_epoch(line1),
+        'meanMotion': float(line2[52:63]),
+        'eccentricity': float(f'.{line2[26:33]}'),
+        'inclination': float(line2[8:16]),
+        'raOfAscNode': float(line2[17:25]),
+        'argOfPericenter': float(line2[34:42]),
+        'meanAnomaly': float(line2[43:51]),
+        'bstar': _decode_assumed_decimal(line1[53:61]),
+        'meanMotionDot': float(line1[33:43]),
+        'meanMotionDdot': _decode_assumed_decimal(line1[44:52]),
+        'source': source,
+    }
 
 
 def http_get(url, headers=None):
@@ -199,18 +273,22 @@ def http_get(url, headers=None):
 # 7. CelesTrak fetch -- one group at a time, throttled between requests. Per
 # CelesTrak's usage policy, a repeat request inside its ~2-hour refresh
 # window is answered with a "GP data has not updated..." text message
-# rather than TLE data, sometimes via an actual HTTP 403 for the largest
-# groups -- so the response body is checked for that message BEFORE the
-# status code is used to decide error vs. skip, so a benign "already have
-# the latest data" is never logged/counted as a genuine error either way.
+# rather than element data (confirmed this applies to FORMAT=json exactly
+# like it did to FORMAT=3le) -- sometimes via an actual HTTP 403 for the
+# largest groups -- so the response body is checked for that message BEFORE
+# the status code is used to decide error vs. skip, so a benign "already
+# have the latest data" is never logged/counted as a genuine error either
+# way.
 def fetch_celestrak_group(group):
-    url = f'https://celestrak.org/NORAD/elements/gp.php?GROUP={group}&FORMAT=3le'
+    url = f'https://celestrak.org/NORAD/elements/gp.php?GROUP={group}&FORMAT=json'
     status, text = http_get(url)
     if text.startswith('GP data has not updated') or text.startswith('No GP data found'):
         return {'objects': [], 'skipped': True, 'note': text.strip().split('\n')[0]}
     if status >= 400:
         raise Exception(f'HTTP {status}')
-    return {'objects': parse_3le(text), 'skipped': False}
+    entries = json.loads(text)
+    objects = [row for row in (omm_row_from_json(e, 'celestrak') for e in entries) if row]
+    return {'objects': objects, 'skipped': False}
 
 
 # 8. Space-Track -- fallback + verification pass. Only runs when
@@ -239,13 +317,14 @@ def space_track_login():
     return cookie.split(';')[0]
 
 
-# Latest TLE per object, restricted to objects updated in the last 2 days --
-# this pass only needs to catch recent movement CelesTrak's groups missed
-# this run, not re-pull the full catalogue every time. Uses the "gp" class
-# (General Perturbations) -- the legacy "tle"/"tle_latest" classes are
-# retired and now 404 even unauthenticated. "gp" is already
-# latest-elset-per-object, and its JSON format exposes TLE_LINE0/1/2
-# directly.
+# Latest elset per object, restricted to objects updated in the last 2 days
+# -- this pass only needs to catch recent movement CelesTrak's groups
+# missed this run, not re-pull the full catalogue every time. Uses the "gp"
+# class (General Perturbations) -- the legacy "tle"/"tle_latest" classes
+# are retired and now 404 even unauthenticated. "gp" already returns the
+# same CCSDS OMM field set CelesTrak's own JSON does (confirmed against
+# Space-Track's own documentation), so this reuses omm_row_from_json
+# unchanged rather than narrowing down to just TLE_LINE1/TLE_LINE2.
 def fetch_space_track():
     if not SPACETRACK_USER or not SPACETRACK_PASS:
         return {'objects': [], 'skipped': True, 'note': 'no credentials configured'}
@@ -254,52 +333,52 @@ def fetch_space_track():
     status, text = http_get(query, headers={'Cookie': session_cookie})
     if status >= 400:
         raise Exception(f'Space-Track query failed: HTTP {status}')
-    rows = json.loads(text)
-    objects = []
-    for r in rows:
-        if r.get('TLE_LINE1') and r.get('TLE_LINE2'):
-            name = (r.get('OBJECT_NAME') or r.get('TLE_LINE0') or '')
-            name = re.sub(r'^0 ', '', name).strip()
-            objects.append({'name': name, 'line1': r['TLE_LINE1'], 'line2': r['TLE_LINE2']})
+    entries = json.loads(text)
+    objects = [row for row in (omm_row_from_json(e, 'space-track') for e in entries) if row]
     return {'objects': objects, 'skipped': False}
 
 
 # 9. SatNOGS -- supplemental pass for amateur/cubesat objects CelesTrak and
 # Space-Track's mainstream catalogues don't carry. Public API, no auth.
+# norad_cat_id comes through as a plain JSON int already; only the orbital
+# elements themselves need decoding from the tle1/tle2 text (see
+# tle_to_omm_fields()).
 def fetch_satnogs():
     status, text = http_get('https://db.satnogs.org/api/tle/?format=json')
     if status >= 400:
         raise Exception(f'HTTP {status}')
     rows = json.loads(text)
-    return [
-        {'name': r['tle0'].strip(), 'line1': r['tle1'], 'line2': r['tle2']}
-        for r in rows
-        if r.get('tle0') and r.get('tle1') and r.get('tle2')
-    ]
+    objects = []
+    for r in rows:
+        if not (r.get('norad_cat_id') and r.get('tle0') and r.get('tle1') and r.get('tle2')):
+            continue
+        name = r['tle0'].lstrip('0').strip()
+        try:
+            objects.append(tle_to_omm_fields(int(r['norad_cat_id']), name, r['tle1'], r['tle2'], 'satnogs'))
+        except (ValueError, IndexError):
+            continue
+    return objects
 
 
-# 10. Upsert a batch of parsed TLE objects tagged with which source
-# supplied them. seen_ids enforces source priority within a single run --
-# CelesTrak (primary) always wins; Space-Track and SatNOGS only fill in
-# NORAD IDs no higher-priority source has already supplied this run.
+# 10. Upsert a batch of normalised OMM-shaped objects tagged with which
+# source supplied them. seen_ids enforces source priority within a single
+# run -- CelesTrak (primary) always wins; Space-Track and SatNOGS only fill
+# in NORAD IDs no higher-priority source has already supplied this run.
 #
 # Group membership is recorded before the seen_ids check, not after --
 # group is only ever passed for CelesTrak calls, and a satellite already
 # seen in an earlier group this same run must still get a row for this
-# group, even though seen_ids means its TLE data itself won't be
+# group, even though seen_ids means its element data itself won't be
 # re-upserted.
-def store_objects(objects, source, seen_ids, group=None):
+def store_objects(objects, seen_ids, group=None):
     count = 0
     for obj in objects:
-        norad_id = parse_norad_id(obj['line1'])
-        if norad_id is None:
-            continue
+        norad_id = obj['noradID']
         if group:
             db.execute(INSERT_GROUP_MEMBERSHIP_SQL, (norad_id, group))
         if norad_id in seen_ids:
             continue
-        epoch = parse_tle_epoch(obj['line1'])
-        db.execute(UPSERT_OBJECT_SQL, (norad_id, obj['name'], obj['line1'], obj['line2'], epoch, source))
+        db.execute(UPSERT_OBJECT_SQL, tuple(obj[col] for col in OMM_COLUMNS))
         seen_ids.add(norad_id)
         count += 1
     return count
@@ -325,7 +404,7 @@ def run_ingestion():
                 # diffing -- simpler, and correct either way since we just
                 # fetched every object currently in the group.
                 db.execute(DELETE_GROUP_MEMBERSHIP_SQL, (group,))
-                stored = store_objects(result['objects'], 'celestrak', seen_ids, group)
+                stored = store_objects(result['objects'], seen_ids, group)
                 celestrak_total += stored
                 print(f'  [celestrak] {group}: {stored} objects')
         except Exception as err:
@@ -339,7 +418,7 @@ def run_ingestion():
         if result['skipped']:
             print(f'  [space-track] skipped ({result["note"]})')
         else:
-            stored = store_objects(result['objects'], 'space-track', seen_ids)
+            stored = store_objects(result['objects'], seen_ids)
             print(f'  [space-track] {stored} objects backfilled')
     except Exception as err:
         print(f'  [space-track] ERROR {err}')
@@ -347,7 +426,7 @@ def run_ingestion():
     # --- SatNOGS: supplemental cubesat/amateur coverage ---
     try:
         objects = fetch_satnogs()
-        stored = store_objects(objects, 'satnogs', seen_ids)
+        stored = store_objects(objects, seen_ids)
         print(f'  [satnogs] {stored} objects')
     except Exception as err:
         print(f'  [satnogs] ERROR {err}')

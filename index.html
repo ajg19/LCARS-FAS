@@ -57,12 +57,13 @@
 				<div>
 					<button class="panel-3 section-toggle" data-section="news" onclick="showNewsSection()">NEWS</button>
 					<button class="panel-4 section-toggle" data-section="on-orbit" onclick="openOnOrbitSection();">ON-<span class="hop"> ORBIT</span></button>
+					<button class="panel-gsops section-toggle" data-section="gs-ops" onclick="openGsOpsSection();">GS OPS</button>
 					<button class="panel-5 section-toggle" data-section="deep-space" onclick="showSection('deep-space', 'DEEP SPACE')">DEEP<span class="hop">&nbsp;SPACE</span></button>
 					<button class="panel-6 section-toggle" data-section="launches" onclick="showSection('launches', 'LAUNCHES')">LAUNCHES</button>
 					<button class="panel-7 section-toggle" data-section="infrastructure" onclick="openInfrastructureSection();">GRND SGMNT</button>
 					<button class="panel-8 section-toggle" data-section="organisations" onclick="showSection('organisations', 'ORGANISATIONS')">ORG<span class="hop">ANISATIONS</span></button>
 					<button class="panel-9 section-toggle" data-section="sw-drivers" onclick="showSection('sw-drivers', 'WEATHER'); fetchAndSortGST();">WEATHER</button>
-					<button class="panel-10 section-toggle" data-section="eo" onclick="showSection('eo', 'EO')">EO</button>
+					<button class="panel-10 section-toggle" data-section="eo" onclick="openEoSection()">EO</button>
 				</div>
 				<div class="bottom-fixed-group">
 					<button class="panel-ack section-toggle" data-section="acknowledgments" onclick="topFunction(); showSection('acknowledgments', 'ACKNOWLEDGMENTS')">ACK<span class="hop">NOWLEDGMENTS</span></button>
@@ -123,6 +124,12 @@
 						</div>
 					</div>
 
+					<div data-section="gs-ops" style="display:none;">
+						<div class="map-panel">
+							<div id="gs-ops-map" class="leaflet-map"></div>
+						</div>
+					</div>
+
 					<div data-section="deep-space" style="display:none;">
 						<h2>Deep Space Network &amp; Interplanetary Missions</h2>
 						<p class="go-big">Deep space tracking placeholder.</p>
@@ -145,8 +152,9 @@
 					</div>
 
 					<div data-section="eo" style="display:none;">
-						<h2>Earth Observation</h2>
-						<p class="go-big">Earth observation imagery placeholder.</p>
+						<div class="map-panel">
+							<div id="eo-map" class="leaflet-map"></div>
+						</div>
 					</div>
 
 					<div data-section="news" style="display:none;">
@@ -166,24 +174,9 @@
 							</thead>
 							<tbody>
 								<tr>
-									<td>Jim Robertus</td>
-									<td>Creator of the LCARS Inspired Website Template used as the design foundation for this interface</td>
-									<td><a href="https://www.thelcars.com">www.thelcars.com</a></td>
-								</tr>
-								<tr>
 									<td>Claude (Anthropic)</td>
 									<td>LLM development partner &mdash; system design, implementation, testing and debugging</td>
 									<td><a href="https://claude.ai">claude.ai</a></td>
-								</tr>
-								<tr>
-									<td>Dr Al Gill</td>
-									<td>Project Lead</td>
-									<td><a href="https://www.linkedin.com/in/alasdairgill/">linkedin.com/in/alasdairgill</a></td>
-								</tr>
-								<tr>
-									<td>Qwen</td>
-									<td>Industry research and translation</td>
-									<td><a href="https://qwen.ai/">qwen.ai</a></td>
 								</tr>
 								<tr>
 									<td>Gemini</td>
@@ -191,9 +184,29 @@
 									<td><a href="https://gemini.google.com">gemini.google.com</a></td>
 								</tr>
 								<tr>
-									<td>satellite.js (Shashwat Kandadai, UCSC)</td>
-									<td>SGP4/SDP4 orbital propagation used for ground track computation</td>
+									<td>Jim Robertus</td>
+									<td>Creator of the LCARS Inspired Website Template used as the design foundation for this interface</td>
+									<td><a href="https://www.thelcars.com">www.thelcars.com</a></td>
+								</tr>
+								<tr>
+									<td>Jonathan C. McDowell</td>
+									<td>Decades of work building and maintaining the General Catalog of Artificial Space Objects (GCAT), used under CC&#8209;BY&#8209;4.0. </td>
+									<td><a href="https://planet4589.org/space/gcat">planet4589.org/space/gcat</a></td>
+								</tr>
+								<tr>
+									<td>Qwen</td>
+									<td>Industry research and translation</td>
+									<td><a href="https://qwen.ai/">qwen.ai</a></td>
+								</tr>
+								<tr>
+									<td>Shashwat Kandadai, UCSC</td>
+									<td>SGP4/SDP4 orbital propagation used for ground track computation (satellite.js)</td>
 									<td><a href="https://github.com/shashwatak/satellite-js">github.com/shashwatak/satellite-js</a></td>
+								</tr>
+								<tr>
+									<td>Dr Al Gill</td>
+									<td>Project Lead</td>
+									<td><a href="https://www.linkedin.com/in/alasdairgill/">linkedin.com/in/alasdairgill</a></td>
 								</tr>
 							</tbody>
 						</table>

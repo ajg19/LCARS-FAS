@@ -51,34 +51,61 @@ db.execute('PRAGMA journal_mode = WAL;')
 
 # Schema kept identical to ingestOrbitalData.py and idempotent (IF NOT
 # EXISTS) so either script can run first without caring which one does.
+# TLE line1/line2 have been replaced by OMM element columns -- see
+# ingestOrbitalData.py's module docstring for why; this script never
+# populated those columns itself, but mirrors the schema since both
+# scripts connect to the same DB file.
 db.execute('''
     CREATE TABLE IF NOT EXISTS orbital_objects (
-        noradID    INTEGER PRIMARY KEY,
-        name       TEXT,
-        line1      TEXT,
-        line2      TEXT,
-        epoch      TEXT,
-        objectType TEXT,
-        owner      TEXT,
-        launchDate TEXT,
-        decayDate  TEXT,
-        rcsSize    REAL,
-        period     REAL,
-        apogee     REAL,
-        perigee    REAL,
-        source     TEXT,
-        fetchedAt  DATETIME DEFAULT CURRENT_TIMESTAMP
+        noradID          INTEGER PRIMARY KEY,
+        name             TEXT,
+        objectID         TEXT,
+        epoch            TEXT,
+        meanMotion       REAL,
+        eccentricity     REAL,
+        inclination      REAL,
+        raOfAscNode      REAL,
+        argOfPericenter  REAL,
+        meanAnomaly      REAL,
+        bstar            REAL,
+        meanMotionDot    REAL,
+        meanMotionDdot   REAL,
+        objectType       TEXT,
+        owner            TEXT,
+        launchDate       TEXT,
+        launchSite       TEXT,
+        decayDate        TEXT,
+        rcsSize          REAL,
+        period           REAL,
+        apogee           REAL,
+        perigee          REAL,
+        source           TEXT,
+        fetchedAt        DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 ''')
 
 # See the matching migration in ingestOrbitalData.py -- kept here too
 # since either script can be the first one to run against a fresh (or
 # pre-existing, pre-migration) database.
-for column in ('period REAL', 'apogee REAL', 'perigee REAL'):
+NEW_COLUMNS = (
+    'period REAL', 'apogee REAL', 'perigee REAL',
+    'objectID TEXT', 'meanMotion REAL', 'eccentricity REAL', 'inclination REAL',
+    'raOfAscNode REAL', 'argOfPericenter REAL', 'meanAnomaly REAL', 'bstar REAL',
+    'meanMotionDot REAL', 'meanMotionDdot REAL', 'launchSite TEXT',
+)
+for column in NEW_COLUMNS:
     try:
         db.execute(f'ALTER TABLE orbital_objects ADD COLUMN {column};')
     except sqlite3.OperationalError as err:
         if 'duplicate column name' not in str(err).lower():
+            raise
+
+for column in ('line1', 'line2'):
+    try:
+        db.execute(f'ALTER TABLE orbital_objects DROP COLUMN {column};')
+    except sqlite3.OperationalError as err:
+        message = str(err).lower()
+        if 'no such column' not in message and 'syntax error' not in message:
             raise
 
 # 2. Update statements -- deliberately plain UPDATEs, not upserts. Only
@@ -96,13 +123,13 @@ for column in ('period REAL', 'apogee REAL', 'perigee REAL'):
 # leaves rcsSize alone entirely rather than coercing a category into it.
 UPDATE_FROM_CELESTRAK_SQL = '''
     UPDATE orbital_objects
-    SET objectType = ?, owner = ?, launchDate = ?, decayDate = ?, rcsSize = ?,
+    SET objectType = ?, owner = ?, launchDate = ?, launchSite = ?, decayDate = ?, rcsSize = ?,
         period = ?, apogee = ?, perigee = ?
     WHERE noradID = ?
 '''
 UPDATE_FROM_SPACETRACK_SQL = '''
     UPDATE orbital_objects
-    SET objectType = ?, owner = ?, launchDate = ?, decayDate = ?,
+    SET objectType = ?, owner = ?, launchDate = ?, launchSite = ?, decayDate = ?,
         period = ?, apogee = ?, perigee = ?
     WHERE noradID = ?
 '''
@@ -152,6 +179,7 @@ def parse_satcat_csv(text):
     idx_object_type = col('OBJECT_TYPE')
     idx_owner = col('OWNER')
     idx_launch_date = col('LAUNCH_DATE')
+    idx_launch_site = col('LAUNCH_SITE')
     idx_decay_date = col('DECAY_DATE')
     idx_rcs = col('RCS')
     idx_period = col('PERIOD')
@@ -181,6 +209,7 @@ def parse_satcat_csv(text):
             'objectType': field_at(fields, idx_object_type) or None,
             'owner': field_at(fields, idx_owner) or None,
             'launchDate': field_at(fields, idx_launch_date) or None,
+            'launchSite': field_at(fields, idx_launch_site) or None,
             'decayDate': field_at(fields, idx_decay_date) or None,
             'rcsSize': parse_float_or_none(field_at(fields, idx_rcs)),
             'period': parse_float_or_none(field_at(fields, idx_period)),
@@ -259,6 +288,7 @@ def fetch_space_track_satcat():
             'objectType': r.get('OBJECT_TYPE') or None,
             'owner': r.get('COUNTRY_CODE') or None,
             'launchDate': r.get('LAUNCH_DATE') or None,
+            'launchSite': r.get('SITE') or None,
             'decayDate': r.get('DECAY_DATE') or None,
             'period': float(r['PERIOD']) if r.get('PERIOD') else None,
             'apogee': float(r['APOAPSIS']) if r.get('APOAPSIS') else None,
@@ -277,7 +307,7 @@ def run_satcat_ingestion():
         updated = 0
         for row in rows:
             cursor = db.execute(UPDATE_FROM_CELESTRAK_SQL, (
-                row['objectType'], row['owner'], row['launchDate'], row['decayDate'], row['rcsSize'],
+                row['objectType'], row['owner'], row['launchDate'], row['launchSite'], row['decayDate'], row['rcsSize'],
                 row['period'], row['apogee'], row['perigee'], row['noradID'],
             ))
             if cursor.rowcount > 0:
@@ -297,7 +327,7 @@ def run_satcat_ingestion():
                 if row['noradID'] in seen_ids:
                     continue  # CelesTrak already enriched this one this run
                 cursor = db.execute(UPDATE_FROM_SPACETRACK_SQL, (
-                    row['objectType'], row['owner'], row['launchDate'], row['decayDate'],
+                    row['objectType'], row['owner'], row['launchDate'], row['launchSite'], row['decayDate'],
                     row['period'], row['apogee'], row['perigee'], row['noradID'],
                 ))
                 if cursor.rowcount > 0:

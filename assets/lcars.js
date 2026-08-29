@@ -164,7 +164,7 @@ function showSection(sectionId, label) {
     ['map-zoom-in-btn', 'map-zoom-out-btn'].forEach((id) => {
         const btn = document.getElementById(id);
         if (btn) {
-            btn.classList.toggle('is-hidden', !['infrastructure', 'on-orbit'].includes(sectionId));
+            btn.classList.toggle('is-hidden', !['infrastructure', 'on-orbit', 'eo', 'gs-ops'].includes(sectionId));
         }
     });
 
@@ -347,6 +347,41 @@ async function openOnOrbitSection() {
     showSection('on-orbit', 'ON ORBIT');
     initOnOrbitMap();
     detectObserverLocation();
+}
+
+// Wired to the EO left-menu button. Same load-before-show reasoning as
+// openOnOrbitSection() -- the panel module's registerPanelControls() call
+// must have run before showSection() -> updateControlArea() looks the
+// section up, or the first click falls back to the 1..6 placeholder
+// buttons. mapCore.js / onOrbitPanel.js / locationMapPanel.js have no
+// load-order deps among themselves (they only call into each other from
+// click-time handlers), but eoPanel.js calls registerLocationMapPanel()
+// at parse time, so it must load after locationMapPanel.js -- hence the
+// separate await.
+async function openEoSection() {
+    await Promise.all([
+        loadScriptOnce('assets/mapCore.js'),
+        loadScriptOnce('assets/onOrbitPanel.js'),
+        loadScriptOnce('assets/locationMapPanel.js'),
+    ]);
+    await loadScriptOnce('assets/eoPanel.js');
+    showSection('eo', 'EO');
+    initEoMap();
+}
+
+// Wired to the GS OPS left-menu button. Identical shape to
+// openEoSection() -- ground-station operations reuses the exact same
+// location-map panel (assets/locationMapPanel.js), just a different
+// section id, container and first-button label (see gsOpsPanel.js).
+async function openGsOpsSection() {
+    await Promise.all([
+        loadScriptOnce('assets/mapCore.js'),
+        loadScriptOnce('assets/onOrbitPanel.js'),
+        loadScriptOnce('assets/locationMapPanel.js'),
+    ]);
+    await loadScriptOnce('assets/gsOpsPanel.js');
+    showSection('gs-ops', 'GS OPS');
+    initGsOpsMap();
 }
 
 // Entry point for the 01-ALL button: reveals the news section and

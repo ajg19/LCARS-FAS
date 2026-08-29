@@ -47,23 +47,10 @@ db = open_db('space_news.db')
 # -- a separate file/connection, unrelated to the news database above.
 ground_segment_db = open_db('groundSegmentAssets.db')
 
-# Orbital objects (TLE) DB, populated/refreshed by ingestOrbitalData.py and
-# ingestSatcat.py (separate processes) -- read-only here since this endpoint
-# only ever reads it.
+# Orbital objects (OMM elements) DB, populated/refreshed by
+# ingestOrbitalData.py and ingestSatcat.py (separate processes) -- read-only
+# here since this endpoint only ever reads it.
 orbital_objects_db = open_db('orbitalObjects.db', read_only=True)
-
-
-# Mirrors parseInclinationDeg() in assets/lcars.js and server.js -- fixed
-# TLE line2 column position (cols 9-16, 0-indexed 8:16). JS's parseFloat()
-# is lenient (parses a leading numeric prefix, returns NaN rather than
-# raising on anything unparseable) -- Python's float() raises instead, so
-# this wraps it to return None (this file's NaN-equivalent) the same way,
-# rather than letting a malformed TLE line crash a whole request.
-def parse_inclination_deg(line2):
-    try:
-        return float((line2 or '')[8:16])
-    except (ValueError, TypeError):
-        return None
 
 
 # Altitude-regime buckets for the ADD OBJ search form, keyed on mean
@@ -92,6 +79,17 @@ def get_param(query_params, name):
     """Matches URLSearchParams.get() -- first value, or None if absent."""
     values = query_params.get(name)
     return values[0] if values else None
+
+
+def get_float_param(query_params, name):
+    """Same as get_param(), but parsed to float -- an unparseable value is
+    treated as absent (no filter applied) rather than a 500, matching this
+    endpoint's general tolerance for malformed query input elsewhere."""
+    value = get_param(query_params, name)
+    try:
+        return float(value) if value else None
+    except ValueError:
+        return None
 
 
 def json_response(start_response, status, payload):
@@ -149,7 +147,7 @@ def handle_orbital_objects(query_params, start_response):
 
         placeholders = ','.join('?' * len(norad_ids))
         rows = orbital_objects_db.execute(
-            f'SELECT noradID, name, line1, line2, epoch, objectType, owner, launchDate, decayDate, rcsSize, period, apogee, perigee, source FROM orbital_objects WHERE noradID IN ({placeholders})',
+            f'SELECT noradID, name, objectID, epoch, meanMotion, eccentricity, inclination, raOfAscNode, argOfPericenter, meanAnomaly, bstar, meanMotionDot, meanMotionDdot, objectType, owner, launchDate, launchSite, decayDate, rcsSize, period, apogee, perigee, source FROM orbital_objects WHERE noradID IN ({placeholders})',
             norad_ids,
         ).fetchall()
         return json_response(start_response, '200 OK', rows_to_dicts(rows))
@@ -165,7 +163,12 @@ def handle_filter_options(start_response):
         groups = [r['groupName'] for r in orbital_objects_db.execute(
             'SELECT DISTINCT groupName FROM orbital_object_groups ORDER BY groupName'
         ).fetchall()]
-        return json_response(start_response, '200 OK', {'owners': owners, 'groups': groups})
+        launch_sites = [r['launchSite'] for r in orbital_objects_db.execute(
+            'SELECT DISTINCT launchSite FROM orbital_objects WHERE launchSite IS NOT NULL ORDER BY launchSite'
+        ).fetchall()]
+        return json_response(start_response, '200 OK', {
+            'owners': owners, 'groups': groups, 'launchSites': launch_sites,
+        })
     except Exception as e:
         return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
 
@@ -179,6 +182,11 @@ def handle_orbital_objects_search(query_params, start_response):
         group = get_param(query_params, 'group')
         altitude_regime = get_param(query_params, 'altitudeRegime')
         inclination_band = get_param(query_params, 'inclinationBand')
+        mean_motion_from = get_float_param(query_params, 'meanMotionFrom')
+        mean_motion_to = get_float_param(query_params, 'meanMotionTo')
+        launch_year_from = get_param(query_params, 'launchYearFrom')
+        launch_year_to = get_param(query_params, 'launchYearTo')
+        launch_site = get_param(query_params, 'launchSite')
 
         conditions = []
         params = []
@@ -200,23 +208,41 @@ def handle_orbital_objects_search(query_params, start_response):
             params.append(object_type)
         if altitude_regime and altitude_regime in ALTITUDE_REGIME_SQL:
             conditions.append(ALTITUDE_REGIME_SQL[altitude_regime])
+        if mean_motion_from is not None:
+            conditions.append('o.meanMotion >= ?')
+            params.append(mean_motion_from)
+        if mean_motion_to is not None:
+            conditions.append('o.meanMotion <= ?')
+            params.append(mean_motion_to)
+        if launch_year_from:
+            conditions.append('substr(o.launchDate, 1, 4) >= ?')
+            params.append(launch_year_from)
+        if launch_year_to:
+            conditions.append('substr(o.launchDate, 1, 4) <= ?')
+            params.append(launch_year_to)
+        if launch_site:
+            conditions.append('o.launchSite = ?')
+            params.append(launch_site)
 
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ''
 
+        # Most-recent-launch-first by default (NULL launchDate sorts last
+        # under DESC in SQLite, so un-enriched objects fall to the end
+        # rather than crowding out real dates) -- previously ORDER BY
+        # noradID, which meant an unfiltered/default search only ever
+        # showed the oldest ~500 cataloged objects.
         rows = orbital_objects_db.execute(
-            f'SELECT o.noradID, o.name, o.line1, o.line2, o.epoch, o.objectType, o.owner, o.launchDate, o.decayDate, o.rcsSize, o.period, o.apogee, o.perigee, o.source FROM orbital_objects o {where_clause} ORDER BY o.noradID LIMIT ?',
+            f'SELECT o.noradID, o.name, o.objectID, o.epoch, o.meanMotion, o.eccentricity, o.inclination, o.raOfAscNode, o.argOfPericenter, o.meanAnomaly, o.bstar, o.meanMotionDot, o.meanMotionDdot, o.objectType, o.owner, o.launchDate, o.launchSite, o.decayDate, o.rcsSize, o.period, o.apogee, o.perigee, o.source FROM orbital_objects o {where_clause} ORDER BY o.launchDate DESC LIMIT ?',
             params + [RESULT_SCAN_LIMIT],
         ).fetchall()
         rows = rows_to_dicts(rows)
 
         if inclination_band and inclination_band in INCLINATION_BAND_RANGES:
             lo, hi = INCLINATION_BAND_RANGES[inclination_band]
-            filtered = []
-            for row in rows:
-                inclination = parse_inclination_deg(row['line2'])
-                if inclination is not None and lo <= inclination <= hi:
-                    filtered.append(row)
-            rows = filtered
+            rows = [
+                row for row in rows
+                if row['inclination'] is not None and lo <= row['inclination'] <= hi
+            ]
 
         truncated = len(rows) > RESULT_LIMIT or len(rows) == RESULT_SCAN_LIMIT
         objects = rows[:RESULT_LIMIT]

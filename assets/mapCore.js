@@ -23,10 +23,23 @@
 let infrastructureMap = null;
 let onOrbitMap = null;
 
-// Whichever of the maps above is on screen right now -- kept in sync by
-// initInfrastructureMap()/initOnOrbitMap() so the single shared pair of
-// zoom buttons (bar-7/bar-8a) always zooms the map the user is looking at.
+// Whichever of the maps above (or a location-map panel's map, see
+// registerResizableMap() below) is on screen right now -- kept in sync by
+// initInfrastructureMap()/initOnOrbitMap()/initMap() so the single shared
+// pair of zoom buttons (bar-7/bar-8a) always zooms the map the user is
+// looking at.
 let currentMap = null;
+
+// Location-map panels (assets/locationMapPanel.js) hold their maps in
+// closures, not named globals, so they hand a getter in here for the
+// shared resize handler at the bottom of this file to reach. Getters (not
+// the maps directly) because a panel's map is null until its section is
+// first opened.
+const resizableMapGetters = [];
+
+function registerResizableMap(getMap) {
+    resizableMapGetters.push(getMap);
+}
 
 // A handful of countries (Russia, Fiji, Antarctica in this dataset) have
 // rings that cross the antimeridian -- consecutive stored points that jump
@@ -363,5 +376,11 @@ window.addEventListener('resize', () => {
         if (infrastructureMap) {
             infrastructureMap.invalidateSize();
         }
+        resizableMapGetters.forEach((getMap) => {
+            const map = getMap();
+            if (map) {
+                map.invalidateSize();
+            }
+        });
     }, 150);
 });

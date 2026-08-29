@@ -269,10 +269,45 @@ function updateObserverLocationDisplay() {
     renderUserLocationMarker();
 }
 
+// Resolves to the current observerLocation, running one IP-geolocation
+// fetch first if it isn't set yet (and persisting the result, tagged
+// source: 'auto', so a later manual override is still never silently
+// replaced -- see loadObserverLocation()). Shared by the on-orbit
+// panel's detectObserverLocation() and the EO panel's map init: both
+// want "the user's location, geolocating if we must", differing only in
+// what they do with it afterwards. Never rejects -- a failed fetch
+// resolves to whatever observerLocation currently is (null on first
+// run), so every caller can treat "no location" the same way.
+async function ensureObserverLocation() {
+    if (observerLocation) {
+        return observerLocation;
+    }
+    try {
+        const response = await fetch('https://get.geojs.io/v1/ip/geo.json');
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        const latitude = parseFloat(data.latitude);
+        const longitude = parseFloat(data.longitude);
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+            throw new Error('response had no usable coordinates');
+        }
+        observerLocation = { latitude, longitude, source: 'auto' };
+        saveObserverLocation(observerLocation);
+    } catch (error) {
+        console.error('IP geolocation failed:', error.message);
+    }
+    return observerLocation;
+}
+
 // Wired to the ON-ORBIT left-menu button, alongside showSection() and
-// initOnOrbitMap(). Guarded by `observerLocation` so it only ever re-fetches
-// once per session (or not at all if a manual override is already set) --
-// same once-only pattern as the map init functions.
+// initOnOrbitMap(). Guarded (via ensureObserverLocation()) so it only
+// ever re-fetches once per session, or not at all if a manual override is
+// already set -- same once-only pattern as the map init functions. The
+// "DETECTING…" readout text and the updateObserverLocationDisplay() call
+// on completion are on-orbit-specific, which is why this stays a thin
+// wrapper around the shared helper rather than folding into it.
 function detectObserverLocation() {
     if (observerLocation) {
         updateObserverLocationDisplay();
@@ -284,27 +319,7 @@ function detectObserverLocation() {
         readout.textContent = 'LOCATION: DETECTING…';
     }
 
-    fetch('https://get.geojs.io/v1/ip/geo.json')
-        .then((response) => {
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            return response.json();
-        })
-        .then((data) => {
-            const latitude = parseFloat(data.latitude);
-            const longitude = parseFloat(data.longitude);
-            if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-                throw new Error('response had no usable coordinates');
-            }
-            observerLocation = { latitude, longitude, source: 'auto' };
-            saveObserverLocation(observerLocation);
-            updateObserverLocationDisplay();
-        })
-        .catch((error) => {
-            console.error('IP geolocation failed:', error.message);
-            updateObserverLocationDisplay();
-        });
+    ensureObserverLocation().then(updateObserverLocationDisplay);
 }
 
 // Lazy-loaded once, same pattern as youtubeFeeds.json -- only fetched the
@@ -493,18 +508,34 @@ function renderUserLocationFormMarkup() {
         <div id="usrloc-status" class="usrloc-status is-hidden"></div>`;
 }
 
-// Wired to the USR LOCN control-panel button (see CONTROL_AREA_BUTTON_LABELS
-// and the on-orbit branch in updateControlArea()). Toggles #default between
+// Which renderer repopulates #default when the shared location form
+// closes. On-orbit wants its plotted-objects list back; the EO panel --
+// which opens this very same form via its TGT LOCN button -- wants its own
+// plain label instead. Each panel's button passes its choice into
+// toggleUserLocationForm() on open; the internal close paths
+// (selectUserLocation(), the toggle-shut branch below) reuse whatever was
+// last set. Defaults to the on-orbit behaviour so that path is unchanged
+// even when a caller passes nothing. Referencing
+// fetchAndRenderOrbitalObjectsList (declared in Section 6) up here is safe
+// -- function declarations are hoisted.
+let locationFormRestingRenderer = fetchAndRenderOrbitalObjectsList;
+
+// Wired to the USR LOCN control-panel button (see the on-orbit
+// registerPanelControls() call) and, with a different resting renderer
+// passed in, to the EO panel's TGT LOCN button. Toggles #default between
 // empty and the entry form -- checking for the form's own presence rather
 // than tracking a separate open/closed flag, since #default's content is
 // otherwise fully owned by updateControlArea().
-function toggleUserLocationForm() {
+function toggleUserLocationForm(restingRenderer) {
     const wrapper = document.getElementById('default');
     if (!wrapper) {
         return;
     }
+    if (restingRenderer) {
+        locationFormRestingRenderer = restingRenderer;
+    }
     if (document.getElementById('user-location-form')) {
-        fetchAndRenderOrbitalObjectsList();
+        locationFormRestingRenderer();
         return;
     }
     wrapper.innerHTML = renderUserLocationFormMarkup();
@@ -641,18 +672,6 @@ function savePlottedNoradIds(ids) {
 }
 
 let plottedNoradIds = loadPlottedNoradIds();
-
-// TLE line 2 fixed-column fields (see ingestOrbitalData.js's own
-// parseNoradId()/parseTleEpoch() for the same parse-by-column-position
-// approach) -- inclination at columns 9-16, mean motion at columns 53-63
-// (1-indexed per the TLE spec; substring() below is 0-indexed).
-function parseInclinationDeg(line2) {
-    return parseFloat((line2 || '').substring(8, 16));
-}
-
-function parseMeanMotion(line2) {
-    return parseFloat((line2 || '').substring(52, 63));
-}
 
 // Wired to the ON-ORBIT branch of updateControlArea() and to
 // toggleUserLocationForm()'s/toggleAddObjectForm()'s close paths -- all
@@ -805,8 +824,8 @@ function renderOrbitalObjectsList(objects) {
         const tr = document.createElement('tr');
         tr.style.height = `${rowHeight}px`;
 
-        const inclination = parseInclinationDeg(obj.line2);
-        const meanMotion = parseMeanMotion(obj.line2);
+        const inclination = obj.inclination;
+        const meanMotion = obj.meanMotion;
         const cells = [
             obj.noradID,
             obj.name || '--',
@@ -863,13 +882,15 @@ function renderOrbitalObjectsList(objects) {
    toggleUserLocationForm() uses.
 
    Every filter maps to a query param on GET /api/orbital-objects/search
-   (server.js). COUNTRY and CELESTRAK GROUP are populated from
-   /api/orbital-objects/filter-options (live DB values, since there are
-   dozens of owner codes and 47 possible groups -- not practical to
+   (server.js). COUNTRY, CELESTRAK GROUP, and SPACE PORT are populated
+   from /api/orbital-objects/filter-options (live DB values -- dozens of
+   owner/launch-site codes and 47 possible groups -- not practical to
    hardcode); OBJECT TYPE/ALTITUDE/INCLINATION are fixed option sets since
    these are curated categories, not raw DB values (objectType's real
    stored codes are PAY/DEB/R-B; altitude regime and inclination band
-   aren't stored at all, just derived server-side).
+   aren't stored at all, just derived server-side). LAUNCH FROM/LAUNCH TO
+   are free-text year bounds (launchYearFrom/launchYearTo), not a
+   dropdown -- a range filter over launchDate's year prefix.
 
    Clicking a result row highlights it (addObjectSelectedIds) rather than
    showing a KEY-column colour swatch -- these aren't plotted/tracked
@@ -895,7 +916,7 @@ const INCLINATION_BAND_FILTER_OPTIONS = [
     { label: 'POLAR / SSO', value: 'POLAR_SSO' },
 ];
 
-let addObjectFilterOptionsCache = null; // { owners, groups } -- fetched once per page load, not once per form open
+let addObjectFilterOptionsCache = null; // { owners, groups, launchSites } -- fetched once per page load, not once per form open
 let addObjectSelectedIds = new Set(); // noradIDs highlighted in the current results table
 
 // Wired to the DEL OBJ button -- true while its read-only plotted-objects
@@ -1066,53 +1087,70 @@ function labelledOptionTags(items) {
 // on-orbit nav buttons' own registerPanelControls() call below): warm =
 // action/commit, blue = data/view-state. ADD SELECTION reuses ADD OBJ's
 // own --golden-orange, tying the form's commit action back to the nav
-// button that opened it. SELECT ALL/CLEAR share one blue (--sky) rather
-// than each getting a distinct colour, since they're the same
-// functional subgroup (selection-state utilities) -- SEARCH gets its
-// own, different blue (--ice) since it's a distinct function (a data
-// query, not a selection toggle).
+// button that opened it. SEARCH gets its own, different blue (--ice)
+// since it's a distinct function (a data query, not a selection toggle).
+// SELECT ALL/CLEAR were dropped from this form -- the wider 3-column
+// field grid left no room for a 4-button row; rows stay selectable one
+// at a time by clicking them (toggleAddObjectRowSelection()).
+// clearAddObjectSelection() itself is still here, just no longer wired
+// to a button here -- DEL OBJ's own CLEAR button (registerPanelControls()
+// below) still calls it.
 function renderAddObjectFormMarkup(options) {
     return `
         <div id="add-object-form" class="add-object-form">
             <div class="add-object-fields">
-                <label for="addobj-name-input">NAME</label>
-                <input type="text" id="addobj-name-input" class="location-input" placeholder="e.g. STARLINK" oninput="forceUppercaseInput(this)" onkeydown="if (event.key === 'Enter') runAddObjectSearch()">
-                <label for="addobj-noradid-input">NORAD ID</label>
-                <input type="text" inputmode="numeric" id="addobj-noradid-input" class="location-input" placeholder="e.g. 25544" onkeydown="if (event.key === 'Enter') runAddObjectSearch()">
-
-                <label for="addobj-country-select">COUNTRY</label>
-                <select id="addobj-country-select" class="location-input" onchange="runAddObjectSearch()">
-                    <option value="">ANY</option>
-                    ${countryOptionTags(options.owners)}
-                </select>
-                <label for="addobj-altitude-select">ALTITUDE</label>
-                <select id="addobj-altitude-select" class="location-input" onchange="runAddObjectSearch()">
-                    <option value="">ANY</option>
-                    ${labelledOptionTags(ALTITUDE_REGIME_FILTER_OPTIONS)}
-                </select>
-
-                <label for="addobj-objecttype-select">OBJ TYPE</label>
-                <select id="addobj-objecttype-select" class="location-input" onchange="runAddObjectSearch()">
-                    <option value="">ANY</option>
-                    ${labelledOptionTags(OBJECT_TYPE_FILTER_OPTIONS)}
-                </select>
-                <label for="addobj-inclination-select">INCL</label>
-                <select id="addobj-inclination-select" class="location-input" onchange="runAddObjectSearch()">
-                    <option value="">ANY</option>
-                    ${labelledOptionTags(INCLINATION_BAND_FILTER_OPTIONS)}
-                </select>
-
-                <label for="addobj-group-select">CTRAK GRP</label>
-                <select id="addobj-group-select" class="location-input" onchange="runAddObjectSearch()">
-                    <option value="">ANY</option>
-                    ${stringOptionTags(options.groups)}
-                </select>
+                <div class="add-object-fields-col">
+                    <label for="addobj-name-input">NAME</label>
+                    <input type="text" id="addobj-name-input" class="location-input" placeholder="e.g. STARLINK" oninput="forceUppercaseInput(this)" onkeydown="if (event.key === 'Enter') runAddObjectSearch()">
+                    <label for="addobj-noradid-input">NORAD ID</label>
+                    <input type="text" inputmode="numeric" id="addobj-noradid-input" class="location-input" placeholder="e.g. 25544" onkeydown="if (event.key === 'Enter') runAddObjectSearch()">
+                    <label for="addobj-objecttype-select">OBJ TYPE</label>
+                    <select id="addobj-objecttype-select" class="location-input" onchange="runAddObjectSearch()">
+                        <option value="">ANY</option>
+                        ${labelledOptionTags(OBJECT_TYPE_FILTER_OPTIONS)}
+                    </select>
+                    <label for="addobj-group-select">CTRAK GRP</label>
+                    <select id="addobj-group-select" class="location-input" onchange="runAddObjectSearch()">
+                        <option value="">ANY</option>
+                        ${stringOptionTags(options.groups)}
+                    </select>
+                </div>
+                <div class="add-object-fields-col">
+                    <label for="addobj-country-select">COUNTRY</label>
+                    <select id="addobj-country-select" class="location-input" onchange="runAddObjectSearch()">
+                        <option value="">ANY</option>
+                        ${countryOptionTags(options.owners)}
+                    </select>
+                    <label for="addobj-spaceport-select">SPACE PORT</label>
+                    <select id="addobj-spaceport-select" class="location-input" onchange="runAddObjectSearch()">
+                        <option value="">ANY</option>
+                        ${stringOptionTags(options.launchSites)}
+                    </select>
+                    <label for="addobj-launchfrom-input">LAUNCH FROM</label>
+                    <input type="text" inputmode="numeric" id="addobj-launchfrom-input" class="location-input" placeholder="e.g. 2020" onkeydown="if (event.key === 'Enter') runAddObjectSearch()">
+                    <label for="addobj-launchto-input">LAUNCH TO</label>
+                    <input type="text" inputmode="numeric" id="addobj-launchto-input" class="location-input" placeholder="e.g. 2026" onkeydown="if (event.key === 'Enter') runAddObjectSearch()">
+                </div>
+                <div class="add-object-fields-col">
+                    <label for="addobj-altitude-select">ALTITUDE</label>
+                    <select id="addobj-altitude-select" class="location-input" onchange="runAddObjectSearch()">
+                        <option value="">ANY</option>
+                        ${labelledOptionTags(ALTITUDE_REGIME_FILTER_OPTIONS)}
+                    </select>
+                    <label for="addobj-inclination-select">INCL</label>
+                    <select id="addobj-inclination-select" class="location-input" onchange="runAddObjectSearch()">
+                        <option value="">ANY</option>
+                        ${labelledOptionTags(INCLINATION_BAND_FILTER_OPTIONS)}
+                    </select>
+                    <label for="addobj-mmotionfrom-input">MMOTION FROM</label>
+                    <input type="text" inputmode="decimal" id="addobj-mmotionfrom-input" class="location-input" placeholder="e.g. 14.0" onkeydown="if (event.key === 'Enter') runAddObjectSearch()">
+                    <label for="addobj-mmotionto-input">MMOTION TO</label>
+                    <input type="text" inputmode="decimal" id="addobj-mmotionto-input" class="location-input" placeholder="e.g. 16.0" onkeydown="if (event.key === 'Enter') runAddObjectSearch()">
+                </div>
             </div>
             <div class="add-object-actions">
                 <button class="location-btn" style="background-color: var(--ice);" onclick="runAddObjectSearch()">SEARCH</button>
-                <button class="location-btn" style="background-color: var(--sky);" onclick="selectAllAddObjectResults()">SELECT ALL</button>
                 <button class="location-btn" style="background-color: var(--golden-orange);" onclick="addSelectedResultsToPlottedList()">ADD SELECTION</button>
-                <button class="location-btn" style="background-color: var(--sky);" onclick="clearAddObjectSelection()">CLEAR</button>
             </div>
         </div>`;
 }
@@ -1332,18 +1370,10 @@ async function addSelectedResultsToPlottedList() {
     renderAddObjectResultsTableFromState();
 }
 
-// Wired to the SELECT ALL button -- highlights every row currently in
-// the results table (addObjectSearchResults, not just what's scrolled
-// into view), the same addObjectSelectedIds set toggleAddObjectRowSelection()
-// maintains per-row, so ADD SELECTION picks up all of them identically to
-// a manual click-through.
-function selectAllAddObjectResults() {
-    addObjectSearchResults.forEach((obj) => addObjectSelectedIds.add(obj.noradID));
-    renderAddObjectResultsTableFromState();
-}
-
-// Wired to the CLEAR button -- drops all current row highlighting without
-// touching the search results themselves or plottedNoradIds.
+// Wired to DEL OBJ's own CLEAR button (registerPanelControls() below) --
+// drops all current row highlighting without touching the search results
+// themselves or plottedNoradIds. No longer has a button of its own in the
+// ADD OBJ form (see renderAddObjectFormMarkup()'s own comment for why).
 function clearAddObjectSelection() {
     addObjectSelectedIds.clear();
     renderAddObjectResultsTableFromState();
@@ -1357,6 +1387,11 @@ async function runAddObjectSearch() {
         altitudeRegime: 'addobj-altitude-select',
         objectType: 'addobj-objecttype-select',
         inclinationBand: 'addobj-inclination-select',
+        meanMotionFrom: 'addobj-mmotionfrom-input',
+        meanMotionTo: 'addobj-mmotionto-input',
+        launchSite: 'addobj-spaceport-select',
+        launchYearFrom: 'addobj-launchfrom-input',
+        launchYearTo: 'addobj-launchto-input',
         group: 'addobj-group-select',
     };
     const params = new URLSearchParams();
@@ -1391,20 +1426,21 @@ async function runAddObjectSearch() {
 // rendering, cell rendering, and sorting -- getValue() returns the raw
 // sortable value (a number for numeric columns, so numeric sort doesn't
 // need to parse formatted text back out), format() turns that into the
-// displayed string. INCL/MMOTION aren't plain fields on `obj` -- both are
-// parsed from the raw TLE line2 the same way the map/footprint code
-// already does (parseInclinationDeg()/parseMeanMotion()), so getValue()
-// re-parses rather than trusting some other precomputed value.
+// displayed string. INCL/MMOTION are real OMM-element columns from the API
+// (inclination/meanMotion) since the TLE->OMM migration -- no more parsing
+// them out of a raw TLE line2 on every render.
 const ADD_OBJECT_COLUMNS = [
     { label: 'NORAD ID', numeric: true, getValue: (obj) => obj.noradID, format: (v) => v },
     { label: 'NAME', numeric: false, getValue: (obj) => obj.name || '', format: (v) => v || '--' },
     { label: 'OBJ TYPE', numeric: false, getValue: (obj) => obj.objectType || '', format: (v) => v || '--' },
+    { label: 'LAUNCH DATE', numeric: false, getValue: (obj) => obj.launchDate || '', format: (v) => v || '--' },
+    { label: 'SPACE PORT', numeric: false, getValue: (obj) => obj.launchSite || '', format: (v) => v || '--' },
     { label: 'COUNTRY', numeric: false, getValue: (obj) => obj.owner || '', format: (v) => v || '--' },
-    { label: 'INCL', numeric: true, getValue: (obj) => parseInclinationDeg(obj.line2), format: (v) => Number.isFinite(v) ? `${v.toFixed(1)}°` : '--' },
+    { label: 'INCL', numeric: true, getValue: (obj) => obj.inclination, format: (v) => Number.isFinite(v) ? `${v.toFixed(1)}°` : '--' },
     { label: 'PERIGEE', numeric: true, getValue: (obj) => obj.perigee, format: (v) => Number.isFinite(v) ? `${Math.round(v).toLocaleString('en-US')} KM` : '--' },
     { label: 'APOGEE', numeric: true, getValue: (obj) => obj.apogee, format: (v) => Number.isFinite(v) ? `${Math.round(v).toLocaleString('en-US')} KM` : '--' },
     { label: 'PERIOD', numeric: true, getValue: (obj) => obj.period, format: (v) => Number.isFinite(v) ? `${v.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} MIN` : '--' },
-    { label: 'MMOTION', numeric: true, getValue: (obj) => parseMeanMotion(obj.line2), format: (v) => Number.isFinite(v) ? v.toFixed(1) : '--' },
+    { label: 'MMOTION', numeric: true, getValue: (obj) => obj.meanMotion, format: (v) => Number.isFinite(v) ? v.toFixed(1) : '--' },
 ];
 
 // Last-rendered search results, kept around so clicking a column header
@@ -1671,7 +1707,7 @@ async function loadTrackedSatrecs() {
     }
     const orderedObjects = orderObjectsByPlottedList(await response.json());
     if (orderedObjects.length === 0) {
-        throw new Error('no TLE on file for any plotted object');
+        throw new Error('no orbital elements on file for any plotted object');
     }
 
     await loadScriptOnce('assets/satellite/satellite.min.js');
@@ -1686,11 +1722,26 @@ async function loadTrackedSatrecs() {
     clearFootprintLayers();
 
     orderedObjects.forEach((obj, index) => {
-        if (!obj.line1 || !obj.line2) {
-            console.error(`Skipping noradID ${obj.noradID}: no TLE on file`);
+        if (!Number.isFinite(obj.meanMotion)) {
+            console.error(`Skipping noradID ${obj.noradID}: no orbital elements on file`);
             return;
         }
-        const satrec = satellite.twoline2satrec(obj.line1, obj.line2);
+        // satellite.js's json2satrec() expects OMM's own UPPER_SNAKE keys --
+        // the API returns this project's usual camelCase, so map the fields
+        // over at this one call site rather than changing that convention.
+        const satrec = satellite.json2satrec({
+            NORAD_CAT_ID: obj.noradID,
+            EPOCH: obj.epoch,
+            MEAN_MOTION: obj.meanMotion,
+            ECCENTRICITY: obj.eccentricity,
+            INCLINATION: obj.inclination,
+            RA_OF_ASC_NODE: obj.raOfAscNode,
+            ARG_OF_PERICENTER: obj.argOfPericenter,
+            MEAN_ANOMALY: obj.meanAnomaly,
+            BSTAR: obj.bstar,
+            MEAN_MOTION_DOT: obj.meanMotionDot,
+            MEAN_MOTION_DDOT: obj.meanMotionDdot,
+        });
         const style = getTrackStyle(index);
         livePositionSatrecs.set(obj.noradID, { satrec, style, name: obj.name || String(obj.noradID) });
     });
@@ -1754,7 +1805,7 @@ async function renderGroundTracksForPlottedList() {
         orderedObjects.forEach((obj) => {
             const tracked = livePositionSatrecs.get(obj.noradID);
             if (!tracked) {
-                return; // no TLE on file -- already logged in loadTrackedSatrecs()
+                return; // no orbital elements on file -- already logged in loadTrackedSatrecs()
             }
             const { satrec, style } = tracked;
 
@@ -1762,7 +1813,7 @@ async function renderGroundTracksForPlottedList() {
             // minutes, no computation needed (see the table's PERIOD
             // column). Falls back to deriving it from the TLE's own mean
             // motion (rev/day) for objects SATCAT hasn't enriched yet.
-            const meanMotion = parseMeanMotion(obj.line2);
+            const meanMotion = obj.meanMotion;
             const periodMinutes = Number.isFinite(obj.period)
                 ? obj.period
                 : (Number.isFinite(meanMotion) && meanMotion > 0 ? 1440 / meanMotion : null);
@@ -1985,7 +2036,7 @@ registerPanelControls('on-orbit', {
                 onClick: toggleFootprints,
             },
             { label: 'DEL OBJ', color: 'var(--orange)', onClick: toggleDelObjView },
-            { label: 'USR LOCN', color: 'var(--peach)', onClick: toggleUserLocationForm },
+            { label: 'USR LOCN', color: 'var(--peach)', onClick: () => toggleUserLocationForm(fetchAndRenderOrbitalObjectsList) },
             {
                 label: 'SHW ALT',
                 color: 'var(--butterscotch)',
@@ -1997,8 +2048,7 @@ registerPanelControls('on-orbit', {
         if (delObjViewActive) {
             // Warm/destructive red for the actual delete action, matching
             // LCARS convention elsewhere in this app; blue for CLEAR since
-            // it's a non-destructive selection-utility action -- same
-            // pairing already used for ADD OBJ's own SELECT ALL/CLEAR.
+            // it's a non-destructive selection-utility action.
             // Shared group -- renderControlAreaButtons() (lcars.js) stacks
             // same-group buttons vertically in one shared div rather than
             // each taking its own slot in nav's row, and unshifting the
