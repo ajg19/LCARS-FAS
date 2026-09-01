@@ -43,21 +43,22 @@ for (var i = 0; i < acc.length; i++) {
     });
 }
 
-// panel-10 (EO) has its own border-bottom and .panel-ack has its own
-// border-top, so that a tall payload -- which pushes .bottom-fixed-group
-// away from the button list via margin-top:auto -- shows two independent
-// separator lines with the sidebar's red background between them. When
-// there's no leftover space (a short payload), those two elements end up
-// directly touching, which would stack both borders into a doubled ~8px
-// line instead of a standard single one. CSS can't detect "these two
-// happen to be adjacent," so this measures the actual gap and toggles
-// panel-10's border-bottom off for exactly that case.
+// panel-11 (EO, the last nav button) has its own border-bottom and
+// .panel-ack has its own border-top, so that a tall payload -- which
+// pushes .bottom-fixed-group away from the button list via
+// margin-top:auto -- shows two independent separator lines with the
+// sidebar's red background between them. When there's no leftover space
+// (a short payload), those two elements end up directly touching, which
+// would stack both borders into a doubled ~8px line instead of a
+// standard single one. CSS can't detect "these two happen to be
+// adjacent," so this measures the actual gap and toggles panel-11's
+// border-bottom off for exactly that case.
 function updateEoAckGap() {
-    const panel10 = document.querySelector('.panel-10');
+    const lastNav = document.querySelector('.panel-11');
     const group = document.querySelector('.bottom-fixed-group');
-    if (!panel10 || !group) return;
-    const gap = group.getBoundingClientRect().top - panel10.getBoundingClientRect().bottom;
-    panel10.classList.toggle('no-gap-border', gap < 1);
+    if (!lastNav || !group) return;
+    const gap = group.getBoundingClientRect().top - lastNav.getBoundingClientRect().bottom;
+    lastNav.classList.toggle('no-gap-border', gap < 1);
 }
 
 window.addEventListener('load', updateEoAckGap);
@@ -900,7 +901,17 @@ window.onYouTubeIframeAPIReady = function () {
         width: '100%',
         height: '100%',
         videoId: liveFeedCandidates[0].videoId,
-        playerVars: { autoplay: 1, rel: 0 },
+        // origin/enablejsapi make YouTube's IFrame API and the player
+        // iframe agree on the expected postMessage target -- without them
+        // the console fills with "target origin ... does not match" warns
+        // whenever the API talks to the player (candidate swaps, or after
+        // showSection() hides #default-content).
+        playerVars: {
+            autoplay: 1,
+            rel: 0,
+            enablejsapi: 1,
+            origin: window.location.origin,
+        },
         events: {
             onReady: onLiveFeedPlayerReady,
             onStateChange: onLiveFeedStateChange,

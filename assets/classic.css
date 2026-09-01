@@ -45,7 +45,7 @@
 	--corner-color-bottom: var(--red);
 	--panel-1-color: var(--african-violet);
 	/*
-	  panel-3 through panel-10 are the main section nav buttons (see the
+	  panel-3 through panel-11 are the main section nav buttons (see the
 	  comment above that rule). All warm tones, no red/blue: red is
 	  reserved for alert states elsewhere, blue for diagnostic/science
 	  readouts, neither of which fits routine navigation. Gold stays
@@ -53,13 +53,13 @@
 	  utility action rather than blending into the regular nav set.
 	*/
 	--panel-4-color: var(--golden-orange);
-	--panel-gsops-color: #fb7; /* GS OPS -- warm amber between panel-4 and panel-5, distinct from the reserved --gold */
 	--panel-5-color: var(--orange);
 	--panel-6-color: var(--butterscotch);
 	--panel-7-color: var(--sunflower);
 	--panel-8-color: var(--peach);
 	--panel-9-color: var(--almond);
 	--panel-10-color: var(--almond-creme);
+	--panel-11-color: #fdb; /* EO -- last nav slot; a shade paler than panel-10's almond-creme so the two adjacent buttons still read apart */
 	--panel-top-button-color: var(--african-violet);
 	--bar-height: 15px;
 	--bar-1-6-width: 40%;
@@ -93,11 +93,6 @@
 	--pill-a4-color: var(--african-violet);
 	--pill-a5-color: var(--orange);
 	--pill-a6-color: var(--almond-creme);
-	--panel-11-color: var(--red);
-	--panel-12-color: var(--bluey);
-	--panel-13-color: var(--almond-creme);
-	--panel-14-color: var(--almond-creme);
-	--panel-15-color: var(--almond-creme);
 
 	/* End Ultra layout elements */
 
@@ -852,63 +847,12 @@ button:active {
 	left: 0;
 }
 
-.panel-11 {
-	display: flex;
-	align-items: flex-end;
-	justify-content: flex-end;
-	height: 27vh;
-	max-height: 275px;
-	padding-right: .75rem;
-	padding-bottom: .75rem;
-	background-color: var(--panel-11-color);
-	border-bottom: var(--panel-border);
-}
-
-
-.panel-12 {
-	display: flex;
-	align-items: flex-end;
-	justify-content: flex-end;
-	height: 34vh;
-	max-height: 350px;
-	padding-right: .75rem;
-	padding-bottom: .75rem;
-	background-color: var(--panel-12-color);
-	border-bottom: var(--panel-border);
-}
-
-.panel-13 {
-	display: flex;
-	align-items: flex-end;
-	justify-content: flex-end;
-	height: 20vh;
-	padding-right: .75rem;
-	padding-bottom: .75rem;
-	background-color: var(--panel-13-color);
-	border-bottom: var(--panel-border);
-}
-
-.panel-14 {
-	display: flex;
-	align-items: flex-end;
-	justify-content: flex-end;
-	height: 20vh;
-	padding-right: .75rem;
-	padding-bottom: .75rem;
-	background-color: var(--panel-14-color);
-	border-bottom: var(--panel-border);	
-}
-
-.panel-15 {
-	display: flex;
-	align-items: flex-end;
-	justify-content: flex-end;
-	height: 20vh;
-	padding-right: .75rem;
-	padding-bottom: .75rem;
-	background-color: var(--panel-15-color);
-	border-bottom: var(--panel-border);
-}
+/*
+  panel-12..15 (and the old .panel-11) were dead "Ultra layout" template
+  leftovers -- nothing in the HTML or JS referenced them. Removed so the
+  real nav can use .panel-11 (see the .panel-11 rule further down, next to
+  .panel-10).
+*/
 
 .section-2-buttons a {
 	display: block;
@@ -1524,6 +1468,42 @@ button:active {
 
 .usrloc-status.is-hidden {
 	display: none;
+}
+
+/* Inline validation message under the GRND STN form's SAVE button (see
+   showGroundStationStatus() in gsOpsPanel.js). Normal flow, not
+   position:fixed like .usrloc-status -- the single-button actions column
+   leaves room for it inside #default's box. */
+.gs-status {
+	max-width: 12rem;
+	margin-top: .3rem;
+	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
+	font-size: .8rem;
+	line-height: 1.15;
+	text-transform: uppercase;
+	color: var(--red);
+}
+
+.gs-status.is-hidden {
+	display: none;
+}
+
+/* GRND STN numeric field: the input plus its unit chip, sharing one grid
+   cell. The input keeps the .add-object-fields default width (matching the
+   BAND select); the unit chip sits just outside it. */
+.gs-field {
+	display: inline-flex;
+	align-items: center;
+	gap: .4rem;
+}
+
+.gs-unit {
+	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
+	font-size: .8rem;
+	font-weight: normal;
+	text-transform: none;
+	white-space: nowrap;
+	color: var(--bluey);
 }
 
 .key-shape {
@@ -2149,8 +2129,8 @@ nav button:nth-child(4n) {
   sit inside .bottom-fixed-group, which stacks them reliably regardless of
   viewport height instead of each guessing the other's rendered size.
   .bottom-fixed-group itself is normal flow, not position:fixed -- it used
-  to be fixed/bottom-anchored, but that meant it could overlap panel-10
-  whenever the sidebar's own content was short enough to leave no scrollable
+  to be fixed/bottom-anchored, but that meant it could overlap the last
+  nav button whenever the sidebar's own content was short enough to leave no scrollable
   page height (the scroll-triggered show/hide could also get stuck
   permanently hidden in that case). Normal flow, placed after the button
   list in the HTML, can't overlap anything by construction.
@@ -2394,12 +2374,13 @@ nav button:nth-child(4n) {
 .panel-5,
 .panel-6,
 .panel-7,
-.panel-8	{
+.panel-8,
+.panel-9	{
 	border-bottom: var(--panel-border);
 }
 
 /*
-  panel-5 through panel-10 never needed an explicit width while they were
+  panel-5 through panel-11 never needed an explicit width while they were
   plain <div>s -- a block element naturally stretches to fill a column
   flex container's cross-axis under the default align-items:normal.
   Buttons don't get that same automatic stretch, so now that these are
@@ -2412,14 +2393,15 @@ nav button:nth-child(4n) {
 .panel-7,
 .panel-8,
 .panel-9,
-.panel-10 {
+.panel-10,
+.panel-11 {
 	width: 100%;
 }
 
 /*
-  panel-3 through panel-10 are the main section nav buttons (News, On
-  Orbit, Deep Space, Launches, Infrastructure, Organisations, Weather,
-  EO) -- all converted from plain <div> to <button> so they're clickable.
+  panel-3 through panel-11 are the main section nav buttons (News, On
+  Orbit, GS Ops, Deep Space, Launches, Infrastructure, Organisations,
+  Weather, EO) -- all converted from plain <div> to <button> so they're clickable.
   The base `button` reset (border:none, outline:none) already strips
   browser chrome; the rules below restore the exact width/alignment/
   font/color the original divs had, since buttons don't inherit those
@@ -2476,7 +2458,8 @@ nav button:nth-child(4n) {
 .panel-6,
 .panel-7,
 .panel-8,
-.panel-10 {
+.panel-10,
+.panel-11 {
 	padding: var(--left-frame-padding);
 }
 
@@ -2486,26 +2469,6 @@ nav button:nth-child(4n) {
 	justify-content: flex-end;
 	height: 4.25rem;
 	background-color: var(--panel-4-color);
-}
-
-/*
-  GS OPS -- sits between ON-ORBIT (.panel-4) and DEEP SPACE (.panel-5) in
-  the sidebar. Its own class rather than renumbering .panel-5..10 (and
-  their --panel-N-color vars, the .panel-10 no-gap-border hook, the
-  .pan-N / .section-active blocks) around an inserted .panel-5. Bundles
-  here everything the numbered nav buttons pick up from the grouped
-  .panel-* selectors further up (border-bottom, width, padding) plus their
-  own per-button block (flex / height / colour).
-*/
-.panel-gsops	{
-	display: flex;
-	align-items: flex-end;
-	justify-content: flex-end;
-	width: 100%;
-	height: 4.25rem;
-	padding: var(--left-frame-padding);
-	border-bottom: var(--panel-border);
-	background-color: var(--panel-gsops-color);
 }
 
 .panel-5	{
@@ -2556,20 +2519,34 @@ nav button:nth-child(4n) {
 	align-items: flex-end;
 	justify-content: flex-end;
 	height: 4.25rem;
-	border-top: var(--panel-border);
-	border-bottom: var(--panel-border);
 	background-color: var(--panel-10-color);
 }
 
 /*
-  Suppresses panel-10's own border-bottom specifically when it's sitting
+  panel-11 (EO) is the last nav button. Unlike 3-9 it carries a border-top
+  as well as a border-bottom, bracketing it against .bottom-fixed-group
+  below -- and unlike 10 (which sits directly above it and so leaves its
+  own bottom edge to this border-top) it does need that bottom edge drawn.
+*/
+.panel-11 {
+	display: flex;
+	align-items: flex-end;
+	justify-content: flex-end;
+	height: 4.25rem;
+	border-top: var(--panel-border);
+	border-bottom: var(--panel-border);
+	background-color: var(--panel-11-color);
+}
+
+/*
+  Suppresses panel-11's own border-bottom specifically when it's sitting
   directly against .bottom-fixed-group (no leftover .left-frame space,
   e.g. on a short payload) -- otherwise that border plus .panel-ack's
   border-top would stack into a doubled ~8px line instead of the
   standard single 4px one. Toggled by updateEoAckGap() in lcars.js,
   which measures the actual gap and can't be known from CSS alone.
 */
-.panel-10.no-gap-border {
+.panel-11.no-gap-border {
 	border-bottom: none;
 }
 
@@ -4026,15 +4003,23 @@ footer:has(.footer-frame) {
 
 /* Marker hover popup, restyled to match the rest of the map's console
    chrome instead of Leaflet's default white box (see leaflet.css's own
-   .leaflet-popup-content-wrapper/-tip, both `background: white`). */
+   .leaflet-popup-content-wrapper/-tip, both `background: white`). Shared
+   by the infrastructure map's asset popups, the GS OPS map's VISIBLE NOW
+   satellite-info popups, and the on-orbit map's GRD TRCK marker popups. */
 #infrastructure-map .leaflet-popup-content-wrapper,
-#infrastructure-map .leaflet-popup-tip {
+#infrastructure-map .leaflet-popup-tip,
+#gs-ops-map .leaflet-popup-content-wrapper,
+#gs-ops-map .leaflet-popup-tip,
+#on-orbit-map .leaflet-popup-content-wrapper,
+#on-orbit-map .leaflet-popup-tip {
 	background: #000;
 	/* Soft drop shadow only -- no coloured ring/outline around the box. */
 	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
 }
 
-#infrastructure-map .leaflet-popup-content {
+#infrastructure-map .leaflet-popup-content,
+#gs-ops-map .leaflet-popup-content,
+#on-orbit-map .leaflet-popup-content {
 	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
 	text-transform: uppercase;
 	font-weight: bold;
@@ -4059,12 +4044,62 @@ footer:has(.footer-frame) {
 	color: #cc99cc; /* lilac */
 }
 
-#infrastructure-map .leaflet-container a.leaflet-popup-close-button {
+/* Satellite-info popups on the GS OPS map (visibleSatPopupHtml() in
+   gsOpsPanel.js) and the on-orbit map (livePositionPopupHtml() in
+   onOrbitPanel.js). The infrastructure map's golden-tanoi/blue-bell/lilac
+   pastels sit too dark on the black box for a dense label:value list, so
+   these use the same high-contrast gold-label / space-white-value split
+   the map overlay readout (.loc-label/.loc-value) and the data tables use
+   -- all canonical LCARS ramp colours, just the bright end of it. The
+   base `color` covers any bare text; every field is spanned anyway. */
+#gs-ops-map .leaflet-popup-content,
+#on-orbit-map .leaflet-popup-content {
+	color: var(--data-value-color);
+}
+
+#gs-ops-map .leaflet-popup-content .popup-name,
+#on-orbit-map .leaflet-popup-content .popup-name {
+	color: var(--gold);
+}
+
+#gs-ops-map .leaflet-popup-content .popup-meta,
+#on-orbit-map .leaflet-popup-content .popup-meta {
+	color: var(--bluey);
+}
+
+#gs-ops-map .leaflet-popup-content .popup-value,
+#on-orbit-map .leaflet-popup-content .popup-value {
+	color: var(--data-value-color);
+}
+
+#infrastructure-map .leaflet-container a.leaflet-popup-close-button,
+#gs-ops-map .leaflet-container a.leaflet-popup-close-button,
+#on-orbit-map .leaflet-container a.leaflet-popup-close-button {
 	color: #ff9933; /* neon-carrot */
 }
 
-#infrastructure-map .leaflet-container a.leaflet-popup-close-button:hover {
+#infrastructure-map .leaflet-container a.leaflet-popup-close-button:hover,
+#gs-ops-map .leaflet-container a.leaflet-popup-close-button:hover,
+#on-orbit-map .leaflet-container a.leaflet-popup-close-button:hover {
 	color: #cc6666; /* chestnut-rose */
+}
+
+/* VISIBLE NOW direction-of-travel arrows on the GS OPS map (see
+   renderVisibleSats() in gsOpsPanel.js). The outer .sat-arrow element is
+   positioned by Leaflet; the inner <span> is rotated to the satellite's
+   ground-track heading. Cyan to match the satellite dots, and offset up
+   so the triangle sits just clear of the dot it belongs to. */
+.sat-arrow {
+	background: none;
+	border: none;
+}
+
+.sat-arrow svg {
+	display: block;
+	overflow: visible;
+	/* Lifts the cyan dart off both the dark ocean and the lighter
+	   landmasses without needing a heavy outline stroke. */
+	filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.85));
 }
 
 /* Permanent per-object labels next to each live position marker on the
@@ -4114,5 +4149,31 @@ footer:has(.footer-frame) {
 	font-weight: normal;
 	text-transform: none;
 	white-space: nowrap;
+}
+
+/* City-name labels on the location-map panels (EO / GS OPS) -- rendered
+   from assets/cities.json, toggled by the CITY LBL button (see
+   renderCityLabels() in locationMapPanel.js). Same restyle-off-Leaflet's-
+   white-box treatment as .graticule-label, but warm-tinted, uppercased
+   and given a dark text-shadow so place names read as their own layer
+   against the faint white graticule and the blue country borders. The
+   ::before rule drops the little directional arrow Leaflet draws for a
+   direction:'right' tooltip, same as .orbit-marker-label does. */
+.leaflet-tooltip.city-label {
+	background: none;
+	border: none;
+	box-shadow: none;
+	padding: 0;
+	color: #fc9;
+	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
+	font-size: 0.72rem;
+	font-weight: normal;
+	text-transform: uppercase;
+	white-space: nowrap;
+	text-shadow: 0 0 3px #000, 0 0 3px #000;
+}
+
+.leaflet-tooltip-right.city-label::before {
+	border-right-color: transparent;
 }
 

@@ -1743,7 +1743,27 @@ async function loadTrackedSatrecs() {
             MEAN_MOTION_DDOT: obj.meanMotionDdot,
         });
         const style = getTrackStyle(index);
-        livePositionSatrecs.set(obj.noradID, { satrec, style, name: obj.name || String(obj.noradID) });
+        // meta is the SATCAT / EIRP-enrichment metadata for the click
+        // popup (see livePositionPopupHtml() / updateLivePositions()).
+        // Kept alongside the satrec so the popup doesn't need its own fetch.
+        livePositionSatrecs.set(obj.noradID, {
+            satrec,
+            style,
+            name: obj.name || String(obj.noradID),
+            meta: {
+                owner: obj.owner || null,
+                launchYear: obj.launchDate ? String(obj.launchDate).slice(0, 4) : null,
+                launchSite: obj.launchSite || null,
+                objectType: obj.objectType || null,
+                downlinkBand: obj.downlinkBand || null,
+                eirpDbw: obj.eirpDbw,
+                eirpSource: obj.eirpSource || null,
+                periodMin: obj.period,
+                apogeeKm: obj.apogee,
+                perigeeKm: obj.perigee,
+                rcsM2: obj.rcsSize,
+            },
+        });
     });
 
     return orderedObjects;
@@ -1939,12 +1959,56 @@ function startLivePositionUpdates() {
     livePositionInterval = setInterval(updateLivePositions, LIVE_POSITION_UPDATE_MS);
 }
 
+// Shared catalogue / EIRP-enrichment rows for the satellite-info popups on
+// both the on-orbit map (GRD TRCK, below) and the GS OPS map (VISIBLE NOW,
+// gsOpsPanel.js). `m` carries: noradID, owner, launchYear, launchSite,
+// objectType, rcsM2, periodMin, perigeeKm, apogeeKm, eirpDbw, eirpSource,
+// downlinkBand. Returns [label, value] pairs; each caller wraps its own
+// title and any live/station-relative rows around these.
+function satelliteCatalogRows(m) {
+    m = m || {};
+    const typeLabel = (OBJECT_TYPE_FILTER_OPTIONS.find((o) => o.value === m.objectType) || {}).label
+        || m.objectType || '—';
+    const owner = m.owner ? (COUNTRY_CODE_NAMES[m.owner] || m.owner) : '—';
+    const eirp = Number.isFinite(m.eirpDbw)
+        ? `${m.eirpSource === 'estimated' ? '≈ ' : ''}${m.eirpDbw} dBW`
+        : '—';
+    const km = (v) => (Number.isFinite(v) ? `${Math.round(v).toLocaleString('en-GB')} km` : '—');
+    return [
+        ['NORAD', m.noradID != null ? m.noradID : '—'],
+        ['OWNER', owner],
+        ['LAUNCH YEAR', m.launchYear || '—'],
+        ['LAUNCH SITE', m.launchSite || '—'],
+        ['TYPE', typeLabel],
+        ['EST. SIZE', Number.isFinite(m.rcsM2) ? `${parseFloat(m.rcsM2.toPrecision(1))} m²` : '—'],
+        ['PERIOD', Number.isFinite(m.periodMin) ? `${m.periodMin.toFixed(1)} min` : '—'],
+        ['PERIGEE', km(m.perigeeKm)],
+        ['APOGEE', km(m.apogeeKm)],
+        ['EST. EIRP', eirp],
+        ['INFERRED BAND', m.downlinkBand || '—'],
+    ];
+}
+
+// Click popup for a live-position marker (shown while GRD TRCK is on).
+// All the SATCAT / EIRP-enrichment metadata the API returned for this
+// object, carried on its livePositionSatrecs entry so there's no extra
+// fetch. Uses the shared .popup-name/.popup-meta/.popup-value classes --
+// #on-orbit-map popup styling in classic.css matches the GS OPS
+// VISIBLE NOW popups.
+function livePositionPopupHtml(name, noradID, meta) {
+    const rows = satelliteCatalogRows({ ...(meta || {}), noradID });
+    const body = rows
+        .map(([k, v]) => `<span class="popup-meta">${k}:</span> <span class="popup-value">${v}</span>`)
+        .join('<br>');
+    return `<span class="popup-name">${name}</span><br>${body}`;
+}
+
 function updateLivePositions() {
     if (!onOrbitMap) {
         return;
     }
     const now = new Date();
-    livePositionSatrecs.forEach(({ satrec, style, name }, noradID) => {
+    livePositionSatrecs.forEach(({ satrec, style, name, meta }, noradID) => {
         const { position: positionEci } = satellite.propagate(satrec, now);
         if (!positionEci) {
             return;
@@ -1976,6 +2040,7 @@ function updateLivePositions() {
             marker.bindTooltip(labelContent, {
                 permanent: true, direction: 'right', offset: [8, 0], className: 'orbit-marker-label',
             });
+            marker.bindPopup(() => livePositionPopupHtml(name, noradID, meta));
             livePositionMarkers.set(noradID, marker);
         }
 

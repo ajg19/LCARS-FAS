@@ -147,8 +147,32 @@ def handle_orbital_objects(query_params, start_response):
 
         placeholders = ','.join('?' * len(norad_ids))
         rows = orbital_objects_db.execute(
-            f'SELECT noradID, name, objectID, epoch, meanMotion, eccentricity, inclination, raOfAscNode, argOfPericenter, meanAnomaly, bstar, meanMotionDot, meanMotionDdot, objectType, owner, launchDate, launchSite, decayDate, rcsSize, period, apogee, perigee, source FROM orbital_objects WHERE noradID IN ({placeholders})',
+            f'SELECT noradID, name, objectID, epoch, meanMotion, eccentricity, inclination, raOfAscNode, argOfPericenter, meanAnomaly, bstar, meanMotionDot, meanMotionDdot, objectType, owner, launchDate, launchSite, decayDate, rcsSize, period, apogee, perigee, source, downlinkBand, eirpDbw, eirpSource FROM orbital_objects WHERE noradID IN ({placeholders})',
             norad_ids,
+        ).fetchall()
+        return json_response(start_response, '200 OK', rows_to_dicts(rows))
+    except Exception as e:
+        return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
+
+
+# All active payloads with usable mean elements, for the GS OPS panel's
+# VISIBLE NOW feature (client-side SGP4 + look-angle against the ground
+# station). One bulk read -- ~19k rows -- fetched once per session and
+# cached client-side; only the OMM fields json2satrec() needs plus the
+# handful shown in the click popup (name/owner/launchDate/objectType).
+# Restricted to objectType 'PAY' (rocket bodies and debris aren't
+# "satellites" a station tasks) and decayDate IS NULL.
+def handle_active_orbital_objects(start_response):
+    try:
+        rows = orbital_objects_db.execute(
+            "SELECT noradID, name, owner, launchDate, launchSite, objectType, "
+            "period, apogee, perigee, rcsSize, downlinkBand, eirpDbw, eirpSource, "
+            "epoch, meanMotion, "
+            "eccentricity, inclination, raOfAscNode, argOfPericenter, meanAnomaly, "
+            "bstar, meanMotionDot, meanMotionDdot "
+            "FROM orbital_objects "
+            "WHERE objectType = 'PAY' AND decayDate IS NULL "
+            "AND meanMotion IS NOT NULL AND epoch IS NOT NULL"
         ).fetchall()
         return json_response(start_response, '200 OK', rows_to_dicts(rows))
     except Exception as e:
@@ -232,7 +256,7 @@ def handle_orbital_objects_search(query_params, start_response):
         # noradID, which meant an unfiltered/default search only ever
         # showed the oldest ~500 cataloged objects.
         rows = orbital_objects_db.execute(
-            f'SELECT o.noradID, o.name, o.objectID, o.epoch, o.meanMotion, o.eccentricity, o.inclination, o.raOfAscNode, o.argOfPericenter, o.meanAnomaly, o.bstar, o.meanMotionDot, o.meanMotionDdot, o.objectType, o.owner, o.launchDate, o.launchSite, o.decayDate, o.rcsSize, o.period, o.apogee, o.perigee, o.source FROM orbital_objects o {where_clause} ORDER BY o.launchDate DESC LIMIT ?',
+            f'SELECT o.noradID, o.name, o.objectID, o.epoch, o.meanMotion, o.eccentricity, o.inclination, o.raOfAscNode, o.argOfPericenter, o.meanAnomaly, o.bstar, o.meanMotionDot, o.meanMotionDdot, o.objectType, o.owner, o.launchDate, o.launchSite, o.decayDate, o.rcsSize, o.period, o.apogee, o.perigee, o.source, o.downlinkBand, o.eirpDbw, o.eirpSource FROM orbital_objects o {where_clause} ORDER BY o.launchDate DESC LIMIT ?',
             params + [RESULT_SCAN_LIMIT],
         ).fetchall()
         rows = rows_to_dicts(rows)
@@ -297,6 +321,8 @@ def application(environ, start_response):
         return handle_ground_segment_assets(start_response)
     if method == 'GET' and path_info == '/api/orbital-objects':
         return handle_orbital_objects(query_params, start_response)
+    if method == 'GET' and path_info == '/api/orbital-objects/active':
+        return handle_active_orbital_objects(start_response)
     if method == 'GET' and path_info == '/api/orbital-objects/filter-options':
         return handle_filter_options(start_response)
     if method == 'GET' and path_info == '/api/orbital-objects/search':

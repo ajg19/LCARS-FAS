@@ -2176,5 +2176,11 @@
     "country": "Kiribati",
     "lat": 1.33,
     "lon": 172.98
+  },
+  {
+    "name": "Longyearbyen",
+    "country": "Svalbard",
+    "lat": 78.22,
+    "lon": 15.63
   }
 ]

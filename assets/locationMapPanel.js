@@ -17,18 +17,27 @@
    file must load before the wrapper that calls registerLocationMapPanel().
    ========================================================================== */
 
-// Zoom level a location map opens at, centred on the user -- country /
-// large-region scale: enough context around the point rather than
-// initBaseMap()'s whole-world default, without diving all the way in.
-const LOCATION_MAP_DEFAULT_ZOOM = 5;
+// Zoom level a location map opens at, centred on the user -- a wide
+// regional / hemisphere view rather than initBaseMap()'s whole-world
+// default, so the surrounding area (and, on GS OPS, the spread of
+// visible satellites) is all in frame without panning.
+const LOCATION_MAP_DEFAULT_ZOOM = 3;
 
-function registerLocationMapPanel({ sectionId, containerId, buttonLabel }) {
+// CITY LBL toggle: don't draw any city names below this zoom (a zoomed-out
+// view would just fill with overlapping labels), and never draw more than
+// this many at once even when zoomed in.
+const LOCATION_MAP_CITY_LABEL_MIN_ZOOM = 3;
+const LOCATION_MAP_CITY_LABEL_MAX = 60;
+
+function registerLocationMapPanel({ sectionId, containerId, buttonLabel, extraButtons = [] }) {
     // One closure set of per-panel state per call -- the maps and their
     // terminator layers/intervals are independent between sections.
     let map = null;
     let userLocationMarker = null;
     let terminatorLayer = null;
     let terminatorUpdateInterval = null;
+    let cityLabelLayer = null;
+    let cityLabelsVisible = false;
 
     // "You are here" dot -- plain white circle marker, same styling as the
     // on-orbit panel's own observer marker. Old one removed before a new
@@ -68,6 +77,52 @@ function registerLocationMapPanel({ sectionId, containerId, buttonLabel }) {
             map.panTo([location.latitude, location.longitude], { animate: false });
         }
         renderUserLocationMarker();
+    }
+
+    // City-name labels from assets/cities.json -- the curated ~360-entry
+    // set the TGT/GS LOCN place autocomplete also uses (loadCityDataset()
+    // lives in onOrbitPanel.js, guaranteed loaded before any of this runs
+    // via the section's open* function). Only the cities inside the
+    // current viewport are drawn, capped at LOCATION_MAP_CITY_LABEL_MAX,
+    // and nothing at all below LOCATION_MAP_CITY_LABEL_MIN_ZOOM. Rebuilt
+    // on every moveend while the CITY LBL toggle is on (see initMap).
+    async function renderCityLabels() {
+        if (!map || typeof L === 'undefined') {
+            return;
+        }
+        if (cityLabelLayer) {
+            map.removeLayer(cityLabelLayer);
+            cityLabelLayer = null;
+        }
+        if (!cityLabelsVisible || map.getZoom() < LOCATION_MAP_CITY_LABEL_MIN_ZOOM) {
+            return;
+        }
+        const cities = await loadCityDataset();
+        // Re-checked after the await: the toggle may have been switched off
+        // (or the view moved out of range) while the dataset was loading.
+        if (!map || !cityLabelsVisible || map.getZoom() < LOCATION_MAP_CITY_LABEL_MIN_ZOOM) {
+            return;
+        }
+        const bounds = map.getBounds();
+        const markers = cities
+            .filter((c) => bounds.contains([c.lat, c.lon]))
+            .slice(0, LOCATION_MAP_CITY_LABEL_MAX)
+            .map((c) => {
+                const dot = L.circleMarker([c.lat, c.lon], {
+                    radius: 2, color: '#fc9', weight: 1, fillColor: '#fc9', fillOpacity: 0.9, interactive: false,
+                });
+                dot.bindTooltip(c.name.toUpperCase(), {
+                    permanent: true, direction: 'right', offset: [4, 0],
+                    className: 'city-label', interactive: false,
+                });
+                return dot;
+            });
+        cityLabelLayer = L.layerGroup(markers).addTo(map);
+    }
+
+    function toggleCityLabels() {
+        cityLabelsVisible = !cityLabelsVisible;
+        renderCityLabels();
     }
 
     // Wired to the section's left-menu button via its open* function
@@ -127,6 +182,16 @@ function registerLocationMapPanel({ sectionId, containerId, buttonLabel }) {
             }, 60000);
 
             renderLatLonGraticule(map);
+
+            // Rebuild the city-label layer (only if CITY LBL is on)
+            // whenever the view settles -- moveend covers both pan and
+            // zoom -- so just the cities currently in frame are drawn.
+            map.on('moveend', () => {
+                if (cityLabelsVisible) {
+                    renderCityLabels();
+                }
+            });
+
             await centreOnObserver(true);
         } catch (error) {
             console.error(`Error initialising ${sectionId} map:`, error);
@@ -150,25 +215,42 @@ function registerLocationMapPanel({ sectionId, containerId, buttonLabel }) {
     }
 
     // Button 1 opens the shared location form (--peach, matching the
-    // on-orbit USR LOCN button it mirrors); slots 2-6 are inert
-    // placeholders keeping the six-button two-row grid (a button with no
-    // onClick renders inert -- see renderControlAreaButtons() in lcars.js).
+    // on-orbit USR LOCN button it mirrors). Button 2 is the CITY LBL
+    // toggle (--bluey, the on-orbit convention for a data/view-state
+    // toggle, with a dynamic ON/OFF label like GRD TRCK). Button 3 is an
+    // inert placeholder; anything the section passes in `extraButtons`
+    // then fills slot 4 onward (so a single extra button lands directly
+    // below button 1 in the 3-wide grid). The rest are padded out with
+    // inert numbered placeholders so the set is always exactly six (a
+    // button with no onClick renders inert -- see renderControlAreaButtons()
+    // in lcars.js).
+    const buttons = [
+        {
+            label: buttonLabel,
+            color: 'var(--peach)',
+            onClick: () => toggleUserLocationForm(renderDefaultArea),
+        },
+        {
+            label: 'CITY LBL',
+            color: 'var(--bluey)',
+            getText: () => `CITY LBL - ${cityLabelsVisible ? 'ON' : 'OFF'}`,
+            onClick: toggleCityLabels,
+        },
+        { label: '3' },
+        ...extraButtons,
+    ];
+    while (buttons.length < 6) {
+        buttons.push({ label: String(buttons.length + 1) });
+    }
+    buttons.length = 6;
+
     registerPanelControls(sectionId, {
         defaultAreaMode: 'custom',
         renderDefaultArea,
-        buttons: [
-            {
-                label: buttonLabel,
-                color: 'var(--peach)',
-                onClick: () => toggleUserLocationForm(renderDefaultArea),
-            },
-            { label: '2' },
-            { label: '3' },
-            { label: '4' },
-            { label: '5' },
-            { label: '6' },
-        ],
+        buttons,
     });
 
-    return { initMap };
+    // getMap() lets a wrapper panel (e.g. GS OPS's VISIBLE NOW) add its
+    // own layers to this map without the map being a named global.
+    return { initMap, renderDefaultArea, getMap: () => map };
 }

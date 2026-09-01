@@ -4,6 +4,12 @@
 <head>
 	<meta charset="utf-8">
 	<title>LCARS - FOR ALL SPECIES</title>
+	<!-- Inline SVG favicon: a stylised Vulcan IDIC -- orange disc, a small
+	     black circle (1/5 radius) low-left holding a silver star, and a
+	     silver triangle whose apex is that star and whose base sits just
+	     past the opposite edge of the disc. A data URI so the browser
+	     never fires a /favicon.ico request that server.py would 404. -->
+	<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><g transform='rotate(180 16 16)'><circle cx='16' cy='16' r='15' fill='%23f80'/><path d='M9.5 22.5 L30 7.66 L24.34 2 Z' fill='%23949eb0'/><circle cx='9.5' cy='22.5' r='3' fill='%23000'/><path d='M9.5 19.8 L10.12 21.65 L12.07 21.67 L10.5 22.82 L11.09 24.68 L9.5 23.55 L7.91 24.68 L8.5 22.82 L6.93 21.67 L8.88 21.65 Z' fill='%23949eb0'/></g></svg>">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 	<meta name="format-detection" content="telephone=no">
 	<meta name="format-detection" content="date=no">
@@ -57,13 +63,13 @@
 				<div>
 					<button class="panel-3 section-toggle" data-section="news" onclick="showNewsSection()">NEWS</button>
 					<button class="panel-4 section-toggle" data-section="on-orbit" onclick="openOnOrbitSection();">ON-<span class="hop"> ORBIT</span></button>
-					<button class="panel-gsops section-toggle" data-section="gs-ops" onclick="openGsOpsSection();">GS OPS</button>
-					<button class="panel-5 section-toggle" data-section="deep-space" onclick="showSection('deep-space', 'DEEP SPACE')">DEEP<span class="hop">&nbsp;SPACE</span></button>
-					<button class="panel-6 section-toggle" data-section="launches" onclick="showSection('launches', 'LAUNCHES')">LAUNCHES</button>
-					<button class="panel-7 section-toggle" data-section="infrastructure" onclick="openInfrastructureSection();">GRND SGMNT</button>
-					<button class="panel-8 section-toggle" data-section="organisations" onclick="showSection('organisations', 'ORGANISATIONS')">ORG<span class="hop">ANISATIONS</span></button>
-					<button class="panel-9 section-toggle" data-section="sw-drivers" onclick="showSection('sw-drivers', 'WEATHER'); fetchAndSortGST();">WEATHER</button>
-					<button class="panel-10 section-toggle" data-section="eo" onclick="openEoSection()">EO</button>
+					<button class="panel-5 section-toggle" data-section="gs-ops" onclick="openGsOpsSection();">GS OPS</button>
+					<button class="panel-6 section-toggle" data-section="deep-space" onclick="showSection('deep-space', 'DEEP SPACE')">DEEP<span class="hop">&nbsp;SPACE</span></button>
+					<button class="panel-7 section-toggle" data-section="launches" onclick="showSection('launches', 'LAUNCHES')">LAUNCHES</button>
+					<button class="panel-8 section-toggle" data-section="infrastructure" onclick="openInfrastructureSection();">GRND SGMNT</button>
+					<button class="panel-9 section-toggle" data-section="organisations" onclick="showSection('organisations', 'ORGANISATIONS')">ORG<span class="hop">ANISATIONS</span></button>
+					<button class="panel-10 section-toggle" data-section="sw-drivers" onclick="showSection('sw-drivers', 'WEATHER'); fetchAndSortGST();">WEATHER</button>
+					<button class="panel-11 section-toggle" data-section="eo" onclick="openEoSection()">EO</button>
 				</div>
 				<div class="bottom-fixed-group">
 					<button class="panel-ack section-toggle" data-section="acknowledgments" onclick="topFunction(); showSection('acknowledgments', 'ACKNOWLEDGMENTS')">ACK<span class="hop">NOWLEDGMENTS</span></button>
