@@ -217,13 +217,12 @@ function registerLocationMapPanel({ sectionId, containerId, buttonLabel, extraBu
     // Button 1 opens the shared location form (--peach, matching the
     // on-orbit USR LOCN button it mirrors). Button 2 is the CITY LBL
     // toggle (--bluey, the on-orbit convention for a data/view-state
-    // toggle, with a dynamic ON/OFF label like GRD TRCK). Button 3 is an
-    // inert placeholder; anything the section passes in `extraButtons`
-    // then fills slot 4 onward (so a single extra button lands directly
-    // below button 1 in the 3-wide grid). The rest are padded out with
-    // inert numbered placeholders so the set is always exactly six (a
-    // button with no onClick renders inert -- see renderControlAreaButtons()
-    // in lcars.js).
+    // toggle, with a dynamic ON/OFF label like GRD TRCK). Anything the
+    // section passes in `extraButtons` fills slot 3 onward; with 2 base +
+    // 2 extra (GS OPS: GRND STN, VIS NOW) the grid is a tidy 2x2, each
+    // extra button directly below button 1 / button 2. The set is padded
+    // to exactly four with inert numbered placeholders (a button with no
+    // onClick renders inert -- see renderControlAreaButtons() in lcars.js).
     const buttons = [
         {
             label: buttonLabel,
@@ -236,13 +235,12 @@ function registerLocationMapPanel({ sectionId, containerId, buttonLabel, extraBu
             getText: () => `CITY LBL - ${cityLabelsVisible ? 'ON' : 'OFF'}`,
             onClick: toggleCityLabels,
         },
-        { label: '3' },
         ...extraButtons,
     ];
-    while (buttons.length < 6) {
+    while (buttons.length < 4) {
         buttons.push({ label: String(buttons.length + 1) });
     }
-    buttons.length = 6;
+    buttons.length = 4;
 
     registerPanelControls(sectionId, {
         defaultAreaMode: 'custom',

@@ -1758,6 +1758,7 @@ async function loadTrackedSatrecs() {
                 downlinkBand: obj.downlinkBand || null,
                 eirpDbw: obj.eirpDbw,
                 eirpSource: obj.eirpSource || null,
+                inclinationDeg: obj.inclination,
                 periodMin: obj.period,
                 apogeeKm: obj.apogee,
                 perigeeKm: obj.perigee,
@@ -1962,9 +1963,9 @@ function startLivePositionUpdates() {
 // Shared catalogue / EIRP-enrichment rows for the satellite-info popups on
 // both the on-orbit map (GRD TRCK, below) and the GS OPS map (VISIBLE NOW,
 // gsOpsPanel.js). `m` carries: noradID, owner, launchYear, launchSite,
-// objectType, rcsM2, periodMin, perigeeKm, apogeeKm, eirpDbw, eirpSource,
-// downlinkBand. Returns [label, value] pairs; each caller wraps its own
-// title and any live/station-relative rows around these.
+// objectType, rcsM2, inclinationDeg, periodMin, perigeeKm, apogeeKm,
+// eirpDbw, eirpSource, downlinkBand. Returns [label, value] pairs; each
+// caller wraps its own title and any live/station-relative rows around these.
 function satelliteCatalogRows(m) {
     m = m || {};
     const typeLabel = (OBJECT_TYPE_FILTER_OPTIONS.find((o) => o.value === m.objectType) || {}).label
@@ -1981,6 +1982,7 @@ function satelliteCatalogRows(m) {
         ['LAUNCH SITE', m.launchSite || '—'],
         ['TYPE', typeLabel],
         ['EST. SIZE', Number.isFinite(m.rcsM2) ? `${parseFloat(m.rcsM2.toPrecision(1))} m²` : '—'],
+        ['INCL', Number.isFinite(m.inclinationDeg) ? `${m.inclinationDeg.toFixed(1)}°` : '—'],
         ['PERIOD', Number.isFinite(m.periodMin) ? `${m.periodMin.toFixed(1)} min` : '—'],
         ['PERIGEE', km(m.perigeeKm)],
         ['APOGEE', km(m.apogeeKm)],

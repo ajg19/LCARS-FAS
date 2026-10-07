@@ -350,3 +350,125 @@ Rows above the `L_o` line differ between downlink and uplink only in which side 
 ## The pattern, in one line
 
 Both directions reduce to the same shape: **received power = transmitter's EIRP + receiver's antenna gain − every loss along the way**, worked out as a straightforward multiplication of real quantities, then converted to dB (where multiplication becomes addition) purely so a chain of five or six wildly different-sized numbers can be added and subtracted by hand instead of multiplied and divided.
+
+---
+
+## Appendix A — Sourcing the inputs: what the catalogues give us, and how the rest is estimated
+
+The recipe in §3 needs roughly two dozen numbers per direction. They come from four places:
+
+| Source | Parameters it provides |
+|---|---|
+| **Orbital catalogues** — Space-Track / CelesTrak (OMM elements + SATCAT) | orbital elements → altitude `h`, slant range `d`, elevation `E`, pass timing (all via SGP4); object type (Payload / R/B / Debris); radar cross-section `rcsSize`; period, apogee, perigee, inclination; owner, launch site, launch/decay dates |
+| **Ground-station configuration** — the GRND STN form | dish `D`, `η`, antenna gain; `f_up`, `f_down`; Tx power / EIRP; `T_sys` / `G/T`; `L_o`; `E_min`; station altitude; bandwidth `B`; data rate `R_b`; required `Eb/N0` |
+| **Site climate data** — keyed to the station's lat/lon | rain-rate exceedance percentile, integrated cloud liquid water, gaseous-absorption baseline → `L_a` |
+| **Estimated for the satellite** — this appendix | downlink EIRP; downlink and uplink centre frequency; satellite receive-antenna gain; satellite noise temperature; satellite `G/T`; downlink bandwidth / data rate / required `Eb/N0` |
+
+**Nothing in the orbital catalogues describes a satellite's radio payload.** SATCAT carries object type, a coarse size class and launch metadata — no frequency, no EIRP, no antenna or receiver data. Everything in the bottom row therefore has to be inferred.
+
+The method throughout is **two-tier with a confidence flag**, the same pattern the EIRP enrichment already uses: a curated value where a public filing or a firm engineering convention exists, a class-typical value otherwise, and an explicit `unknown` when even the class is unclear. Every estimated quantity carries a `source` tag (`filing` / `convention` / `estimated` / `unknown`) so the solver — and the Green / Yellow / Red logic in §3.3 — can widen its margin on a guess and refuse to report GREEN on estimates alone.
+
+### A.1 Downlink EIRP
+
+Two tiers, produced by the ingestion-pipeline enrichment step:
+
+- **`filing`** — a curated table keyed by constellation / operator, with values lifted from FCC Schedule S, ITU filings, GNSS ICDs and published footprint contours: Starlink Ku 38 dBW, OneWeb Ku 36, Kuiper Ka 38, GNSS L 27, Iridium-NEXT L 17, Globalstar S 20, ORBCOMM VHF 12, Planet X 13, GEO comms (SES / Intelsat / Eutelsat / Telesat) Ku ≈ 52. Matched by CelesTrak group membership, with a satellite-name-prefix fallback (`STARLINK-*`, `ONEWEB-*`, …) for objects that have drifted out of their group.
+- **`estimated`** — no constellation match: the band is inferred from the object's groups / type / orbit, and the EIRP read from a (band, mission-class) table — comms-GEO ≈ 50 dBW, EO-optical X-band ≈ 14, EO-radar X-band ≈ 18, weather-LEO ≈ 15, cubesat beacon ≈ 2, and so on.
+- Rocket bodies and debris are tagged `none` — they do not transmit.
+
+About three-quarters of active payloads get a value. The standing caveat: every figure is a **boresight / filed-maximum** number, not the EIRP toward the station's actual position in a shaped or spot beam — fine for triage, not for operations.
+
+### A.2 Downlink and uplink centre frequency
+
+The budget needs a real frequency, not a band letter — both `L_fs` and rain attenuation scale with `f`, and X-band alone spans 8–12 GHz ≈ 3.5 dB of path-loss spread.
+
+**Downlink:**
+
+1. **`filing`** — exact `downlink_low` / `downlink_high` from the SatNOGS DB (crowd-sourced transmitter records keyed by NORAD ID). Covers the amateur / cubesat / university-smallsat / weather-satellite segment.
+2. **`convention`** — no SatNOGS record: take the mid-point of the enriched downlink band (S → 3.0 GHz, X → 10 GHz, …). Within-band error is ±1–3 dB on path loss, more on rain at Ka.
+3. **`unknown`** — no band either.
+
+**Uplink** is harder, because it is a *different* frequency from the downlink and usually in a different band (S up / X down, ~14 up / ~12 down):
+
+1. **`filing`** — `uplink_low` / `uplink_high` from SatNOGS, present only for records typed transceiver or transponder.
+2. **`convention`** — a curated per-constellation uplink band, or the standard paired Earth-to-space allocation for the downlink band (the fixed offsets in the ITU band plan), taken at mid-point.
+3. **`unknown`** — otherwise. A satellite the station only needs to *receive* (a pure EO downlink) needs no uplink figure; a command uplink to an arbitrary satellite is simply not estimable without a documented transmitter.
+
+### A.3 Satellite receive-antenna gain (`G_r,sat`)
+
+Gain is aperture-limited by the same relation as the ground dish, `G ≈ η·(π D / λ)²`, and on a spacecraft `D` is bounded by the bus or the largest deployable. Two physical facts anchor the estimate:
+
+- **Low frequencies are gain-capped.** A 3U cubesat with a ~0.3 m antenna at UHF (λ ≈ 0.7 m) cannot exceed ~2.5 dBi; the same aperture at S-band caps near 17 dBi.
+- **A non-steered LEO satellite that must hear any station in view needs a near-hemispherical pattern.** From 600 km the Earth-to-horizon cone is ~120–140° wide, so a fixed receive antenna is 0–6 dBi. The broad beam is a deliberate design choice — it removes the need for attitude knowledge to be commandable.
+
+Estimate by class; `rcsSize` + object type + orbit regime select the row:
+
+| Class | Typical receive antenna | `G_r,sat` |
+|---|---|---|
+| Cubesat, UHF / VHF command | monopole / turnstile | 0–2 dBi |
+| Smallsat, S-band command | patch | 4–8 dBi |
+| GNSS | shaped Earth-coverage | ~13 dBi |
+| GEO comms, Earth-coverage beam | horn | 17–20 dBi |
+| Comms, spot beam | reflector / phased array | 30–40 dBi |
+
+Confidence is ±3–6 dB for the broad-beam rows. The spot-beam row is the weak point: there the binding question is not the gain figure but **whether the beam is pointed at the station**, which no catalogue answers — flag those `estimated` with a wide margin, or `unknown`.
+
+### A.4 Satellite system noise temperature (`T_sys,sat`)
+
+This is **not symmetric** with the ground station's, and the reason is what each antenna looks at:
+
+- The ground-station antenna points **up** at cold sky → antenna temperature 10–60 K.
+- The satellite antenna points **down** at the warm Earth, which fills the beam → antenna temperature ≈ **290 K**.
+
+The receiver contribution *is* loosely shared: both ends build LNAs from the same short menu of microwave transistor technologies (GaAs pHEMT, InP HEMT, SiGe), so an uncooled front end is ~50–150 K at S/X-band whichever end it sits on. But the satellite cannot cryogenically cool its receiver — no cryocooler mass or power budget — and it runs warmer thermally. So:
+
+```
+T_sys,sat  ≈  290 K (Earth-filling antenna)  +  ~150 K (uncooled LNA + feed)  ≈  400–600 K
+```
+
+Use **500 K (≈ 27 dB-K)** as the class default. It varies little between missions — the 290 K Earth dominates and swamps LNA differences — which makes it, paradoxically, easier to pin down than the ground station's own `T_sys`.
+
+### A.5 Satellite `G/T`
+
+Synthesised directly from A.3 and A.4:
+
+```
+G/T_sat (dB/K)  =  G_r,sat (dBi)  −  10·log₁₀(T_sys,sat)
+```
+
+| Case | `G_r,sat` | `T_sys,sat` | `G/T_sat` |
+|---|---|---|---|
+| Cubesat, UHF command | +2 dBi | 500 K | −25 dB/K |
+| Smallsat, S-band | +6 dBi | 500 K | −21 dB/K |
+| GEO, Earth-coverage | +18 dBi | 500 K | −9 dB/K |
+| GEO, spot beam | +35 dBi | 500 K | +8 dB/K |
+
+Net confidence ≈ ±3 dB. Coarse, but enough for the Green / Yellow / Red triage — and the strongly negative cubesat figures correctly predict that those uplinks need substantial ground-station EIRP to close.
+
+### A.6 Downlink bandwidth, data rate, required `Eb/N0`
+
+- **Bandwidth `B`** — from SatNOGS `baud` + `mode`: symbol rate × (1 + roll-off) for PSK / QPSK, Carson's rule for FM / FSK. No SatNOGS record → a class-typical occupied bandwidth.
+- **Data rate `R_b`** — SatNOGS `baud` × bits-per-symbol implied by `mode` (≈ baud for BPSK / FSK / AFSK). Else class-typical.
+- **Required `Eb/N0`** — `mode` gives the modulation but rarely the FEC; assign a per-mode figure assuming a typical code (uncoded BPSK/QPSK ≈ 9.6 dB, rate-½ coded ≈ 4–5 dB, modern LDPC ≈ 1–4 dB — see §3.5). Else the waveform-class default.
+
+These three are strictly **link-design** parameters, not satellite hardware; where the scheduled contact's real waveform is known, it should override any estimate.
+
+### A.7 Polarization
+
+Deliberately **not** estimated per satellite. A polarization mismatch is straightforward to correct at the ground station (a switchable or auto-tracking feed), so it is carried as a fixed allowance inside `L_o` rather than as a per-satellite unknown.
+
+### A.8 Confidence tags and how the solver uses them
+
+| Tag | Meaning | Solver treatment |
+|---|---|---|
+| `filing` | from an FCC / ITU filing, an ICD, or a documented SatNOGS transmitter | nominal margin |
+| `convention` | from a standard band plan, paired allocation, or mid-point rule | +1–2 dB extra margin |
+| `estimated` | class-typical table value | +3–6 dB extra margin; never report GREEN on these alone |
+| `unknown` | not even the class is clear | that direction cannot be evaluated — report it as such, not as RED |
+
+### A.9 Known limitations
+
+- **Steered high-gain antennas** — the A.3 gain table is meaningless when the real question is beam pointing; these resolve to `estimated` with a wide margin at best.
+- **Coverage** — SatNOGS lists ~1.5–2.5 k satellites (amateur, cubesat, university, some commercial smallsat, weather). Large commercial GEO / LEO comms at per-satellite granularity, military and most operational government payloads are absent; for those, only the curated constellation tables and the class fallbacks apply.
+- **Boresight figures** — estimated EIRP and `G/T` are on-axis / filed-maximum, not toward the station's actual position in a shaped or spot beam.
+- **Estimated frequencies** — a band mid-point can be a few dB off on path loss and more on rain; treat any `convention`-tagged frequency result as indicative, not operational.

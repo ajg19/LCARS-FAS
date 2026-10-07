@@ -45,7 +45,7 @@ inputs the `satellite_link_budget_2.md` algorithm consumes, no more and no less.
 
 | Field | Key | Unit | Range / default | Behaviour |
 |---|---|---|---|---|
-| Uplink centre frequency | `uplinkFreqGHz` | GHz | 0.1 – 50 | Also sets the band label |
+| Uplink centre frequency | `uplinkFreqGHz` | GHz | 0.1 – 50 | |
 | Drive source | `txDriveSource` | — | `TxPower` (def) / `EIRP` | Radio toggle |
 | Tx output power | `txPowerW` | W | 1 – 20 000 | Used when *Drive = TxPower* |
 | Ground-station EIRP | `groundStationEIRPdBW` | dBW | 10 – 110 | Read-only when *Drive = TxPower*; editable when *Drive = EIRP* |
@@ -58,7 +58,7 @@ inputs the `satellite_link_budget_2.md` algorithm consumes, no more and no less.
 
 | Field | Key | Unit | Range / default | Behaviour |
 |---|---|---|---|---|
-| Downlink centre frequency | `downlinkFreqGHz` | GHz | 0.1 – 50 | Also sets the band label |
+| Downlink centre frequency | `downlinkFreqGHz` | GHz | 0.1 – 50 | |
 | Figure-of-merit source | `rxFomSource` | — | `NoiseTemp` (def) / `GOverT` | Radio toggle |
 | System noise temperature | `systemNoiseTempK` | K | 20 – 600 | Used when *FoM = NoiseTemp*; sky + feed loss + LNA combined |
 | Ground-station G/T | `groundStationGOverTdBK` | dB/K | −10 – 40 | Read-only when *FoM = NoiseTemp*; editable when *FoM = GOverT* |
@@ -127,7 +127,7 @@ closure. If retained, put them in a separate **MOUNT** group rather than mixing 
 | `apertureEfficiency` | 0.60 | | `systemNoiseTempK` | 150 → G/T ≈ 13 dB/K |
 | `gainSource` | `Calculated` → ≈ 34.8 dBi | | `otherLossesDB` | 1.0 |
 | `uplinkFreqGHz` | 2.09 | | `polarization` | `RHCP` |
-| `downlinkFreqGHz` | 2.25  (band label **S**) | | `minElevationDeg` | 10 |
+| `downlinkFreqGHz` | 2.25 | | `minElevationDeg` | 10 |
 | `txDriveSource` | `TxPower` | | `stationAltitudeM` | 0 |
 | `txPowerW` | 100 → EIRP ≈ 55 dBW | | `modCod` | `QPSK r1/2` |
 | | | | `requiredEbN0dB` | 4.5 |
@@ -143,3 +143,45 @@ closure. If retained, put them in a separate **MOUNT** group rather than mixing 
 - Persist a superset of today's `groundStationConfig` in `localStorage`; migrate the old
   keys (`antGain`→`antennaGainDBi`, `eirpW`→`txPowerW`, `minElev`→`minElevationDeg`, `band`
   is now derived from the two frequencies).
+
+---
+
+## Implementation notes (as built)
+
+Built in `assets/gsOpsPanel.js` + `assets/classic.css` (`.gs-form` modifier on the existing
+ADD-OBJ form structure). Differences from the sketch above, all deliberate:
+
+- **Mode selector** — the derive-or-enter mode is a **dropdown** in **row 1** of its group
+  (`GAIN SRC`, `TX DRIVE`, `RX FoM`), so every group is a literal column of 4. The three
+  mode groups carry 3 data fields + the dropdown; the two plain groups carry 4 data fields.
+- No always-on summary text under the buttons — the derived figures show in their own
+  (dashed, read-only) fields; the action column is just SAVE / RESET + a hidden-until-needed
+  validation line.
+- **Config keys** (mode + primitives + resolved): `gainMode` `calc|manual`, `dishDiameterM`,
+  `apertureEfficiency`, `antennaGainManualDBi`; `txDriveMode` `power|eirp`, `uplinkFreqGHz`,
+  `txPowerW`, `eirpManualDBW`; `rxFomMode` `tsys|gt`, `downlinkFreqGHz`, `systemNoiseTempK`,
+  `gOverTManualDBK`; `otherLossesDB`, `polarization`, `minElevationDeg`, `stationAltitudeM`;
+  `modCod`, `requiredEbN0DB`, `rxBandwidthHz`, `dataRateBps`. SAVE also writes the resolved
+  `antennaGainRxDBi` / `antennaGainTxDBi` / `eirpDBW` / `gOverTDBK` so downstream code needn't
+  know the entry mode.
+- **Gain constant** `20.41` dB (= `20·log₁₀(π·10⁹/c)`), so `G = 20log₁₀(D) + 20log₁₀(f) +
+  10log₁₀(η) + 20.41`; Rx uses `downlinkFreqGHz`, Tx uses `uplinkFreqGHz`, shown as `Rx / Tx`.
+- **Tooltips** — every parameter label *and* its input carry a `title=` hint (what it is +
+  a typical range); the three mode dropdowns and two selects carry their own.
+- **Live feedback** — the derived read-only fields (gain / EIRP / G/T) recompute on every
+  keystroke while their dropdown is on *Calc*. UL/DL FREQ show the derived IEEE band letter
+  in brackets after the unit, inside the box, e.g. `GHz (S)`.
+- **Enter = Tab** — Enter in any field (input or select) advances focus to the next control
+  in DOM order, wrapping from the last back to the first; it no longer submits.
+- **RESET** button reloads the 3 m S-band defaults into the form without saving.
+- **Migration** — a legacy `{band, gainDbi, hpbwDeg, eirpW, minElevationDeg, slewRateDegPerSec}`
+  config is carried across as: elevation mask kept, `gainDbi`→manual gain, `eirpW`→manual EIRP
+  (`10·log₁₀`), the rest defaulted. `HPBW` and `SLEW RATE` are dropped (not link-budget inputs).
+- **STN ALT** is now fed into VISIBLE NOW's look-angle calc (was hard-coded to 0).
+- Inactive primitives (e.g. dish/efficiency in MAN mode) stay visible and editable, dimmed.
+- Units sit **inside** each input box (absolutely positioned, right-aligned, non-interactive);
+  the typed value is left-aligned. Every input and select is one fixed width (7 rem).
+- Form text is 1 rem, matching the control-panel buttons. No horizontal scroll — the five
+  columns are sized to fit `#default` on a wide desktop (the whole cascade hides below 780 px).
+- Control buttons for the section are now a 2×2: GS LOCN · CITY LBL / GRND STN · VIS NOW
+  (the two inert placeholder buttons were removed).

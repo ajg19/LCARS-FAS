@@ -47,10 +47,15 @@ TMPFILE=$(mktemp)
 # the account.
 crontab -l 2>/dev/null | grep -v "$MARKER" > "$TMPFILE"
 
+# News ingestion is independent (its own DB, no dependency on the orbital
+# pipeline). The orbital-object pipeline -- ingestOrbitalData -> ingestSatcat
+# (daily) -> enrichEirp -> ingestSatnogsRf -- runs as ONE ordered process
+# via scripts/runPipeline.sh so the enrichment steps can only start after
+# ingestion returns; flock -n makes a slow run skip the next tick rather
+# than overlap it. The wrapper writes its own consolidated pipeline_cron.log.
 cat >> "$TMPFILE" << EOF
-*/30 * * * * $PYTHON $APP_ROOT/readNews.py >> $LOG_DIR/readNews_cron.log 2>&1 $MARKER
-0 */12 * * * SPACETRACK_USER="$SPACETRACK_USER" SPACETRACK_PASS="$SPACETRACK_PASS" $PYTHON $APP_ROOT/ingestOrbitalData.py >> $LOG_DIR/ingestOrbitalData_cron.log 2>&1 $MARKER
-0 0 * * * SPACETRACK_USER="$SPACETRACK_USER" SPACETRACK_PASS="$SPACETRACK_PASS" $PYTHON $APP_ROOT/ingestSatcat.py >> $LOG_DIR/ingestSatcat_cron.log 2>&1 $MARKER
+*/30 * * * * $PYTHON $APP_ROOT/scripts/readNews.py >> $LOG_DIR/readNews_cron.log 2>&1 $MARKER
+0 */12 * * * SPACETRACK_USER="$SPACETRACK_USER" SPACETRACK_PASS="$SPACETRACK_PASS" PYTHON="$PYTHON" LOG_DIR="$LOG_DIR" /usr/bin/flock -n $LOG_DIR/lcarsPipeline.lock /bin/bash $APP_ROOT/scripts/runPipeline.sh >> $LOG_DIR/pipeline_cron.log 2>&1 $MARKER
 EOF
 
 crontab "$TMPFILE"

@@ -30,7 +30,8 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# The DB and .env live in the repo root; this script sits in scripts/, one level down.
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 # Minimal stdlib .env loader (no python-dotenv dependency, matching this

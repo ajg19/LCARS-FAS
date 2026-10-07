@@ -21,7 +21,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# The DB and .env live in the repo root; this script sits in scripts/, one level down.
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 # Minimal stdlib .env loader -- see ingestOrbitalData.py for the same

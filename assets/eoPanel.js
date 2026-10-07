@@ -8,8 +8,8 @@
    and locationMapPanel.js first.
 
    Payload: the shared map, opened zoomed in on the user's location.
-   Control panel: TGT LOCN in slot 1 opens the shared LAT/LON/PLACE form;
-   slots 2-6 are inert placeholders.
+   Control panel: TGT LOCN in slot 1 opens the shared LAT/LON/PLACE form,
+   CITY LBL in slot 2 toggles city names; slots 3-4 are inert placeholders.
    ========================================================================== */
 
 const eoLocationPanel = registerLocationMapPanel({

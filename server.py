@@ -47,9 +47,10 @@ db = open_db('space_news.db')
 # -- a separate file/connection, unrelated to the news database above.
 ground_segment_db = open_db('groundSegmentAssets.db')
 
-# Orbital objects (OMM elements) DB, populated/refreshed by
-# ingestOrbitalData.py and ingestSatcat.py (separate processes) -- read-only
-# here since this endpoint only ever reads it.
+# Orbital objects (OMM elements) DB, populated/refreshed by the scripts/
+# ingestion jobs (ingestOrbitalData.py, ingestSatcat.py, enrichEirp.py,
+# ingestSatnogsRf.py -- separate processes) -- read-only here since this
+# endpoint only ever reads it.
 orbital_objects_db = open_db('orbitalObjects.db', read_only=True)
 
 
@@ -158,8 +159,10 @@ def handle_orbital_objects(query_params, start_response):
 # All active payloads with usable mean elements, for the GS OPS panel's
 # VISIBLE NOW feature (client-side SGP4 + look-angle against the ground
 # station). One bulk read -- ~19k rows -- fetched once per session and
-# cached client-side; only the OMM fields json2satrec() needs plus the
-# handful shown in the click popup (name/owner/launchDate/objectType).
+# cached client-side: the OMM fields json2satrec() needs, the handful
+# shown in the click popup (name/owner/launchDate/objectType), and the
+# enrichEirp / ingestSatnogsRf columns the client-side link budget uses
+# (downlink EIRP, satellite G/T, downlink/uplink frequency, mode/baud).
 # Restricted to objectType 'PAY' (rocket bodies and debris aren't
 # "satellites" a station tasks) and decayDate IS NULL.
 def handle_active_orbital_objects(start_response):
@@ -167,11 +170,33 @@ def handle_active_orbital_objects(start_response):
         rows = orbital_objects_db.execute(
             "SELECT noradID, name, owner, launchDate, launchSite, objectType, "
             "period, apogee, perigee, rcsSize, downlinkBand, eirpDbw, eirpSource, "
+            "satRxGainDbi, satNoiseTempK, satGtDbk, satGtSource, "
+            "dlFreqHz, ulFreqHz, dlBandwidthHz, rfMode, rfBaud, rfSource, "
             "epoch, meanMotion, "
             "eccentricity, inclination, raOfAscNode, argOfPericenter, meanAnomaly, "
             "bstar, meanMotionDot, meanMotionDdot "
             "FROM orbital_objects "
             "WHERE objectType = 'PAY' AND decayDate IS NULL "
+            "AND meanMotion IS NOT NULL AND epoch IS NOT NULL"
+        ).fetchall()
+        return json_response(start_response, '200 OK', rows_to_dicts(rows))
+    except Exception as e:
+        return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
+
+
+# Non-payload objects (rocket bodies + debris) with usable elements, for
+# the GS OPS status panel's "objects in view" total only -- these are
+# propagated client-side for a count, never plotted or link-budgeted, so
+# just the OMM element fields json2satrec() needs (no name / metadata / RF
+# columns). ~13k rows.
+def handle_active_nonpayload_objects(start_response):
+    try:
+        rows = orbital_objects_db.execute(
+            "SELECT noradID, epoch, meanMotion, eccentricity, inclination, "
+            "raOfAscNode, argOfPericenter, meanAnomaly, bstar, "
+            "meanMotionDot, meanMotionDdot "
+            "FROM orbital_objects "
+            "WHERE objectType IN ('R/B', 'DEB') AND decayDate IS NULL "
             "AND meanMotion IS NOT NULL AND epoch IS NOT NULL"
         ).fetchall()
         return json_response(start_response, '200 OK', rows_to_dicts(rows))
@@ -323,6 +348,8 @@ def application(environ, start_response):
         return handle_orbital_objects(query_params, start_response)
     if method == 'GET' and path_info == '/api/orbital-objects/active':
         return handle_active_orbital_objects(start_response)
+    if method == 'GET' and path_info == '/api/orbital-objects/active-nonpayload':
+        return handle_active_nonpayload_objects(start_response)
     if method == 'GET' and path_info == '/api/orbital-objects/filter-options':
         return handle_filter_options(start_response)
     if method == 'GET' and path_info == '/api/orbital-objects/search':
@@ -335,5 +362,5 @@ if __name__ == '__main__':
     from wsgiref.simple_server import make_server
 
     with make_server('', PORT, application) as httpd:
-        print(f'LCARS system online at http://localhost:{PORT}')
+        print(f'LCARS-FAS system online at http://localhost:{PORT}')
         httpd.serve_forever()

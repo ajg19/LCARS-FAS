@@ -15,7 +15,8 @@ import sqlite3
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# The DB and .env live in the repo root; this script sits in scripts/, one level down.
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 db_path = os.path.join(BASE_DIR, 'ingestionDBs', 'space_news.db')
 
 db = sqlite3.connect(db_path)
