@@ -46,6 +46,12 @@ EXCLUDE_PATTERNS=(
     nodePersistenceTest.js
     persistenceTest.log
     tmp
+    passenger_wsgi.py
+    .htaccess
+    public
+    .pytest_cache
+    .github
+    requirements-dev.txt
     "$ARCHIVE"
     "$EXCLUDE_FILE"
     "$STAGE"
