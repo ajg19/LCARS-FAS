@@ -23,6 +23,7 @@ here -- this file only ever touches the orbital-element columns.
 
 import json
 import os
+import socket
 import sqlite3
 import time
 import urllib.error
@@ -136,6 +137,10 @@ db.executescript('''
     );
     CREATE INDEX IF NOT EXISTS idx_orbital_object_groups_group
         ON orbital_object_groups(groupName);
+    CREATE TABLE IF NOT EXISTS celestrak_fetch_log (
+        groupName   TEXT PRIMARY KEY,
+        lastAttempt REAL NOT NULL
+    );
 ''')
 
 # 3. Upsert statement. Deliberately touches only the OMM-derived columns --
@@ -259,13 +264,23 @@ def tle_to_omm_fields(norad_id, name, line1, line2, source):
     }
 
 
+# Every request identifies this project (CelesTrak and the other sources can
+# see who is calling and how to reach us, rather than an anonymous
+# "Python-urllib") and gives up after HTTP_TIMEOUT_SEC instead of hanging on
+# the OS's ~2-minute connect timeout.
+USER_AGENT = 'LCARS-FAS/1.0 (orbital-object ingestion; +https://github.com/ajg19/LCARS-FAS)'
+HTTP_TIMEOUT_SEC = 60
+
+
 def http_get(url, headers=None):
     """Returns (status_code, body_text), matching JS fetch()'s "always get
     a response, check .ok yourself" behaviour -- urllib raises on 4xx/5xx by
-    default, so this normalises both paths into the same return shape."""
-    request = urllib.request.Request(url, headers=headers or {})
+    default, so this normalises both paths into the same return shape.
+    Connection-level failures (refused, timed out, DNS) still raise
+    urllib.error.URLError."""
+    request = urllib.request.Request(url, headers={'User-Agent': USER_AGENT, **(headers or {})})
     try:
-        with urllib.request.urlopen(request) as response:
+        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SEC) as response:
             return response.status, response.read().decode('utf-8', errors='replace')
     except urllib.error.HTTPError as e:
         return e.code, e.read().decode('utf-8', errors='replace')
@@ -388,14 +403,38 @@ def store_objects(objects, seen_ids, group=None):
 # 11. Main ingestion run
 GROUP_DELAY_SEC = 3  # stay well clear of CelesTrak's rate limit
 
+# CelesTrak only refreshes GP data about every 2 hours and asks clients not
+# to re-request a group inside that window, so a group attempted more
+# recently than this (e.g. a manual run shortly after the cron run) is not
+# asked for again. Attempts count, not just successes -- a failed request
+# still cost CelesTrak a connection.
+MIN_REFETCH_SEC = 2 * 60 * 60
+
+
+def celestrak_recently_attempted(group):
+    row = db.execute('SELECT lastAttempt FROM celestrak_fetch_log WHERE groupName = ?', (group,)).fetchone()
+    return row is not None and time.time() - row[0] < MIN_REFETCH_SEC
+
+
+def record_celestrak_attempt(group):
+    db.execute('INSERT OR REPLACE INTO celestrak_fetch_log (groupName, lastAttempt) VALUES (?, ?)', (group, time.time()))
+
 
 def run_ingestion():
     print(f'\n=== [{time.strftime("%H:%M:%S")}] Starting Orbital Object Ingestion ===')
     seen_ids = set()
 
     # --- CelesTrak: primary source, one request per group ---
+    # A connection-level failure (timeout/refused) means CelesTrak is
+    # unreachable or blocking this host, and every remaining group would
+    # fail the same way -- so stop at the first one rather than hammering
+    # all ~47 groups. HTTP errors (a response came back) don't trip this.
     celestrak_total = 0
     for group in CELESTRAK_GROUPS:
+        if celestrak_recently_attempted(group):
+            print(f'  [celestrak] {group}: skipped (attempted < {MIN_REFETCH_SEC // 3600}h ago)')
+            continue
+        record_celestrak_attempt(group)
         try:
             result = fetch_celestrak_group(group)
             if result['skipped']:
@@ -408,6 +447,10 @@ def run_ingestion():
                 stored = store_objects(result['objects'], seen_ids, group)
                 celestrak_total += stored
                 print(f'  [celestrak] {group}: {stored} objects')
+        except (urllib.error.URLError, socket.timeout) as err:
+            print(f'  [celestrak] {group}: ERROR {err}')
+            print('  [celestrak] connection failed -- skipping remaining groups this run')
+            break
         except Exception as err:
             print(f'  [celestrak] {group}: ERROR {err}')
         time.sleep(GROUP_DELAY_SEC)
