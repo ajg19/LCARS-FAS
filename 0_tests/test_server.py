@@ -58,6 +58,32 @@ def test_news_endpoint_respects_limit_param():
     assert len(json.loads(body)) <= 3
 
 
+def test_news_endpoint_topic_filter_returns_json_list():
+    status, headers, body = call_app('/api/news', 'topic=launch&limit=5')
+    assert status == '200 OK'
+    assert len(json.loads(body)) <= 5
+
+
+def test_news_endpoint_unknown_topic_returns_empty_list():
+    status, headers, body = call_app('/api/news', 'topic=noSuchTopic')
+    assert status == '200 OK'
+    assert json.loads(body) == []
+
+
+def test_news_endpoint_topic_is_sql_injection_safe():
+    status, headers, body = call_app('/api/news', "topic=%27%29%3B+DROP+TABLE+articles%3B--")
+    assert status == '200 OK'
+    assert json.loads(body) == []
+
+
+def test_news_topic_counts_endpoint_shape():
+    status, headers, body = call_app('/api/news/topic-counts')
+    assert status == '200 OK'
+    data = json.loads(body)
+    assert isinstance(data['counts'], dict)
+    assert 'updatedAt' in data
+
+
 def test_ground_segment_assets_endpoint_returns_json_list():
     status, headers, body = call_app('/api/ground-segment-assets')
     assert status == '200 OK'

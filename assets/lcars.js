@@ -385,12 +385,106 @@ async function openGsOpsSection() {
     initGsOpsMap();
 }
 
-// Entry point for the 01-ALL button: reveals the news section and
-// renders the full article table (separate from the header marquee ticker).
-function showNewsSection() {
-    showSection('news', 'NEWS');
-    fetchAndRenderFullNewsTable();
+// Entry point for the NEWS menu button and the news filter buttons:
+// reveals the news section and renders the full article table (separate
+// from the header marquee ticker) -- every article for 01-ALL (no topic),
+// or only those tagged with `topic` for 02-10 (see scripts/topicRules.py).
+function showNewsSection(topic = null, topicLabel = null) {
+    showSection('news', topicLabel ? `NEWS - ${topicLabel}` : 'NEWS');
+    fetchAndRenderFullNewsTable(topic);
 }
+
+// News filter buttons, laid out as two rows of five. Colours follow the
+// project's LCARS rules (see the panel-3..11 comment in classic.css): no
+// red (reserved for alerts) and no gold (reserved for ACKNOWLEDGMENTS),
+// and warm/cool alternate in a checkerboard so no button sits next to a
+// similar hue either across a row or down a column. Each topic key must
+// match one in scripts/topicRules.py's TOPIC_RULES. Shared by the filter
+// buttons and the control panel histogram, so a topic's bar is always the
+// same colour as its button.
+const NEWS_TOPICS = [
+    { number: '02', topic: 'launch', label: 'LAUNCH', color: 'var(--orange)' },
+    { number: '03', topic: 'groundSegment', label: 'GRND SGMT', color: 'var(--sky)' },
+    { number: '04', topic: 'deepSpace', label: 'DEEP SPACE', color: 'var(--butterscotch)' },
+    { number: '05', topic: 'finance', label: 'FINANCE', color: 'var(--bluey)' },
+    { number: '06', topic: 'orgs', label: 'ORGS', color: 'var(--sunflower)' },
+    { number: '07', topic: 'onOrbit', label: 'ON-ORBIT', color: 'var(--ice)' },
+    { number: '08', topic: 'defence', label: 'DEFENCE', color: 'var(--peach)' },
+    { number: '09', topic: 'sky', label: 'SKY', color: 'var(--moonlit-violet)' },
+    { number: '10', topic: 'eo', label: 'EO', color: 'var(--lima-bean)' },
+];
+
+// Per-topic article totals from api/news/topic-counts (stored in the DB by
+// scripts/tagNews.py on every refresh) -- fetched once per page load, then
+// reused every time the news section reopens.
+let newsTopicCountsPromise = null;
+
+function fetchNewsTopicCounts() {
+    if (!newsTopicCountsPromise) {
+        newsTopicCountsPromise = fetch('api/news/topic-counts')
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status}`);
+                }
+                return response.json();
+            })
+            .catch((error) => {
+                console.error('Could not load news topic counts:', error);
+                newsTopicCountsPromise = null; // let the next visit retry
+                return { counts: {} };
+            });
+    }
+    return newsTopicCountsPromise;
+}
+
+// LCARS-style horizontal histogram in the control panel, one bar per
+// filter button in button order, each in its button's colour, scaled to
+// the largest topic. Left blank if there are no counts yet.
+async function renderNewsTopicHistogram() {
+    const wrapper = document.getElementById('default');
+    if (!wrapper) {
+        return;
+    }
+    wrapper.innerHTML = '';
+
+    const { counts = {} } = await fetchNewsTopicCounts();
+
+    // The fetch may resolve after the user has moved to another section,
+    // whose own content now owns #default.
+    const newsSection = document.querySelector('main [data-section="news"]');
+    if (!newsSection || newsSection.style.display === 'none') {
+        return;
+    }
+
+    const maxCount = Math.max(0, ...NEWS_TOPICS.map(({ topic }) => counts[topic] || 0));
+    if (maxCount === 0) {
+        return;
+    }
+
+    wrapper.innerHTML = `<div class="news-histogram">${NEWS_TOPICS.map(({ topic, label, color }) => {
+        const count = counts[topic] || 0;
+        const widthPercent = (count / maxCount) * 100;
+        return `
+            <div class="news-histogram-label">${label}</div>
+            <div class="news-histogram-track">
+                <div class="news-histogram-bar" style="width:${widthPercent}%; background-color:${color}"></div>
+            </div>
+            <div class="news-histogram-count" style="color:${color}">${count}</div>`;
+    }).join('')}</div>`;
+}
+
+registerPanelControls('news', {
+    defaultAreaMode: 'custom',
+    renderDefaultArea: renderNewsTopicHistogram,
+    buttons: [
+        { label: '01-ALL', color: 'var(--african-violet)', onClick: () => showNewsSection() },
+        ...NEWS_TOPICS.map(({ number, topic, label, color }) => ({
+            label: `${number}-${label}`,
+            color,
+            onClick: () => showNewsSection(topic, label),
+        })),
+    ],
+});
 
 /* ==========================================================================
    SECTION 2: SPACE WEATHER DATA SUBSYSTEM (NASA DONKI Integration)
@@ -555,13 +649,39 @@ function renderNewsTable(newsItems) {
    SECTION 3b: FULL NEWS TABLE (Detail View — triggered by 01-ALL button)
    ========================================================================== */
 
-// Reuses globalNewsData (populated by fetchAndRenderNews if not already loaded)
-// and renders every row, not just the 7-row marquee subset.
-async function fetchAndRenderFullNewsTable() {
+// Bumped on every call to fetchAndRenderFullNewsTable(), so a slow
+// response for an earlier filter button can't overwrite a later one's.
+let fullNewsTableRequestID = 0;
+
+// Unfiltered (topic null): reuses globalNewsData (populated by
+// fetchAndRenderNews if not already loaded) and renders every row, not just
+// the 7-row marquee subset. Filtered: always fetches that topic fresh --
+// globalNewsData is the unfiltered set the ticker shares, so filtered rows
+// must never be cached in it.
+async function fetchAndRenderFullNewsTable(topic = null) {
     const wrapper = document.getElementById('news-table-wrapper');
     if (!wrapper) return;
 
+    const requestID = ++fullNewsTableRequestID;
+
     try {
+        if (topic) {
+            const response = await fetch(`api/news?limit=50&topic=${encodeURIComponent(topic)}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error ${response.status}`);
+            }
+            const result = await response.json();
+            if (requestID !== fullNewsTableRequestID) return;
+            const topicItems = sortNewsByDateDesc(Array.isArray(result) ? result : []);
+            renderFullNewsTable(topicItems);
+            if (topicItems.length === 0) {
+                wrapper.insertAdjacentHTML('beforeend',
+                    '<div class="news-no-articles">NO ARTICLES</div>');
+            }
+            updateEoAckGap();
+            return;
+        }
+
         if (!Array.isArray(globalNewsData) || globalNewsData.length === 0) {
             const response = await fetch('api/news?limit=50');
             if (!response.ok) {
@@ -579,9 +699,11 @@ async function fetchAndRenderFullNewsTable() {
             globalNewsData = sortNewsByDateDesc(globalNewsData);
         }
 
+        if (requestID !== fullNewsTableRequestID) return;
         renderFullNewsTable(globalNewsData);
 
     } catch (error) {
+        if (requestID !== fullNewsTableRequestID) return;
         console.error("Error fetching news for full table view:", error);
         wrapper.innerHTML =
             `<div style="color: var(--red); padding: 10px; font-weight: bold;">
@@ -991,6 +1113,9 @@ async function initLiveFeedCycler() {
    ========================================================================== */
 
 window.addEventListener('DOMContentLoaded', fetchAndRenderNews);
+// The landing page is the news view, so its nav shows the news filter
+// buttons from the start -- nav strip only, leaving the ticker in #default.
+window.addEventListener('DOMContentLoaded', () => renderControlAreaButtons('news'));
 window.addEventListener('DOMContentLoaded', initLiveFeedCycler);
 window.addEventListener('resize', () => {
     if (!controlAreaSectionActive && globalNewsData.length > 0) {

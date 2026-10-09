@@ -14,6 +14,10 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 
+from fillerRules import classifyFiller
+from pruneNews import pruneNews, vacuumDatabase
+from tagNews import retagAllArticles
+
 # The DB and .env live in the repo root; this script sits in scripts/, one level down.
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -38,13 +42,20 @@ db.execute('''
 existing_columns = db.execute('PRAGMA table_info(articles)').fetchall()
 if not any(col[1] == 'description' for col in existing_columns):
     db.execute('ALTER TABLE articles ADD COLUMN description TEXT')
+
+# api/news always sorts on published_date -- without this, every request
+# sorts the whole table.
+db.execute('CREATE INDEX IF NOT EXISTS articlesByPublishedDate ON articles (published_date)')
 db.commit()
 
-# 3. SQL to insert without duplication into the DB
+# 3. SQL to insert without duplication into the DB. The url UNIQUE
+# constraint catches a re-fetched article; DUPLICATE_TITLE_SQL catches the
+# same article republished under a second URL (e.g. NASA's doubled APODs).
 INSERT_ARTICLE_SQL = '''
     INSERT OR IGNORE INTO articles (source, title, url, published_date, description)
     VALUES (?, ?, ?, ?, ?)
 '''
+DUPLICATE_TITLE_SQL = 'SELECT 1 FROM articles WHERE source = ? AND title = ? LIMIT 1'
 
 # 4. List of space industry RSS feeds -- kept identical to readNews.js,
 # including its existing duplicate 'ESA EO' entry and the stray leading tab
@@ -209,9 +220,18 @@ def fetch_all_feeds():
                 print(f' -> Adding just the top 100 articles from within the last week out of {len(articles_within_last_week)}) articles in total.')
 
             new_items_count = 0
+            fillerSkipped = 0
+            duplicatesSkipped = 0
 
-            # Commit items to database
+            # Commit items to database -- filler (see fillerRules.py) is
+            # dropped here and never stored.
             for article in articles_to_insert:
+                if classifyFiller(feed['name'], article['title']):
+                    fillerSkipped += 1
+                    continue
+                if db.execute(DUPLICATE_TITLE_SQL, (feed['name'], article['title'])).fetchone():
+                    duplicatesSkipped += 1
+                    continue
                 cursor = db.execute(INSERT_ARTICLE_SQL, (
                     feed['name'], article['title'], article['url'], article['date'], article['description'],
                 ))
@@ -219,7 +239,8 @@ def fetch_all_feeds():
                     new_items_count += 1
             db.commit()
 
-            print(f' -> Done. Added {new_items_count} brand new articles.\n')
+            print(f' -> Done. Added {new_items_count} brand new articles, '
+                  f'skipped {fillerSkipped} filler, {duplicatesSkipped} duplicate titles.\n')
         except Exception as error:
             print(f' -> Error synchronizing {feed["name"]}: {error}\n')
 
@@ -236,3 +257,12 @@ def fetch_all_feeds():
 # process, not a cron-invoked one, so it was dropped here deliberately.
 if __name__ == '__main__':
     fetch_all_feeds()
+
+    # Housekeeping after every fetch: drop filler/duplicates/anything older
+    # than six months, re-tag every article for the news filter buttons
+    # (so topicRules.py changes reach old articles too), then reclaim the
+    # space the deletes freed.
+    pruneCounts = pruneNews(db)
+    print(f'Pruned: {pruneCounts or "nothing"}')
+    retagAllArticles(db)
+    vacuumDatabase(db)

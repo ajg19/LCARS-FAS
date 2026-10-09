@@ -111,12 +111,55 @@ def handle_news(query_params, start_response):
         except (TypeError, ValueError):
             limit = 50
 
+        # Optional, repeatable: ?topic=launch&topic=eo returns articles
+        # tagged with ANY of the given topics (see scripts/topicRules.py).
+        # Unknown topics simply match nothing.
+        topics = [topic for topic in query_params.get('topic', []) if topic]
+        where_clause = ''
+        params = []
+        if topics:
+            placeholders = ','.join('?' * len(topics))
+            where_clause = f'WHERE id IN (SELECT articleID FROM articleTopics WHERE topic IN ({placeholders}))'
+            params = topics
+
         # MODIFIED: Added 'url' to the SELECT statement (kept in sync with server.js)
-        rows = db.execute(
-            'SELECT title, source, published_date, url, description FROM articles ORDER BY published_date DESC LIMIT ?',
-            (limit,),
-        ).fetchall()
+        try:
+            rows = db.execute(
+                f'SELECT title, source, published_date, url, description FROM articles {where_clause} '
+                'ORDER BY published_date DESC LIMIT ?',
+                params + [limit],
+            ).fetchall()
+        except sqlite3.OperationalError as e:
+            # A database not yet tagged (no tagNews.py / readNews.py run since
+            # this was deployed) has no articleTopics table -- nothing is
+            # tagged yet, so a topic filter matches nothing.
+            if topics and 'no such table' in str(e):
+                rows = []
+            else:
+                raise
         return json_response(start_response, '200 OK', rows_to_dicts(rows))
+    except Exception as e:
+        return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
+
+
+def handle_news_topic_counts(start_response):
+    """Per-topic article totals for the news control panel histogram --
+    precomputed by scripts/tagNews.py on every refresh, so this is a plain
+    read rather than a count over articleTopics on every page load."""
+    try:
+        try:
+            rows = db.execute('SELECT topic, articleCount, updatedAt FROM newsTopicCounts').fetchall()
+        except sqlite3.OperationalError as e:
+            # Not tagged yet since this was deployed -- no counts to show.
+            if 'no such table' in str(e):
+                rows = []
+            else:
+                raise
+        payload = {
+            'counts': {row['topic']: row['articleCount'] for row in rows},
+            'updatedAt': max((row['updatedAt'] for row in rows), default=None),
+        }
+        return json_response(start_response, '200 OK', payload)
     except Exception as e:
         return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
 
@@ -342,6 +385,8 @@ def application(environ, start_response):
 
     if method == 'GET' and path_info == '/api/news':
         return handle_news(query_params, start_response)
+    if method == 'GET' and path_info == '/api/news/topic-counts':
+        return handle_news_topic_counts(start_response)
     if method == 'GET' and path_info == '/api/ground-segment-assets':
         return handle_ground_segment_assets(start_response)
     if method == 'GET' and path_info == '/api/orbital-objects':
