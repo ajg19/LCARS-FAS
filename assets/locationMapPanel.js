@@ -5,14 +5,14 @@
    (assets/mapCore.js) + lat/lon graticule + day/night terminator, opened
    zoomed in on the user's location, with an otherwise-empty control-panel
    default area and a six-button set whose first button opens the shared
-   LAT/LON/PLACE entry form (toggleUserLocationForm(), onOrbitPanel.js).
+   LAT/LON/PLACE entry form (toggleUserLocationForm(), grdTrackPanel.js).
    Location comes from the persisted observerLocation if set, otherwise an
-   IP geolocation via ensureObserverLocation() (onOrbitPanel.js) -- the
-   same source and store the on-orbit section uses.
+   IP geolocation via ensureObserverLocation() (grdTrackPanel.js) -- the
+   same source and store the grd-track section uses.
 
    registerLocationMapPanel() builds one such panel and returns its
    initMap(). EO (assets/eoPanel.js) and GS OPS (assets/gsOpsPanel.js) are
-   each a one-call wrapper. mapCore.js and onOrbitPanel.js are loaded by
+   each a one-call wrapper. mapCore.js and grdTrackPanel.js are loaded by
    the section's open* function in lcars.js before any of this runs; this
    file must load before the wrapper that calls registerLocationMapPanel().
    ========================================================================== */
@@ -40,7 +40,7 @@ function registerLocationMapPanel({ sectionId, containerId, buttonLabel, extraBu
     let cityLabelsVisible = false;
 
     // "You are here" dot -- plain white circle marker, same styling as the
-    // on-orbit panel's own observer marker. Old one removed before a new
+    // grd-track panel's own observer marker. Old one removed before a new
     // one is added (Leaflet has no in-place "move marker").
     function renderUserLocationMarker() {
         if (!map || typeof L === 'undefined') {
@@ -81,7 +81,7 @@ function registerLocationMapPanel({ sectionId, containerId, buttonLabel, extraBu
 
     // City-name labels from assets/cities.json -- the curated ~360-entry
     // set the TGT/GS LOCN place autocomplete also uses (loadCityDataset()
-    // lives in onOrbitPanel.js, guaranteed loaded before any of this runs
+    // lives in grdTrackPanel.js, guaranteed loaded before any of this runs
     // via the section's open* function). Only the cities inside the
     // current viewport are drawn, capped at LOCATION_MAP_CITY_LABEL_MAX,
     // and nothing at all below LOCATION_MAP_CITY_LABEL_MIN_ZOOM. Rebuilt
@@ -129,7 +129,7 @@ function registerLocationMapPanel({ sectionId, containerId, buttonLabel, extraBu
     // (lcars.js), alongside showSection(). Runs once (guarded by `map`);
     // showSection() has already made the section visible by the time this
     // runs, which matters because Leaflet can't size itself inside a
-    // display:none container. Same shape as initOnOrbitMap() /
+    // display:none container. Same shape as initGrdTrackMap() /
     // initInfrastructureMap().
     async function initMap() {
         await loadScriptOnce('assets/mapCore.js');
@@ -142,7 +142,7 @@ function registerLocationMapPanel({ sectionId, containerId, buttonLabel, extraBu
             map.invalidateSize();
             // Keep the marker in step with any location change made
             // elsewhere since the last visit, but leave the user's own
-            // pan/zoom alone -- matches initOnOrbitMap()'s "preserve the
+            // pan/zoom alone -- matches initGrdTrackMap()'s "preserve the
             // view on re-entry" behaviour.
             renderUserLocationMarker();
             return;
@@ -160,7 +160,7 @@ function registerLocationMapPanel({ sectionId, containerId, buttonLabel, extraBu
             // L.Polygon; initBaseMap() above has already awaited it.
             // Styling and the 360-degree longitudeRange (matched to this
             // app's single non-repeating world copy) are copied from
-            // initOnOrbitMap() so every map shades night identically.
+            // initGrdTrackMap() so every map shades night identically.
             // Added before the graticule so the grid stays legible on top
             // of the shading. Refreshed once a minute -- pure client-side
             // recompute, no network -- the terminator only moves ~0.25 deg
@@ -215,8 +215,8 @@ function registerLocationMapPanel({ sectionId, containerId, buttonLabel, extraBu
     }
 
     // Button 1 opens the shared location form (--peach, matching the
-    // on-orbit USR LOCN button it mirrors). Button 2 is the CITY LBL
-    // toggle (--bluey, the on-orbit convention for a data/view-state
+    // grd-track USR LOCN button it mirrors). Button 2 is the CITY LBL
+    // toggle (--bluey, the grd-track convention for a data/view-state
     // toggle, with a dynamic ON/OFF label like GRD TRCK). Anything the
     // section passes in `extraButtons` fills slot 3 onward; with 2 base +
     // 2 extra (GS OPS: GRND STN, VIS NOW) the grid is a tidy 2x2, each

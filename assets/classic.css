@@ -84,7 +84,7 @@
 	  colour, pink, used by no other menu button, so it reads as the
 	  separate utility action.
 	*/
-	--panel-4-color: var(--tng-amber);       /* GRD-TRACK (section id on-orbit) */
+	--panel-4-color: var(--tng-amber);       /* GRD-TRACK (section id grd-track) */
 	--panel-4b-color: var(--tng-lavender);   /* ON-ORBIT overview -- cool between two warm neighbours */
 	--panel-5-color: var(--tng-sand);        /* GS OPS */
 	--panel-6-color: var(--tng-periwinkle);  /* DEEP SPACE */
@@ -1219,9 +1219,9 @@ button:active {
 }
 
 /*
-  Wraps every Leaflet map panel (#on-orbit-map, #gs-ops-map,
+  Wraps every Leaflet map panel (#grd-track-map, #gs-ops-map,
   #infrastructure-map), so any absolutely-positioned overlay content added
-  to one (.location-overlay -- LAT/LON + UTC on on-orbit) has something
+  to one (.location-overlay -- LAT/LON + UTC on grd-track) has something
   other than the whole document to position itself against -- otherwise it
   would anchor to the page, not the map's own corner. A no-op for gs-ops
   and infrastructure, which have no overlay content, but kept structurally
@@ -1426,7 +1426,7 @@ button:active {
 }
 
 /* 2 buttons (SEARCH, ADD SELECTION) stacked -- SELECT ALL/CLEAR were
-   dropped, see renderAddObjectFormMarkup()'s own comment in onOrbitPanel.js
+   dropped, see renderAddObjectFormMarkup()'s own comment in grdTrackPanel.js
    for why. */
 .add-object-actions {
 	display: grid;
@@ -1783,7 +1783,7 @@ button:active {
 
 /* --- GS OPS control area: same text as the landing page's data table ---
    Scoped by #default[data-control-section="gs-ops"] (set in updateControlArea(),
-   lcars.js) so the location form it shares with ON-ORBIT and EO only
+   lcars.js) so the location form it shares with GRD-TRACK and EO only
    changes here. Covers the VIS NOW status panel, the GRND STN form and the
    GS LOCN form: 12px uppercase text, gold labels (as the table's
    headings), muted amber values and typed text (as the table's data --
@@ -4101,9 +4101,9 @@ footer:has(.footer-frame) {
 	table-layout: fixed;
 }
 
-/* ON-ORBIT overview's control-area status line (onOrbitOverviewPanel.js)
+/* ON-ORBIT overview's control-area status line (onOrbitPanel.js)
    -- same size and label colour as the rest of the control-area text. */
-.on-orbit-overview-status {
+.on-orbit-status {
 	align-self: center;
 	width: 100%;
 	padding-left: 1.5rem;
@@ -4329,7 +4329,7 @@ footer:has(.footer-frame) {
 
 /*
   Shared by every section that hosts a Leaflet base map (#infrastructure-map,
-  #on-orbit-map, ...). Leaflet requires its container to have a real height,
+  #grd-track-map, ...). Leaflet requires its container to have a real height,
   not just width -- there's no content to size it implicitly the way
   text-based panels have. Full width of the payload area per the design
   brief; height is viewport-relative so it scales sensibly across device
@@ -4410,13 +4410,13 @@ footer:has(.footer-frame) {
    chrome instead of Leaflet's default white box (see leaflet.css's own
    .leaflet-popup-content-wrapper/-tip, both `background: white`). Shared
    by the infrastructure map's asset popups, the GS OPS map's VISIBLE NOW
-   satellite-info popups, and the on-orbit map's GRD TRCK marker popups. */
+   satellite-info popups, and the grd-track map's GRD TRCK marker popups. */
 #infrastructure-map .leaflet-popup-content-wrapper,
 #infrastructure-map .leaflet-popup-tip,
 #gs-ops-map .leaflet-popup-content-wrapper,
 #gs-ops-map .leaflet-popup-tip,
-#on-orbit-map .leaflet-popup-content-wrapper,
-#on-orbit-map .leaflet-popup-tip {
+#grd-track-map .leaflet-popup-content-wrapper,
+#grd-track-map .leaflet-popup-tip {
 	background: #000;
 	/* Soft drop shadow only -- no coloured ring/outline around the box. */
 	box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
@@ -4424,7 +4424,7 @@ footer:has(.footer-frame) {
 
 #infrastructure-map .leaflet-popup-content,
 #gs-ops-map .leaflet-popup-content,
-#on-orbit-map .leaflet-popup-content {
+#grd-track-map .leaflet-popup-content {
 	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
 	text-transform: uppercase;
 	font-weight: bold;
@@ -4450,42 +4450,42 @@ footer:has(.footer-frame) {
 }
 
 /* Satellite-info popups on the GS OPS map (visibleSatPopupHtml() in
-   gsOpsPanel.js) and the on-orbit map (livePositionPopupHtml() in
-   onOrbitPanel.js). The infrastructure map's golden-tanoi/blue-bell/lilac
+   gsOpsPanel.js) and the grd-track map (livePositionPopupHtml() in
+   grdTrackPanel.js). The infrastructure map's golden-tanoi/blue-bell/lilac
    pastels sit too dark on the black box for a dense label:value list, so
    these use the same high-contrast gold-label / space-white-value split
    the map overlay readout (.loc-label/.loc-value) and the data tables use
    -- all canonical LCARS ramp colours, just the bright end of it. The
    base `color` covers any bare text; every field is spanned anyway. */
 #gs-ops-map .leaflet-popup-content,
-#on-orbit-map .leaflet-popup-content {
+#grd-track-map .leaflet-popup-content {
 	color: var(--data-value-color);
 }
 
 #gs-ops-map .leaflet-popup-content .popup-name,
-#on-orbit-map .leaflet-popup-content .popup-name {
+#grd-track-map .leaflet-popup-content .popup-name {
 	color: var(--gold);
 }
 
 #gs-ops-map .leaflet-popup-content .popup-meta,
-#on-orbit-map .leaflet-popup-content .popup-meta {
+#grd-track-map .leaflet-popup-content .popup-meta {
 	color: var(--bluey);
 }
 
 #gs-ops-map .leaflet-popup-content .popup-value,
-#on-orbit-map .leaflet-popup-content .popup-value {
+#grd-track-map .leaflet-popup-content .popup-value {
 	color: var(--data-value-color);
 }
 
 #infrastructure-map .leaflet-container a.leaflet-popup-close-button,
 #gs-ops-map .leaflet-container a.leaflet-popup-close-button,
-#on-orbit-map .leaflet-container a.leaflet-popup-close-button {
+#grd-track-map .leaflet-container a.leaflet-popup-close-button {
 	color: var(--tng-amber); /* was neon-carrot #ff9933 */
 }
 
 #infrastructure-map .leaflet-container a.leaflet-popup-close-button:hover,
 #gs-ops-map .leaflet-container a.leaflet-popup-close-button:hover,
-#on-orbit-map .leaflet-container a.leaflet-popup-close-button:hover {
+#grd-track-map .leaflet-container a.leaflet-popup-close-button:hover {
 	color: var(--tng-salmon); /* was chestnut-rose #cc6666 */
 }
 
@@ -4514,12 +4514,12 @@ footer:has(.footer-frame) {
 }
 
 /* Permanent per-object labels next to each live position marker on the
-   on-orbit map (see updateLivePositions() in lcars.js) -- restyled off
+   grd-track map (see updateLivePositions() in lcars.js) -- restyled off
    Leaflet's default white tooltip box for the same reason the
    infrastructure popups are restyled above. Text colour itself is set
    per-instance inline (matching that object's track colour), not here --
    this only covers the shared box chrome around it. */
-#on-orbit-map .leaflet-tooltip.orbit-marker-label {
+#grd-track-map .leaflet-tooltip.orbit-marker-label {
 	background: transparent;
 	border: none;
 	box-shadow: none;
@@ -4533,7 +4533,7 @@ footer:has(.footer-frame) {
 	padding: 1px 6px;
 }
 
-#on-orbit-map .leaflet-tooltip-right.orbit-marker-label::before {
+#grd-track-map .leaflet-tooltip-right.orbit-marker-label::before {
 	border-right-color: transparent;
 }
 
@@ -4541,9 +4541,9 @@ footer:has(.footer-frame) {
    renderGraticuleLongitudeLabels() in mapCore.js) -- real Leaflet
    tooltips bound to invisible markers at fixed geo coordinates, not
    screen-space DOM elements, so they pan/zoom with the grid lines
-   automatically. Shared by both on-orbit and infrastructure (both render
+   automatically. Shared by both grd-track and infrastructure (both render
    the graticule), so unlike .orbit-marker-label above this isn't scoped
-   to #on-orbit-map. direction: 'center' in the bindTooltip() call
+   to #grd-track-map. direction: 'center' in the bindTooltip() call
    already centers the label on its anchor point and suppresses
    Leaflet's directional arrow, so only the box chrome and text styling
    need overriding here -- same restyle-off-Leaflet's-default-white-box

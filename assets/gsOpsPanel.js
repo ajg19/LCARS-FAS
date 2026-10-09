@@ -10,7 +10,7 @@
    entry-form pattern.
 
    Lazily loaded the first time GS OPS is opened; openGsOpsSection() in
-   lcars.js loads mapCore.js, onOrbitPanel.js and locationMapPanel.js
+   lcars.js loads mapCore.js, grdTrackPanel.js and locationMapPanel.js
    first.
    ========================================================================== */
 
@@ -741,7 +741,7 @@ function saveGroundStation() {
 /* ==========================================================================
    VISIBLE NOW -- satellites currently in line of sight of the station
 
-   Client-side SGP4 (satellite.js, same json2satrec path onOrbitPanel.js's
+   Client-side SGP4 (satellite.js, same json2satrec path grdTrackPanel.js's
    ground tracks use) over every active payload from /api/orbital-objects/
    active (fetched once, cached), propagated to "now". A satellite counts
    as visible when its topocentric elevation from the station meets or
@@ -812,7 +812,7 @@ async function loadActiveSatCatalogue() {
             let satrec;
             try {
                 // json2satrec() wants OMM's UPPER_SNAKE keys -- same
-                // remap onOrbitPanel.js's loadTrackedSatrecs() does.
+                // remap grdTrackPanel.js's loadTrackedSatrecs() does.
                 satrec = satellite.json2satrec({
                     NORAD_CAT_ID: o.noradID,
                     EPOCH: o.epoch,
@@ -830,7 +830,7 @@ async function loadActiveSatCatalogue() {
                 return null;
             }
             // Key names line up with satelliteCatalogRows(m) in
-            // onOrbitPanel.js so the click popup can share it.
+            // grdTrackPanel.js so the click popup can share it.
             return {
                 satrec,
                 noradID: o.noradID,
@@ -909,9 +909,9 @@ function bearingDeg(lat1, lon1, lat2, lon2) {
     return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
 }
 
-// propagatePosition() lives in assets/onOrbitPanel.js, which
+// propagatePosition() lives in assets/grdTrackPanel.js, which
 // openGsOpsSection() (lcars.js) always loads before this file -- shared
-// with the on-orbit panel's ground tracks and live positions.
+// with the grd-track panel's ground tracks and live positions.
 
 // Sub-satellite lat/lon (deg) at `time`, or null if SGP4 gives no
 // position (decayed / numerically diverged element set).
@@ -1158,8 +1158,8 @@ function visibleSatPopupHtml(sat) {
     const { entry } = sat;
     // Live station-relative rows first (why this object is on screen),
     // then the shared catalogue/enrichment block -- same fields and
-    // formatting as the on-orbit GRD TRCK popup (satelliteCatalogRows()
-    // in onOrbitPanel.js).
+    // formatting as the grd-track GRD TRCK popup (satelliteCatalogRows()
+    // in grdTrackPanel.js).
     const link = sat.link || {};
     const linkVerdict = link.state === 'unknown' ? 'UNKNOWN — insufficient satellite data'
         : link.rxCloses && link.txCloses ? 'Tx & Rx'
@@ -1365,7 +1365,7 @@ const gsOpsLocationPanel = registerLocationMapPanel({
         {
             label: 'VIS NOW',
             color: 'var(--bluey)',
-            // Dynamic ON/OFF label like the on-orbit GRD TRCK toggle. The
+            // Dynamic ON/OFF label like the grd-track GRD TRCK toggle. The
             // live count lands in the console on each refresh rather than
             // here -- a button label only re-renders on a button click,
             // so it would go stale between the timer's own refreshes.
@@ -1376,7 +1376,7 @@ const gsOpsLocationPanel = registerLocationMapPanel({
 });
 
 // Global alias so openGsOpsSection() (lcars.js) can call it the same way
-// the other sections call initOnOrbitMap() / initInfrastructureMap().
+// the other sections call initGrdTrackMap() / initInfrastructureMap().
 function initGsOpsMap() {
     return gsOpsLocationPanel.initMap();
 }

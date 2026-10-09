@@ -79,7 +79,7 @@ let currentNewsArticleUrl = null;
 
 // sectionId -> { buttons, defaultAreaMode, renderDefaultArea? }, filled by
 // each panel module at load time via registerPanelControls() below. Every
-// panel (infrastructure, on-orbit, and any future one) is now handled
+// panel (infrastructure, grd-track, and any future one) is now handled
 // generically by updateControlArea() -- see that function -- driven
 // entirely by what's registered here, with no per-section knowledge
 // baked into lcars.js itself.
@@ -161,11 +161,11 @@ function showSection(sectionId, label) {
     // Leaflet map is showing; shown for those sections, hidden everywhere
     // else. zoomMapIn()/zoomMapOut() operate on `currentMap`, kept in sync
     // with whichever section's map is on screen by initInfrastructureMap()/
-    // initOnOrbitMap().
+    // initGrdTrackMap().
     ['map-zoom-in-btn', 'map-zoom-out-btn'].forEach((id) => {
         const btn = document.getElementById(id);
         if (btn) {
-            btn.classList.toggle('is-hidden', !['infrastructure', 'on-orbit', 'eo', 'gs-ops'].includes(sectionId));
+            btn.classList.toggle('is-hidden', !['infrastructure', 'grd-track', 'eo', 'gs-ops'].includes(sectionId));
         }
     });
 
@@ -189,13 +189,13 @@ function showSection(sectionId, label) {
 // something other than a section change alters which buttons should be
 // showing -- e.g. DEL OBJ's view adding DEL SELECTION/CLEAR while it's
 // open. Calling the full updateControlArea() for that would also re-run
-// the panel's renderDefaultArea(), which for on-orbit is
+// the panel's renderDefaultArea(), which for grd-track is
 // fetchAndRenderOrbitalObjectsList() -- exactly the function that resets
 // DEL OBJ's own view state, so it would immediately undo the thing this
 // was meant to enable. This function touches only the nav strip.
 //
 // panel.buttons may be a plain array (every other panel today) or a
-// function returning one (on-orbit, so the set can depend on
+// function returning one (grd-track, so the set can depend on
 // delObjViewActive) -- evaluated fresh on every call either way, so a
 // function-valued buttons list is never stale.
 function renderControlAreaButtons(sectionId) {
@@ -337,37 +337,37 @@ async function openInfrastructureSection() {
     initInfrastructureMap();
 }
 
-// Wired to the GRD-TRACK left-menu button (labelled ON-ORBIT until the
-// ON-ORBIT overview section below was added; its section id stays
-// 'on-orbit'), replacing the old three-statement onclick chain
-// (showSection(); initOnOrbitMap(); detectObserverLocation();). Same
+// Wired to the GRD-TRACK left-menu button (until 2026-10-09 this was the
+// ON-ORBIT section; that name, and the 'on-orbit' section id, now belong
+// to the overview section below), replacing the old three-statement onclick chain
+// (showSection(); initGrdTrackMap(); detectObserverLocation();). Same
 // load-before-show reasoning as openInfrastructureSection() above --
-// onOrbitPanel.js's registerPanelControls() call must have run before
+// grdTrackPanel.js's registerPanelControls() call must have run before
 // showSection() calls updateControlArea(), or the first click renders the
 // placeholder fallback instead of the real buttons.
-async function openOnOrbitSection() {
+async function openGrdTrackSection() {
     await Promise.all([
         loadScriptOnce('assets/mapCore.js'),
-        loadScriptOnce('assets/onOrbitPanel.js'),
+        loadScriptOnce('assets/grdTrackPanel.js'),
     ]);
-    showSection('on-orbit', 'GRD TRACK');
-    initOnOrbitMap();
+    showSection('grd-track', 'GRD TRACK');
+    initGrdTrackMap();
     detectObserverLocation();
 }
 
 // Wired to the ON-ORBIT left-menu button: the overview of what is on orbit
 // (nationality, sector, inclination, altitude). Same load-before-show
 // reasoning as above -- the panel module registers its control area.
-async function openOnOrbitOverviewSection() {
-    await loadScriptOnce('assets/onOrbitOverviewPanel.js');
-    showSection('on-orbit-overview', 'ON ORBIT');
+async function openOnOrbitSection() {
+    await loadScriptOnce('assets/onOrbitPanel.js');
+    showSection('on-orbit', 'ON ORBIT');
 }
 
 // Wired to the EO left-menu button. Same load-before-show reasoning as
-// openOnOrbitSection() -- the panel module's registerPanelControls() call
+// openGrdTrackSection() -- the panel module's registerPanelControls() call
 // must have run before showSection() -> updateControlArea() looks the
 // section up, or the first click falls back to the 1..6 placeholder
-// buttons. mapCore.js / onOrbitPanel.js / locationMapPanel.js have no
+// buttons. mapCore.js / grdTrackPanel.js / locationMapPanel.js have no
 // load-order deps among themselves (they only call into each other from
 // click-time handlers), but eoPanel.js calls registerLocationMapPanel()
 // at parse time, so it must load after locationMapPanel.js -- hence the
@@ -375,7 +375,7 @@ async function openOnOrbitOverviewSection() {
 async function openEoSection() {
     await Promise.all([
         loadScriptOnce('assets/mapCore.js'),
-        loadScriptOnce('assets/onOrbitPanel.js'),
+        loadScriptOnce('assets/grdTrackPanel.js'),
         loadScriptOnce('assets/locationMapPanel.js'),
     ]);
     await loadScriptOnce('assets/eoPanel.js');
@@ -390,7 +390,7 @@ async function openEoSection() {
 async function openGsOpsSection() {
     await Promise.all([
         loadScriptOnce('assets/mapCore.js'),
-        loadScriptOnce('assets/onOrbitPanel.js'),
+        loadScriptOnce('assets/grdTrackPanel.js'),
         loadScriptOnce('assets/locationMapPanel.js'),
     ]);
     await loadScriptOnce('assets/gsOpsPanel.js');
@@ -974,7 +974,7 @@ function backToNewsList() {
    Leaflet base map, per-panel map init, observer location, the plotted-
    objects list, add-object search/ground track/footprints) has moved out
    into assets/mapCore.js, assets/groundSegmentPanel.js, and
-   assets/onOrbitPanel.js -- see registerPanelControls() above for how
+   assets/grdTrackPanel.js -- see registerPanelControls() above for how
    each of those panels plugs back into this file.
    ========================================================================== */
 
@@ -1011,7 +1011,7 @@ function loadScriptOnce(src) {
 // block rather than a separate widget. Kept as its own element instead of
 // folded into renderLocationReadout()'s innerHTML so a once-a-second tick
 // doesn't need to re-render the LAT/LON grid too. Runs unconditionally
-// from page load rather than only while ON-ORBIT is open -- the element
+// from page load rather than only while GRD-TRACK is open -- the element
 // sits inert (and this is a single textContent write) while its section
 // is hidden, cheap enough not to bother gating.
 function renderUtcClock() {
@@ -1033,8 +1033,8 @@ renderUtcClock();
 // Sections 5 (observer location, except renderUtcClock() below which runs
 // unconditionally from page load), 6 (plotted orbital objects list), and
 // 6b (add object search / ground track / live position / footprints) now
-// live in assets/onOrbitPanel.js, alongside the rest of the on-orbit
-// panel's own code, plus the on-orbit terminator/graticule/map-init code
+// live in assets/grdTrackPanel.js, alongside the rest of the grd-track
+// panel's own code, plus the grd-track terminator/graticule/map-init code
 // that used to sit in Section 4 above.
 
 

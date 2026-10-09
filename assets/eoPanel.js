@@ -4,7 +4,7 @@
    Thin wrapper around registerLocationMapPanel() (assets/locationMapPanel.js)
    -- see that file for the shared base map + graticule + day/night
    terminator + user-location behaviour. Lazily loaded the first time EO
-   is opened; openEoSection() in lcars.js loads mapCore.js, onOrbitPanel.js
+   is opened; openEoSection() in lcars.js loads mapCore.js, grdTrackPanel.js
    and locationMapPanel.js first.
 
    Payload: the shared map, opened zoomed in on the user's location.
@@ -19,7 +19,7 @@ const eoLocationPanel = registerLocationMapPanel({
 });
 
 // Global alias so openEoSection() (lcars.js) can call it the same way the
-// other sections call initOnOrbitMap() / initInfrastructureMap().
+// other sections call initGrdTrackMap() / initInfrastructureMap().
 function initEoMap() {
     return eoLocationPanel.initMap();
 }

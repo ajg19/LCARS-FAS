@@ -2,16 +2,16 @@
    MAP CORE -- shared Leaflet base map + antimeridian clipping
 
    Split out of lcars.js so it's loaded once, lazily, by whichever of
-   on-orbit / infrastructure opens first, and reused (not re-fetched) by
+   grd-track / infrastructure opens first, and reused (not re-fetched) by
    the other. Both are the only two panels that use a Leaflet map --
    nothing else in the app should come to depend on this file.
 
    Leaflet, its CSS, and the world boundary file are all self-hosted under
    assets/leaflet/ and loaded lazily -- none of it is fetched until a panel
-   that uses it (Infrastructure, On-Orbit) is actually opened, so it never
+   that uses it (Infrastructure, GRD-TRACK) is actually opened, so it never
    counts against the initial-page-load budget. initBaseMap() draws the
    shared boundary layer for any container; initInfrastructureMap() and
-   initOnOrbitMap() (in their own panel files) each call it once and then
+   initGrdTrackMap() (in their own panel files) each call it once and then
    add their own section-specific markers on top. Boundary data is
    world.json (plain GeoJSON, github.com/datasets/geo-countries, ~14MB) --
    a real jump against the low-bandwidth target this project otherwise
@@ -21,11 +21,11 @@
    ========================================================================== */
 
 let infrastructureMap = null;
-let onOrbitMap = null;
+let grdTrackMap = null;
 
 // Whichever of the maps above (or a location-map panel's map, see
 // registerResizableMap() below) is on screen right now -- kept in sync by
-// initInfrastructureMap()/initOnOrbitMap()/initMap() so the single shared
+// initInfrastructureMap()/initGrdTrackMap()/initMap() so the single shared
 // pair of zoom buttons (bar-7/bar-8a) always zooms the map the user is
 // looking at.
 let currentMap = null;
@@ -156,7 +156,7 @@ function fixAntimeridianCrossings(geojson) {
 // (self-hosted, lazy) and draws the base boundary layer into `containerId`.
 // Callers add whatever markers/layers are specific to them on top of the
 // returned map. Split out of what used to be initInfrastructureMap() so
-// initOnOrbitMap() (and any future map panel) gets the identical base map
+// initGrdTrackMap() (and any future map panel) gets the identical base map
 // without duplicating the Leaflet setup or antimeridian handling.
 async function initBaseMap(containerId) {
     await Promise.all([
@@ -205,7 +205,7 @@ async function initBaseMap(containerId) {
 // divisor of 360, so meridians land on nice round longitudes on both
 // axes. Static and drawn once -- unlike the terminator, none of this
 // moves, so there's no update interval to maintain. Shared by both
-// on-orbit and infrastructure, called once each from their own init
+// grd-track and infrastructure, called once each from their own init
 // functions right after initBaseMap() returns.
 const GRATICULE_SPACING_DEG = 30;
 
@@ -263,7 +263,7 @@ function formatLatitudeLabel(lat) {
 // transform on the icon element can't be overridden from a stylesheet).
 // Box chrome/text styling is in classic.css, following the same
 // restyle-off-Leaflet's-default-white-box pattern already used for the
-// on-orbit live-position labels (.orbit-marker-label).
+// grd-track live-position labels (.orbit-marker-label).
 function renderGraticuleLatitudeLabels(map) {
     const labels = [];
     for (let lat = -GRATICULE_LAT_BOUND; lat <= GRATICULE_LAT_BOUND; lat += GRATICULE_SPACING_DEG) {
@@ -370,8 +370,8 @@ let mapResizeDebounceTimer = null;
 window.addEventListener('resize', () => {
     clearTimeout(mapResizeDebounceTimer);
     mapResizeDebounceTimer = setTimeout(() => {
-        if (onOrbitMap) {
-            onOrbitMap.invalidateSize();
+        if (grdTrackMap) {
+            grdTrackMap.invalidateSize();
         }
         if (infrastructureMap) {
             infrastructureMap.invalidateSize();
