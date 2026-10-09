@@ -8,10 +8,10 @@
     <path d="M0,0 L10,4 L0,8 Z" fill="#7a7a7a"/>
   </marker>
 </defs>
-<text x="850.0" y="34" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="bold" fill="#12203f" text-anchor="middle" >LCARS — System Architecture</text>
+<text x="850.0" y="34" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="bold" fill="#12203f" text-anchor="middle" >LCARS-FAS — System Architecture</text>
 <text x="850.0" y="56" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="normal" fill="#5a5a5a" text-anchor="middle" >Process, database and data-flow diagram</text>
 <rect x="55" y="150" width="1590" height="610" rx="14" ry="14" fill="none" stroke="#8a8a8a" stroke-width="2" stroke-dasharray="10,6"/>
-<text x="73" y="164" font-family="Segoe UI, Arial, sans-serif" font-size="14.5" font-weight="bold" fill="#5a5a5a" text-anchor="start" >Backend Host — VPS / PaaS / Node-capable shared host</text>
+<text x="73" y="164" font-family="Segoe UI, Arial, sans-serif" font-size="14.5" font-weight="bold" fill="#5a5a5a" text-anchor="start" >Backend Host — GoDaddy cPanel shared host (Passenger + cron)</text>
 <rect x="90" y="78" width="290" height="66" rx="8" ry="8" fill="#fff3d6" stroke="#a67c00" stroke-width="2"/>
 <text x="235.0" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#12203f" text-anchor="middle" >RSS Feeds</text>
 <text x="235.0" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >SpaceNews, NASA, ESA,</text>
@@ -19,23 +19,23 @@
 <line x1="235.0" y1="144" x2="235.0" y2="210" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
 <rect x="90" y="210" width="290" height="62" rx="8" ry="8" fill="#d9e8ff" stroke="#1b4d8f" stroke-width="2"/>
 <text x="235.0" y="234" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#12203f" text-anchor="middle" >News Ingestion Process</text>
-<text x="235.0" y="254" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >readNews.js</text>
+<text x="235.0" y="254" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >readNews.py — cron, every 30 min</text>
 <line x1="235.0" y1="272" x2="235.0" y2="330" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
 <path d="M 90 344 L 90 408 A 145.0 14 0 0 0 380 408 L 380 344 A 145.0 14 0 0 0 90 344 Z" fill="#dcf3df" stroke="#1b6b3a" stroke-width="2"/>
 <path d="M 90 344 A 145.0 14 0 0 0 380 344 A 145.0 14 0 0 0 90 344 Z" fill="#dcf3df" stroke="#1b6b3a" stroke-width="2"/>
 <text x="235.0" y="372.0" font-family="Segoe UI, Arial, sans-serif" font-size="13.5" font-weight="bold" fill="#12203f" text-anchor="middle" >space_news.db</text>
-<text x="235.0" y="389.0" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#1f4d30" text-anchor="middle" >deduplicated articles</text>
+<text x="235.0" y="389.0" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#1f4d30" text-anchor="middle" >articles + topics</text>
 <rect x="410" y="78" width="290" height="66" rx="8" ry="8" fill="#fff3d6" stroke="#a67c00" stroke-width="2"/>
 <text x="555.0" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#12203f" text-anchor="middle" >CelesTrak / Space-Track</text>
 <text x="555.0" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >TLE orbital element sets</text>
 <line x1="555.0" y1="144" x2="555.0" y2="210" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
 <rect x="410" y="210" width="290" height="62" rx="8" ry="8" fill="#d9e8ff" stroke="#1b4d8f" stroke-width="2"/>
 <text x="555.0" y="234" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#12203f" text-anchor="middle" >TLE Ingestion Process</text>
-<text x="555.0" y="254" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >new</text>
+<text x="555.0" y="254" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >runPipeline.sh — cron, every 12 h</text>
 <line x1="555.0" y1="272" x2="555.0" y2="330" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
 <path d="M 410 344 L 410 408 A 145.0 14 0 0 0 700 408 L 700 344 A 145.0 14 0 0 0 410 344 Z" fill="#dcf3df" stroke="#1b6b3a" stroke-width="2"/>
 <path d="M 410 344 A 145.0 14 0 0 0 700 344 A 145.0 14 0 0 0 410 344 Z" fill="#dcf3df" stroke="#1b6b3a" stroke-width="2"/>
-<text x="555.0" y="372.0" font-family="Segoe UI, Arial, sans-serif" font-size="13.5" font-weight="bold" fill="#12203f" text-anchor="middle" >orbital_cache.db</text>
+<text x="555.0" y="372.0" font-family="Segoe UI, Arial, sans-serif" font-size="13.5" font-weight="bold" fill="#12203f" text-anchor="middle" >orbitalObjects.db</text>
 <text x="555.0" y="389.0" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#1f4d30" text-anchor="middle" >latest TLE sets +</text>
 <text x="555.0" y="404.0" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#1f4d30" text-anchor="middle" >last-refreshed time</text>
 <rect x="730" y="78" width="290" height="66" rx="8" ry="8" fill="#fff3d6" stroke="#a67c00" stroke-width="2"/>
@@ -93,12 +93,12 @@
 <text x="1030.0" y="518.0" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#1f4d30" text-anchor="middle" >orgs / glossary / CubeSats —</text>
 <text x="1030.0" y="533.0" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#1f4d30" text-anchor="middle" >hand-maintained, no live process</text>
 <rect x="1300" y="466" width="310" height="78" rx="8" ry="8" fill="#ffe4e1" stroke="#9c3b3b" stroke-width="2"/>
-<text x="1455.0" y="492" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#12203f" text-anchor="middle" >Process Supervisor</text>
-<text x="1455.0" y="512" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5a2020" text-anchor="middle" >systemd / PM2 / PaaS process manager</text>
-<text x="1455.0" y="529" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#5a2020" text-anchor="middle" >monitors &amp; auto-restarts every process above</text>
+<text x="1455.0" y="492" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#12203f" text-anchor="middle" >Scheduling &amp; Supervision</text>
+<text x="1455.0" y="512" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5a2020" text-anchor="middle" >cron (ingestion) / Passenger (API server)</text>
+<text x="1455.0" y="529" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#5a2020" text-anchor="middle" >cron runs each script; Passenger restarts server.py</text>
 <line x1="1455.0" y1="466" x2="1455.0" y2="422" stroke="#9c3b3b" stroke-width="1.8" marker-end="url(#arrowhead-light)" stroke-dasharray="5,4"/>
 <rect x="90" y="604" width="1520" height="74" rx="8" ry="8" fill="#dff0ff" stroke="#0d4f7a" stroke-width="2.5"/>
-<text x="850" y="634" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="bold" fill="#12203f" text-anchor="middle" >API Server Process (server.js)</text>
+<text x="850" y="634" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="bold" fill="#12203f" text-anchor="middle" >API Server (server.py, WSGI under Passenger)</text>
 <text x="850" y="656" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >Serves JSON/REST endpoints to the client — read-only against every database below</text>
 <line x1="235.0" y1="422" x2="235.0" y2="604" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
 <line x1="555.0" y1="422" x2="555.0" y2="604" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
@@ -129,7 +129,7 @@
 <text x="1310.0" y="814.0" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#4a4a4a" text-anchor="middle" >≥ 20Mbps, latency-tolerant (up to O2O / Moon)</text>
 <text x="90" y="946" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#12203f" text-anchor="start" >Legend</text>
 <rect x="90" y="960" width="40" height="24" rx="8" ry="8" fill="#d9e8ff" stroke="#1b4d8f" stroke-width="2"/>
-<text x="140" y="977" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="normal" fill="#12203f" text-anchor="start" >Node.js process</text>
+<text x="140" y="977" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="normal" fill="#12203f" text-anchor="start" >Python process / script</text>
 <path d="M 320 971 L 320 973 A 20.0 14 0 0 0 360 973 L 360 971 A 20.0 14 0 0 0 320 971 Z" fill="#dcf3df" stroke="#1b6b3a" stroke-width="2"/>
 <path d="M 320 971 A 20.0 14 0 0 0 360 971 A 20.0 14 0 0 0 320 971 Z" fill="#dcf3df" stroke="#1b6b3a" stroke-width="2"/>
 <text x="340.0" y="968.0" font-family="Segoe UI, Arial, sans-serif" font-size="13.5" font-weight="bold" fill="#12203f" text-anchor="middle" ></text>

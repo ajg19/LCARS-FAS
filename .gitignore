@@ -5,3 +5,7 @@ __pycache__/
 *.db-wal
 *.db-shm
 ~$*
+
+# Working backups -- 0_tools/bugs.py writes the first on every save
+bugsDB.xlsx.bak
+ingestionDBs/space_news.db.bak

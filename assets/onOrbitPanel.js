@@ -1694,6 +1694,22 @@ function renderGroundTrackLayer(tracksByObject) {
     groundTrackLayerGroup = L.layerGroup(polylines).addTo(onOrbitMap);
 }
 
+// satellite.propagate() is not consistently safe: for an element set SGP4
+// can't handle (decayed object, numerically diverged mean elements) it
+// may return null/false OR an object with a falsy .position OR throw a
+// RangeError -- so never destructure its result directly. Returns the ECI
+// position vector, or null. Shared with assets/gsOpsPanel.js, which is
+// always loaded after this file.
+function propagatePosition(satrec, time) {
+    let pv;
+    try {
+        pv = satellite.propagate(satrec, time);
+    } catch (error) {
+        return null;
+    }
+    return pv && pv.position ? pv.position : null;
+}
+
 // Fetches the plotted objects and builds one satrec per object, keyed by
 // noradID -- shared by GRD TRCK (which also samples a full orbit's worth
 // of points for the polyline) and SHW FOOT (which only needs each
@@ -1848,7 +1864,7 @@ async function renderGroundTracksForPlottedList() {
             const points = [];
             for (let i = 0; i <= SAMPLE_COUNT; i++) {
                 const time = new Date(startTime + (i / SAMPLE_COUNT) * periodMinutes * 60000);
-                const { position: positionEci } = satellite.propagate(satrec, time);
+                const positionEci = propagatePosition(satrec, time);
                 if (!positionEci) {
                     continue;
                 }
@@ -2011,7 +2027,7 @@ function updateLivePositions() {
     }
     const now = new Date();
     livePositionSatrecs.forEach(({ satrec, style, name, meta }, noradID) => {
-        const { position: positionEci } = satellite.propagate(satrec, now);
+        const positionEci = propagatePosition(satrec, now);
         if (!positionEci) {
             return;
         }

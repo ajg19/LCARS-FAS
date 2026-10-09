@@ -39,14 +39,22 @@
 	--tomato: #f55;
 	--violet-creme: #dbf;
 	--left-frame-top-color: var(--bluey);
-	--left-frame-color: var(--red); /* .panel-9 inherits this color */
+	/* The lower elbow and the left frame behind the menu buttons. A cool
+	   frame colour, not red: red is reserved for alerts, and as the largest
+	   block on screen a red frame read as one. Continued into the bottom
+	   bar by bar-6 and the lower inner corner, the same way the bluey top
+	   elbow runs into bar-1. */
+	--left-frame-color: var(--moonlit-violet);
 	--left-frame-padding: .75rem;
 	--corner-color-top: var(--bluey);
-	--corner-color-bottom: var(--red);
+	--corner-color-bottom: var(--moonlit-violet);
 	--panel-1-color: var(--african-violet);
 	/*
 	  panel-3 through panel-11 are the main section nav buttons (see the
-	  comment above that rule). All warm tones, no red/blue: red is
+	  comment above that rule). panel-3 (NEWS) has no colour of its own on
+	  purpose: it sits partly inside the lower elbow's curve, so it is
+	  transparent and shows --left-frame-color as part of the elbow -- an
+	  opaque background would square off the curve. The rest: all warm tones, no red/blue: red is
 	  reserved for alert states elsewhere, blue for diagnostic/science
 	  readouts, neither of which fits routine navigation. Gold stays
 	  reserved for panel-ack (ACKNOWLEDGMENTS) so it reads as the distinct
@@ -70,8 +78,8 @@
 	--bar-2-color: var(--orange);
 	--bar-3-color: var(--african-violet);
 	--bar-4-color: var(--african-violet);
-	--bar-5-color: var(--red);
-	--bar-6-color: var(--red);
+	--bar-5-color: var(--golden-orange); /* warm end-cap after bar-3/4's violet, as bar-10 ends the bottom bar */
+	--bar-6-color: var(--moonlit-violet); /* continues the lower elbow (--left-frame-color) */
 	--bar-7-color: var(--butterscotch);
 	--bar-8a-color: var(--gold);
 	--bar-8b-color: var(--sky);
@@ -137,7 +145,7 @@
 	--nav-1-color: var(--bluey);
 	--nav-2-color: var(--butterscotch);
 	--nav-3-color: var(--orange);
-	--nav-4-color: var(--red);
+	--nav-4-color: var(--african-violet); /* not red -- cycle alternates cool/warm/warm/cool */
 	--button-color: var(--african-violet);
 	--button-color-sidebar: var(--red);
 	--lcars-bar-color: var(--african-violet);
@@ -1093,26 +1101,39 @@ button:active {
    wrapper's fixed height. LCARS bar style: flat colour, pill-rounded
    right end, square left end butting against the right-aligned label.
    Right padding leaves room for the last tick label, centred on the axis
-   end. */
+   end. Drawn as two halves side by side (.news-histogram-pair), each five
+   rows tall rather than one nine-row column, so the text can be larger --
+   HISTOGRAM_ROWS in lcars.js must match the repeat() count below. */
+.news-histogram-pair {
+	display: flex;
+	gap: 1.5rem;
+	width: 100%;
+	height: 100%;
+}
+
 .news-histogram {
 	display: grid;
 	grid-template-columns: max-content 1fr;
-	grid-template-rows: repeat(9, 1fr) auto;
+	grid-template-rows: repeat(5, 1fr) auto;
+	flex: 1;
+	min-width: 0;
 	padding-right: 1rem;
 	align-items: center;
 	column-gap: .5rem;
-	width: 100%;
 	height: 100%;
 	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
-	font-size: var(--dc-font-size);
+	/* Same size as the nav buttons beside it: 1rem, and .875rem at <=1300px
+	   (see the matching nav button rule there). */
+	font-size: 1rem;
 	font-weight: bold;
 	text-transform: uppercase;
 	line-height: 1;
 }
 
+/* Same colour as the dates in the news table (.news-col-date). */
 .news-histogram-label {
 	text-align: right;
-	color: var(--data-cascade-color);
+	color: var(--gold);
 }
 
 .news-histogram-track {
@@ -1129,7 +1150,9 @@ button:active {
    step, aligned under the bars' track so 0 sits at the bars' left end. */
 .news-histogram-axis {
 	position: relative;
-	height: calc(var(--dc-row-height) * 1.5);
+	/* In em, so it grows with .news-histogram's font -- tick mark plus one
+	   line of tick label. */
+	height: 1.6em;
 	border-top: 2px solid var(--data-cascade-color);
 }
 
@@ -2182,6 +2205,11 @@ nav button:nth-child(4n) {
 		font-size: .875rem;
 		padding-inline: 1.25rem;
 	}
+
+	/* Kept the same size as the nav buttons beside it. */
+	.news-histogram {
+		font-size: .875rem;
+	}
 }
 
 @media (max-width: 780px) {
@@ -2626,6 +2654,9 @@ nav button:nth-child(4n) {
 	font: inherit;
 	text-align: right;
 	color: black;
+	/* Transparent so panel-3 (NEWS) shows the left frame's colour and reads
+	   as part of the elbow it overlaps -- see --left-frame-color. Never give
+	   panel-3 its own background: it would square off the elbow's curve. */
 	background-color: transparent;
 }
 

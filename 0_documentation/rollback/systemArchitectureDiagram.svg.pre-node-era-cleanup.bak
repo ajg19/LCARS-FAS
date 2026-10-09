@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1700 1010" width="1700" height="1010">
+<rect x="0" y="0" width="1700" height="1180" fill="#ffffff"/>
+<defs>
+  <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+    <path d="M0,0 L10,4 L0,8 Z" fill="#33415c"/>
+  </marker>
+  <marker id="arrowhead-light" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+    <path d="M0,0 L10,4 L0,8 Z" fill="#7a7a7a"/>
+  </marker>
+</defs>
+<text x="850.0" y="34" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="bold" fill="#12203f" text-anchor="middle" >LCARS — System Architecture</text>
+<text x="850.0" y="56" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="normal" fill="#5a5a5a" text-anchor="middle" >Process, database and data-flow diagram</text>
+<rect x="55" y="150" width="1590" height="610" rx="14" ry="14" fill="none" stroke="#8a8a8a" stroke-width="2" stroke-dasharray="10,6"/>
+<text x="73" y="164" font-family="Segoe UI, Arial, sans-serif" font-size="14.5" font-weight="bold" fill="#5a5a5a" text-anchor="start" >Backend Host — VPS / PaaS / Node-capable shared host</text>
+<rect x="90" y="78" width="290" height="66" rx="8" ry="8" fill="#fff3d6" stroke="#a67c00" stroke-width="2"/>
+<text x="235.0" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#12203f" text-anchor="middle" >RSS Feeds</text>
+<text x="235.0" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >SpaceNews, NASA, ESA,</text>
+<text x="235.0" y="138" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >Space.com, etc.</text>
+<line x1="235.0" y1="144" x2="235.0" y2="210" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<rect x="90" y="210" width="290" height="62" rx="8" ry="8" fill="#d9e8ff" stroke="#1b4d8f" stroke-width="2"/>
+<text x="235.0" y="234" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#12203f" text-anchor="middle" >News Ingestion Process</text>
+<text x="235.0" y="254" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >readNews.js</text>
+<line x1="235.0" y1="272" x2="235.0" y2="330" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<path d="M 90 344 L 90 408 A 145.0 14 0 0 0 380 408 L 380 344 A 145.0 14 0 0 0 90 344 Z" fill="#dcf3df" stroke="#1b6b3a" stroke-width="2"/>
+<path d="M 90 344 A 145.0 14 0 0 0 380 344 A 145.0 14 0 0 0 90 344 Z" fill="#dcf3df" stroke="#1b6b3a" stroke-width="2"/>
+<text x="235.0" y="372.0" font-family="Segoe UI, Arial, sans-serif" font-size="13.5" font-weight="bold" fill="#12203f" text-anchor="middle" >space_news.db</text>
+<text x="235.0" y="389.0" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#1f4d30" text-anchor="middle" >deduplicated articles</text>
+<rect x="410" y="78" width="290" height="66" rx="8" ry="8" fill="#fff3d6" stroke="#a67c00" stroke-width="2"/>
+<text x="555.0" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#12203f" text-anchor="middle" >CelesTrak / Space-Track</text>
+<text x="555.0" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >TLE orbital element sets</text>
+<line x1="555.0" y1="144" x2="555.0" y2="210" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<rect x="410" y="210" width="290" height="62" rx="8" ry="8" fill="#d9e8ff" stroke="#1b4d8f" stroke-width="2"/>
+<text x="555.0" y="234" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#12203f" text-anchor="middle" >TLE Ingestion Process</text>
+<text x="555.0" y="254" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >new</text>
+<line x1="555.0" y1="272" x2="555.0" y2="330" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<path d="M 410 344 L 410 408 A 145.0 14 0 0 0 700 408 L 700 344 A 145.0 14 0 0 0 410 344 Z" fill="#dcf3df" stroke="#1b6b3a" stroke-width="2"/>
+<path d="M 410 344 A 145.0 14 0 0 0 700 344 A 145.0 14 0 0 0 410 344 Z" fill="#dcf3df" stroke="#1b6b3a" stroke-width="2"/>
+<text x="555.0" y="372.0" font-family="Segoe UI, Arial, sans-serif" font-size="13.5" font-weight="bold" fill="#12203f" text-anchor="middle" >orbital_cache.db</text>
+<text x="555.0" y="389.0" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#1f4d30" text-anchor="middle" >latest TLE sets +</text>
+<text x="555.0" y="404.0" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#1f4d30" text-anchor="middle" >last-refreshed time</text>
+<rect x="730" y="78" width="290" height="66" rx="8" ry="8" fill="#fff3d6" stroke="#a67c00" stroke-width="2"/>
+<text x="875.0" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#12203f" text-anchor="middle" >NOAA SWPC / NASA DONKI</text>
+<text x="875.0" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >Kp-index, solar wind,</text>
+<text x="875.0" y="138" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >CME / flare events</text>
+<line x1="875.0" y1="144" x2="875.0" y2="210" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<rect x="730" y="210" width="290" height="62" rx="8" ry="8" fill="#d9e8ff" stroke="#1b4d8f" stroke-width="2"/>
+<text x="875.0" y="234" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#12203f" text-anchor="middle" >Space Weather Ingestion</text>
+<text x="875.0" y="254" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >Process — new</text>
+<line x1="875.0" y1="272" x2="875.0" y2="330" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<path d="M 730 344 L 730 408 A 145.0 14 0 0 0 1020 408 L 1020 344 A 145.0 14 0 0 0 730 344 Z" fill="#dcf3df" stroke="#1b6b3a" stroke-width="2"/>
+<path d="M 730 344 A 145.0 14 0 0 0 1020 344 A 145.0 14 0 0 0 730 344 Z" fill="#dcf3df" stroke="#1b6b3a" stroke-width="2"/>
+<text x="875.0" y="372.0" font-family="Segoe UI, Arial, sans-serif" font-size="13.5" font-weight="bold" fill="#12203f" text-anchor="middle" >space_weather.db</text>
+<text x="875.0" y="389.0" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#1f4d30" text-anchor="middle" >Kp / solar wind /</text>
+<text x="875.0" y="404.0" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#1f4d30" text-anchor="middle" >CME time-series</text>
+<rect x="1050" y="78" width="290" height="66" rx="8" ry="8" fill="#fff3d6" stroke="#a67c00" stroke-width="2"/>
+<text x="1195.0" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#12203f" text-anchor="middle" >Launch Library 2</text>
+<text x="1195.0" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >Launch schedules</text>
+<text x="1195.0" y="138" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >&amp; vehicle data</text>
+<line x1="1195.0" y1="144" x2="1195.0" y2="210" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<rect x="1050" y="210" width="290" height="62" rx="8" ry="8" fill="#d9e8ff" stroke="#1b4d8f" stroke-width="2"/>
+<text x="1195.0" y="234" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#12203f" text-anchor="middle" >Launches Ingestion Process</text>
+<text x="1195.0" y="254" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >new</text>
+<line x1="1195.0" y1="272" x2="1195.0" y2="330" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<path d="M 1050 344 L 1050 408 A 145.0 14 0 0 0 1340 408 L 1340 344 A 145.0 14 0 0 0 1050 344 Z" fill="#dcf3df" stroke="#1b6b3a" stroke-width="2"/>
+<path d="M 1050 344 A 145.0 14 0 0 0 1340 344 A 145.0 14 0 0 0 1050 344 Z" fill="#dcf3df" stroke="#1b6b3a" stroke-width="2"/>
+<text x="1195.0" y="372.0" font-family="Segoe UI, Arial, sans-serif" font-size="13.5" font-weight="bold" fill="#12203f" text-anchor="middle" >launches.db</text>
+<text x="1195.0" y="389.0" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#1f4d30" text-anchor="middle" >launch records</text>
+<rect x="1370" y="78" width="290" height="66" rx="8" ry="8" fill="#fff3d6" stroke="#a67c00" stroke-width="2"/>
+<text x="1515.0" y="102" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#12203f" text-anchor="middle" >NASA GIBS / Copernicus /</text>
+<text x="1515.0" y="122" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >USGS EarthExplorer</text>
+<line x1="1515.0" y1="144" x2="1515.0" y2="210" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<rect x="1370" y="210" width="290" height="62" rx="8" ry="8" fill="#d9e8ff" stroke="#1b4d8f" stroke-width="2"/>
+<text x="1515.0" y="234" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="bold" fill="#12203f" text-anchor="middle" >EO Imagery Ingestion</text>
+<text x="1515.0" y="254" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >Process — new</text>
+<line x1="1515.0" y1="272" x2="1515.0" y2="330" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<path d="M 1370 344 L 1370 408 A 145.0 14 0 0 0 1660 408 L 1660 344 A 145.0 14 0 0 0 1370 344 Z" fill="#dcf3df" stroke="#1b6b3a" stroke-width="2"/>
+<path d="M 1370 344 A 145.0 14 0 0 0 1660 344 A 145.0 14 0 0 0 1370 344 Z" fill="#dcf3df" stroke="#1b6b3a" stroke-width="2"/>
+<text x="1515.0" y="372.0" font-family="Segoe UI, Arial, sans-serif" font-size="13.5" font-weight="bold" fill="#12203f" text-anchor="middle" >eo_imagery.db</text>
+<text x="1515.0" y="389.0" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#1f4d30" text-anchor="middle" >imagery metadata /</text>
+<text x="1515.0" y="404.0" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#1f4d30" text-anchor="middle" >tile cache</text>
+<rect x="144.2" y="167.0" width="181.6" height="16" fill="#ffffff" opacity="0.85"/>
+<text x="235.0" y="179.0" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#4a4a4a" text-anchor="middle" >scheduled pull (own cadence)</text>
+<rect x="215.5" y="283.0" width="39.0" height="16" fill="#ffffff" opacity="0.85"/>
+<text x="235.0" y="295.0" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#4a4a4a" text-anchor="middle" >write</text>
+<path d="M 300 480 L 300 530 A 130.0 14 0 0 0 560 530 L 560 480 A 130.0 14 0 0 0 300 480 Z" fill="#e8e2f7" stroke="#5b3fa0" stroke-width="2"/>
+<path d="M 300 480 A 130.0 14 0 0 0 560 480 A 130.0 14 0 0 0 300 480 Z" fill="#e8e2f7" stroke="#5b3fa0" stroke-width="2"/>
+<text x="430.0" y="501.0" font-family="Segoe UI, Arial, sans-serif" font-size="13.5" font-weight="bold" fill="#12203f" text-anchor="middle" >merged_100pc.sqlite</text>
+<text x="430.0" y="518.0" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#1f4d30" text-anchor="middle" >star catalogue — static,</text>
+<text x="430.0" y="533.0" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#1f4d30" text-anchor="middle" >pre-built by buildStarDB/</text>
+<path d="M 900 480 L 900 530 A 130.0 14 0 0 0 1160 530 L 1160 480 A 130.0 14 0 0 0 900 480 Z" fill="#e8e2f7" stroke="#5b3fa0" stroke-width="2"/>
+<path d="M 900 480 A 130.0 14 0 0 0 1160 480 A 130.0 14 0 0 0 900 480 Z" fill="#e8e2f7" stroke="#5b3fa0" stroke-width="2"/>
+<text x="1030.0" y="501.0" font-family="Segoe UI, Arial, sans-serif" font-size="13.5" font-weight="bold" fill="#12203f" text-anchor="middle" >organisations.db</text>
+<text x="1030.0" y="518.0" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#1f4d30" text-anchor="middle" >orgs / glossary / CubeSats —</text>
+<text x="1030.0" y="533.0" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#1f4d30" text-anchor="middle" >hand-maintained, no live process</text>
+<rect x="1300" y="466" width="310" height="78" rx="8" ry="8" fill="#ffe4e1" stroke="#9c3b3b" stroke-width="2"/>
+<text x="1455.0" y="492" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#12203f" text-anchor="middle" >Process Supervisor</text>
+<text x="1455.0" y="512" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="normal" fill="#5a2020" text-anchor="middle" >systemd / PM2 / PaaS process manager</text>
+<text x="1455.0" y="529" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#5a2020" text-anchor="middle" >monitors &amp; auto-restarts every process above</text>
+<line x1="1455.0" y1="466" x2="1455.0" y2="422" stroke="#9c3b3b" stroke-width="1.8" marker-end="url(#arrowhead-light)" stroke-dasharray="5,4"/>
+<rect x="90" y="604" width="1520" height="74" rx="8" ry="8" fill="#dff0ff" stroke="#0d4f7a" stroke-width="2.5"/>
+<text x="850" y="634" font-family="Segoe UI, Arial, sans-serif" font-size="17" font-weight="bold" fill="#12203f" text-anchor="middle" >API Server Process (server.js)</text>
+<text x="850" y="656" font-family="Segoe UI, Arial, sans-serif" font-size="12.5" font-weight="normal" fill="#33415c" text-anchor="middle" >Serves JSON/REST endpoints to the client — read-only against every database below</text>
+<line x1="235.0" y1="422" x2="235.0" y2="604" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<line x1="555.0" y1="422" x2="555.0" y2="604" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<line x1="875.0" y1="422" x2="875.0" y2="604" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<line x1="1195.0" y1="422" x2="1195.0" y2="604" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<line x1="1515.0" y1="422" x2="1515.0" y2="604" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<rect x="218.6" y="507.0" width="32.8" height="16" fill="#ffffff" opacity="0.85"/>
+<text x="235.0" y="519.0" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#4a4a4a" text-anchor="middle" >read</text>
+<line x1="430" y1="544" x2="430" y2="604" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<line x1="1030" y1="544" x2="1030" y2="604" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<rect x="560" y="830" width="300" height="84" rx="8" ry="8" fill="#eaeaea" stroke="#555555" stroke-width="2"/>
+<text x="710" y="860" font-family="Segoe UI, Arial, sans-serif" font-size="14.5" font-weight="bold" fill="#12203f" text-anchor="middle" >Static Frontend Hosting</text>
+<text x="710" y="880" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#3a3a3a" text-anchor="middle" >CDN/Edge platform or standard host</text>
+<text x="710" y="897" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#3a3a3a" text-anchor="middle" >index.html, CSS, JS, fonts</text>
+<rect x="980" y="830" width="320" height="84" rx="8" ry="8" fill="#eaeaea" stroke="#555555" stroke-width="2"/>
+<text x="1140" y="860" font-family="Segoe UI, Arial, sans-serif" font-size="14.5" font-weight="bold" fill="#12203f" text-anchor="middle" >Client Device — Browser</text>
+<text x="1140" y="880" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#3a3a3a" text-anchor="middle" >HTML5 / CSS3 / vanilla JS, WebGL</text>
+<text x="1140" y="897" font-family="Segoe UI, Arial, sans-serif" font-size="11.5" font-weight="normal" fill="#3a3a3a" text-anchor="middle" >≥ tablet screen recommended</text>
+<line x1="860" y1="872" x2="980" y2="872" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<line x1="980" y1="882" x2="860" y2="882" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<rect x="857.1" y="852.0" width="125.8" height="16" fill="#ffffff" opacity="0.85"/>
+<text x="920.0" y="864.0" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#4a4a4a" text-anchor="middle" >serves static files</text>
+<line x1="1140" y1="678" x2="1140" y2="830" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<line x1="1160" y1="830" x2="1160" y2="678" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<rect x="1179.5" y="782.0" width="101.0" height="16" fill="#ffffff" opacity="0.85"/>
+<text x="1230.0" y="794.0" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="normal" fill="#4a4a4a" text-anchor="middle" >HTTPS API calls</text>
+<rect x="1166.5" y="802.0" width="287.0" height="16" fill="#ffffff" opacity="0.85"/>
+<text x="1310.0" y="814.0" font-family="Segoe UI, Arial, sans-serif" font-size="10.5" font-weight="normal" fill="#4a4a4a" text-anchor="middle" >≥ 20Mbps, latency-tolerant (up to O2O / Moon)</text>
+<text x="90" y="946" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="bold" fill="#12203f" text-anchor="start" >Legend</text>
+<rect x="90" y="960" width="40" height="24" rx="8" ry="8" fill="#d9e8ff" stroke="#1b4d8f" stroke-width="2"/>
+<text x="140" y="977" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="normal" fill="#12203f" text-anchor="start" >Node.js process</text>
+<path d="M 320 971 L 320 973 A 20.0 14 0 0 0 360 973 L 360 971 A 20.0 14 0 0 0 320 971 Z" fill="#dcf3df" stroke="#1b6b3a" stroke-width="2"/>
+<path d="M 320 971 A 20.0 14 0 0 0 360 971 A 20.0 14 0 0 0 320 971 Z" fill="#dcf3df" stroke="#1b6b3a" stroke-width="2"/>
+<text x="340.0" y="968.0" font-family="Segoe UI, Arial, sans-serif" font-size="13.5" font-weight="bold" fill="#12203f" text-anchor="middle" ></text>
+<text x="370" y="977" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="normal" fill="#12203f" text-anchor="start" >SQLite database</text>
+<rect x="550" y="960" width="40" height="24" rx="8" ry="8" fill="none" stroke="#8a8a8a" stroke-width="2" stroke-dasharray="6,4"/>
+<text x="600" y="977" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="normal" fill="#12203f" text-anchor="start" >Deployment boundary</text>
+<line x1="870" y1="972" x2="920" y2="972" stroke="#33415c" stroke-width="1.8" marker-end="url(#arrowhead)"/>
+<text x="930" y="977" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="normal" fill="#12203f" text-anchor="start" >Data flow (pull / write / read)</text>
+<line x1="1240" y1="972" x2="1290" y2="972" stroke="#9c3b3b" stroke-width="1.8" marker-end="url(#arrowhead-light)" stroke-dasharray="5,4"/>
+<text x="1300" y="977" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="normal" fill="#12203f" text-anchor="start" >Monitor / restart</text>
+</svg>

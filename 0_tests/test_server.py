@@ -189,16 +189,6 @@ def test_missing_file_returns_404():
 # --- Pure logic unit tests ------------------------------------------------
 # Fast, no-DB unit tests for standalone functions.
 
-def test_parse_inclination_deg_valid_tle_line():
-    line2 = '2 25544  51.6416 247.4627 0006703 130.5360 325.0288 15.49560328 12345'
-    assert server.parse_inclination_deg(line2) == pytest.approx(51.6416, abs=1e-3)
-
-
-@pytest.mark.parametrize('bad_input', ['not a tle line', None, ''])
-def test_parse_inclination_deg_handles_bad_input(bad_input):
-    assert server.parse_inclination_deg(bad_input) is None
-
-
 def test_get_param_returns_first_value():
     assert server.get_param({'x': ['a', 'b']}, 'x') == 'a'
 

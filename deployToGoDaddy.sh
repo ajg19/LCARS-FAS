@@ -40,7 +40,9 @@ EXCLUDE_PATTERNS=(
     0_tests
     0_testReports
     0_codeReviews
+    0_tools
     bugsDB.xlsx
+    bugsDB.xlsx.bak
     '~$bugsDB.xlsx'
     toDo.md
     nodePersistenceTest.js

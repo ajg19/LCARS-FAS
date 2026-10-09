@@ -2,6 +2,21 @@
 
 Reverse chronological — newest first. Completed items are marked **DONE**. Items with no recorded date are grouped at the bottom rather than guessed at.
 
+## 2026-10-09 — News filtering, retention and topic histogram **(DONE locally — not yet deployed)**
+
+On branch `newsFilters`. Filler (entertainment, shopping, daily features, NASA admin) is never stored; `scripts/pruneNews.py` deletes stored filler, duplicate titles and anything older than six months, then VACUUMs; `scripts/tagNews.py` tags articles for the ten news filter buttons and stores per-topic counts for the control-area histogram. All run after every `readNews.py`. Local `space_news.db` cleaned (415 → 337 articles) and tagged; backup at `ingestionDBs/space_news.db.bak` (not to be committed). Documented in the News section of `designAndArchitecture_0.4.docx` (v0.6), plus `testPlan_0.1.docx` and `installationAndStartupGuide_0.1.docx` (both v0.2); pre-change copies in `0_documentation/rollback/*.pre-news-filters.bak`.
+
+Still to do:
+
+- **Deploy**: `DRY_RUN=1 ./deployToGoDaddy.sh` first, then for real; over SSH back up the live `space_news.db`, run `python3 scripts/pruneNews.py --dry-run`, then `pruneNews.py` and `tagNews.py`. Cron needs no change.
+- **Commit** the two-half histogram layout (font matching the buttons, gold labels) — the single-histogram axis version is `1838596`.
+- ~~**Decide**: requirements vs. buttons~~ **DONE** — `swareRqts_0.2.docx` (v0.3) revised to match the buttons; country-of-origin filtering dropped.
+- **Decide**: ORGS still matches funding/earnings terms, so every FINANCE story also appears under ORGS.
+- `NASA's PUNCH Sharpens Solar Storm Forecasting` is now untagged (it was space weather only) — add solar missions to DEEP SPACE?
+- Button label is `03-GRND SGMT`; Al's ordering list wrote `GRD SGMT` — confirm which.
+- ~~`0_tests/test_server.py`: 4 stale `parse_inclination_deg` tests~~ **DONE** — removed (the function and its only caller were deliberately removed from `server.py` in `324de59`); suite now 69/69 passing.
+- ~~Node-era text in the docs~~ **DONE** — design doc (tech stack, hosting, supervision, scheduling, script names, LCARS-FAS branding), test plan, install guide and `systemArchitectureDiagram.svg/.png` (also re-embedded in the design doc) now describe the Python / Passenger / cron setup; Claude Opus 5.5 added to the AUTHORS cell of every doc edited. Pre-change copies in `0_documentation/rollback/*.pre-node-era-cleanup.bak`. `funcReqts_0.2.docx` needed no change.
+
 ## 2026-08-13 — Investigate Three.js as a CesiumJS alternative
 
 Spotted on eclipses.bogachev.fr (self-hosted, ~257KB) driving a custom sky/starfield/corona WebGL scene. Noted in `designAndArchitecture_0.4.docx` (Tech Stack / Core Technologies, and the Client-Side Files self-hosted-libraries bullet) as an alternative under consideration for panels needing a custom 3D scene rather than a georeferenced globe — e.g. the star chart, the orbital-mechanics demonstrator — where CesiumJS's much larger footprint (typically several MB, a real bite out of the sub-5MB budget) may not be earning its keep. Not yet adopted; CesiumJS remains the documented plan for anything needing an actual georeferenced globe/terrain/imagery. Worth a real spike/prototype to see how much of Cesium's out-of-the-box functionality would need hand-building on top of Three.js for the panels in question.

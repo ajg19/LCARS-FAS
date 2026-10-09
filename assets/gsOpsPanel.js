@@ -909,20 +909,9 @@ function bearingDeg(lat1, lon1, lat2, lon2) {
     return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
 }
 
-// satellite.propagate() is not consistently safe: for an element set SGP4
-// can't handle (decayed object, numerically diverged mean elements) it
-// may return null/false OR an object with a falsy .position OR throw a
-// RangeError -- so never destructure its result directly. Returns the ECI
-// position vector, or null.
-function propagatePosition(satrec, time) {
-    let pv;
-    try {
-        pv = satellite.propagate(satrec, time);
-    } catch (error) {
-        return null;
-    }
-    return pv && pv.position ? pv.position : null;
-}
+// propagatePosition() lives in assets/onOrbitPanel.js, which
+// openGsOpsSection() (lcars.js) always loads before this file -- shared
+// with the on-orbit panel's ground tracks and live positions.
 
 // Sub-satellite lat/lon (deg) at `time`, or null if SGP4 gives no
 // position (decayed / numerically diverged element set).
