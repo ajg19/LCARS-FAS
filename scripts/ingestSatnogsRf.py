@@ -168,13 +168,15 @@ UPDATE_SQL = (
 
 # 4. Main enrichment run
 def run_satnogs_rf_ingestion():
+    """Returns the number of catalogue objects given RF data, or None if
+    the SatNOGS fetch failed (database left unchanged)."""
     print(f'\n=== [{time.strftime("%H:%M:%S")}] Starting SatNOGS RF Ingestion ===')
 
     try:
         records = fetch_transmitters()
     except Exception as err:
         print(f'  [satnogs] ERROR {err} -- database left unchanged')
-        return
+        return None
     print(f'  [satnogs] {len(records)} transmitter records fetched')
 
     by_norad = {}
@@ -212,8 +214,16 @@ def run_satnogs_rf_ingestion():
                         sorted(modes.items(), key=lambda kv: -kv[1])[:8])
         print(f'  top modes: {top}')
     print('=== SatNOGS RF INGESTION COMPLETE ===\n')
+    return matched
 
 
-# 5. Run once and exit -- cron owns the schedule.
+# 5. Run once and exit -- cron owns the schedule. Each run is recorded in
+# ingestionRuns for the landing page's data-freshness table; a failed
+# SatNOGS fetch is recorded as a failed run.
 if __name__ == '__main__':
-    run_satnogs_rf_ingestion()
+    from ingestionLog import trackRun
+    with trackRun(db, 'satnogsRf') as run:
+        run.changes = run_satnogs_rf_ingestion()
+        if run.changes is None:
+            run.failed = True
+            run.note = 'SatNOGS transmitter fetch failed -- database left unchanged'

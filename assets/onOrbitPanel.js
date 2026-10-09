@@ -791,7 +791,6 @@ function renderOrbitalObjectsList(objects) {
     table.style.marginRight = 'auto';
     table.style.alignSelf = 'flex-start';
     table.style.borderCollapse = 'collapse';
-    table.style.fontFamily = 'Arial, Helvetica, sans-serif';
     table.style.fontSize = '15px';
     table.style.textTransform = 'uppercase';
 

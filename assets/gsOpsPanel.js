@@ -1221,10 +1221,10 @@ function renderVisibleSatStatus(sats, objectsInView, nonPayloadCounted) {
     wrapper.innerHTML = `
         <div class="gs-status-panel">
             <div class="gs-status-stats">
-                <span class="k">Objects in view</span><span class="v">${objectsText}</span>
-                <span class="k">Satellites in view</span><span class="v">${num(sats.length)}</span>
-                <span class="k"># TT&amp;C</span><span class="v">${num(ttc)}</span>
                 <span class="k"># Tx &amp; Rx</span><span class="v">${num(twoWay)}</span>
+                <span class="k"># TT&amp;C</span><span class="v">${num(ttc)}</span>
+                <span class="k">Satellites in view</span><span class="v">${num(sats.length)}</span>
+                <span class="k">Objects in view</span><span class="v">${objectsText}</span>
             </div>
             <div class="gs-status-key">
                 ${keyRow('both')}

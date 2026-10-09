@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 
 from fillerRules import classifyFiller
+from ingestionLog import trackRun
 from pruneNews import pruneNews, vacuumDatabase
 from tagNews import retagAllArticles
 
@@ -174,8 +175,10 @@ def parse_rss_feed(xml_text):
 
 # 6. Sequential engine to parse and store items for each RSS feed
 def fetch_all_feeds():
+    """Returns the number of new articles stored, across every feed."""
     print(f'\n=== [{time.strftime("%H:%M:%S")}] Starting Space Feed Sync ===')
 
+    totalNewArticles = 0
     one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
 
     for feed in FEEDS:
@@ -238,6 +241,7 @@ def fetch_all_feeds():
                 if cursor.rowcount > 0:
                     new_items_count += 1
             db.commit()
+            totalNewArticles += new_items_count
 
             print(f' -> Done. Added {new_items_count} brand new articles, '
                   f'skipped {fillerSkipped} filler, {duplicatesSkipped} duplicate titles.\n')
@@ -249,6 +253,7 @@ def fetch_all_feeds():
 
     now = datetime.now()
     print(f'=== ALL RSS SPACE FEEDS SYNCHED WITH LOCAL DB AT {now.strftime("%m/%d/%Y")} {now.strftime("%H:%M:%S")} ===\n')
+    return totalNewArticles
 
 
 # 7. Run once and exit -- scheduling (every 30 minutes) is owned by cron,
@@ -256,13 +261,16 @@ def fetch_all_feeds():
 # original design this was ported from; that shape suits a persistent
 # process, not a cron-invoked one, so it was dropped here deliberately.
 if __name__ == '__main__':
-    fetch_all_feeds()
+    # Recorded in ingestionRuns for the landing page's data-freshness table;
+    # "changes" is the number of new articles stored this run.
+    with trackRun(db, 'news') as run:
+        run.changes = fetch_all_feeds()
 
-    # Housekeeping after every fetch: drop filler/duplicates/anything older
-    # than six months, re-tag every article for the news filter buttons
-    # (so topicRules.py changes reach old articles too), then reclaim the
-    # space the deletes freed.
-    pruneCounts = pruneNews(db)
-    print(f'Pruned: {pruneCounts or "nothing"}')
-    retagAllArticles(db)
+        # Housekeeping after every fetch: drop filler/duplicates/anything older
+        # than six months, re-tag every article for the news filter buttons
+        # (so topicRules.py changes reach old articles too), then reclaim the
+        # space the deletes freed.
+        pruneCounts = pruneNews(db)
+        print(f'Pruned: {pruneCounts or "nothing"}')
+        retagAllArticles(db)
     vacuumDatabase(db)

@@ -37,7 +37,8 @@
 
 					<div class="control-area-groups" id="control-area-groups"></div>
 
-					<!-- Filled on load from the 'news' panel registration in lcars.js. -->
+					<!-- Empty (and hidden) on the landing page; filled with a section's
+					     own buttons when that section opens (renderControlAreaButtons() in lcars.js). -->
 					<nav></nav>
 					
 				</div>
@@ -58,7 +59,8 @@
 			<div class="left-frame">
 				<div>
 					<button class="panel-3 section-toggle" data-section="news" onclick="showNewsSection()">NEWS</button>
-					<button class="panel-4 section-toggle" data-section="on-orbit" onclick="openOnOrbitSection();">ON-<span class="hop"> ORBIT</span></button>
+					<button class="panel-4 section-toggle" data-section="on-orbit" onclick="openOnOrbitSection();">GRD-TRACK</button>
+					<button class="panel-4b section-toggle" data-section="on-orbit-overview" onclick="openOnOrbitOverviewSection();">ON-<span class="hop"> ORBIT</span></button>
 					<button class="panel-5 section-toggle" data-section="gs-ops" onclick="openGsOpsSection();">GS OPS</button>
 					<button class="panel-6 section-toggle" data-section="deep-space" onclick="showSection('deep-space', 'DEEP SPACE')">DEEP<span class="hop">&nbsp;SPACE</span></button>
 					<button class="panel-7 section-toggle" data-section="launches" onclick="showSection('launches', 'LAUNCHES')">LAUNCHES</button>
@@ -124,6 +126,11 @@
 								<table id="add-object-results-table" class="add-object-results-table"></table>
 							</div>
 						</div>
+					</div>
+
+					<div data-section="on-orbit-overview" style="display:none;">
+						<h2>Satellites &amp; Objects On Orbit</h2>
+						<p class="go-big">Overview of what is on orbit -- by nationality, sector (government, military, commercial, academic), orbital inclination and altitude -- placeholder.</p>
 					</div>
 
 					<div data-section="gs-ops" style="display:none;">
@@ -204,6 +211,11 @@
 									<td>Shashwat Kandadai, UCSC</td>
 									<td>SGP4/SDP4 orbital propagation used for ground track computation (satellite.js)</td>
 									<td><a href="https://github.com/shashwatak/satellite-js">github.com/shashwatak/satellite-js</a></td>
+								</tr>
+								<tr>
+									<td>The Space Devs</td>
+									<td>The LL2 database covering launches, launch vehicles and agencies</td>
+									<td><a href="https://thespacedevs.com">thespacedevs.com</a></td>
 								</tr>
 								<tr>
 									<td>Dr Al Gill</td>

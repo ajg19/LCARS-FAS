@@ -22,6 +22,7 @@ import json
 import mimetypes
 import os
 import sqlite3
+from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs
 
 PORT = 3000
@@ -138,6 +139,110 @@ def handle_news(query_params, start_response):
             else:
                 raise
         return json_response(start_response, '200 OK', rows_to_dicts(rows))
+    except Exception as e:
+        return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
+
+
+# Rows of the landing page's data-freshness table, in display order.
+# `job` matches the name each ingestion script records in its database's
+# ingestionRuns table (scripts/ingestionLog.py); `interval_min` must match
+# that job's cron schedule (setupCron.sh / scripts/runPipeline.sh) -- the
+# next sync is estimated as the last run's start plus this interval, which
+# stays right whatever timezone the host's cron uses. `fallback_sql` gives a
+# last-refresh time for a database with no recorded runs yet.
+STATUS_SOURCES = [
+    {'data': 'News', 'source': '18 RSS feeds', 'db': 'news', 'job': 'news', 'interval_min': 30,
+     'fallback_sql': 'SELECT MAX(fetched_at) FROM articles'},
+    # NORAD = the US satellite catalogue (now maintained by US Space Force);
+    # CelesTrak and Space-Track distribute it, SatNOGS is independent.
+    {'data': 'Orbital elements', 'source': 'NORAD via CelesTrak · Space-Track; SatNOGS', 'db': 'orbital',
+     'job': 'orbitalElements', 'interval_min': 12 * 60,
+     'fallback_sql': 'SELECT MAX(fetchedAt) FROM orbital_objects'},
+    {'data': 'Satellite catalogue', 'source': 'NORAD SATCAT via CelesTrak · Space-Track', 'db': 'orbital',
+     'job': 'satcat', 'interval_min': 24 * 60},
+    {'data': 'Downlink EIRP', 'source': 'Filings · band plans', 'db': 'orbital', 'job': 'eirp',
+     'interval_min': 12 * 60},
+    {'data': 'Radio frequencies', 'source': 'SatNOGS DB', 'db': 'orbital', 'job': 'satnogsRf',
+     'interval_min': 12 * 60},
+    {'data': 'Launch & ownership', 'source': 'GCAT', 'db': 'gcat', 'job': 'gcat',
+     'interval_min': 7 * 24 * 60},
+]
+
+
+def gcat_db():
+    """gcat.db, opened read-only on first use -- or None while it doesn't
+    exist yet (before scripts/ingestGcat.py's first run). Opened lazily,
+    not at import like the other databases, so a missing file can't stop
+    the whole server starting."""
+    global _gcat_db
+    if _gcat_db is None and os.path.exists(os.path.join(DB_DIR, 'gcat.db')):
+        _gcat_db = open_db('gcat.db', read_only=True)
+    return _gcat_db
+
+
+_gcat_db = None
+
+
+def to_utc_iso(value):
+    """SQLite CURRENT_TIMESTAMP text ('YYYY-MM-DD HH:MM:SS', UTC) or an ISO
+    string -> 'YYYY-MM-DDTHH:MM:SSZ'; None stays None."""
+    if not value:
+        return None
+    text = str(value).replace(' ', 'T')
+    return text if text.endswith('Z') else text[:19] + 'Z'
+
+
+def add_minutes_iso(iso_value, minutes):
+    parsed = datetime.strptime(iso_value[:19], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=timezone.utc)
+    return (parsed + timedelta(minutes=minutes)).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+def latest_runs(conn, job):
+    """(latest run, latest successful run) for `job`, each a sqlite3.Row or
+    None -- (None, None) for a database with no ingestionRuns table yet."""
+    try:
+        latest = conn.execute(
+            'SELECT startedAt, finishedAt, succeeded, changes FROM ingestionRuns '
+            'WHERE job = ? ORDER BY id DESC LIMIT 1', (job,)).fetchone()
+        latest_ok = conn.execute(
+            'SELECT startedAt, finishedAt, succeeded, changes FROM ingestionRuns '
+            'WHERE job = ? AND succeeded = 1 ORDER BY id DESC LIMIT 1', (job,)).fetchone()
+    except sqlite3.OperationalError as e:
+        if 'no such table' in str(e):
+            return None, None
+        raise
+    return latest, latest_ok
+
+
+def status_row(spec):
+    row = {'data': spec['data'], 'source': spec['source'], 'lastRefreshUtc': None,
+           'changes': None, 'lastRunFailed': False, 'nextSyncUtc': None}
+
+    conn = {'news': db, 'orbital': orbital_objects_db, 'gcat': gcat_db()}[spec['db']]
+    if conn is None:
+        return row   # database not created yet -- nothing recorded
+    latest, latest_ok = latest_runs(conn, spec['job'])
+    if latest is not None:
+        row['lastRunFailed'] = not latest['succeeded']
+        row['nextSyncUtc'] = add_minutes_iso(latest['startedAt'], spec['interval_min'])
+        if latest_ok is not None:
+            row['lastRefreshUtc'] = to_utc_iso(latest_ok['finishedAt'])
+            row['changes'] = latest_ok['changes']
+    elif spec.get('fallback_sql'):
+        row['lastRefreshUtc'] = to_utc_iso(conn.execute(spec['fallback_sql']).fetchone()[0])
+        if row['lastRefreshUtc']:
+            row['nextSyncUtc'] = add_minutes_iso(row['lastRefreshUtc'], spec['interval_min'])
+    return row
+
+
+def handle_status(start_response):
+    """Data-freshness table for the landing page's control area: one row
+    per data source -- last successful refresh, records changed by it, and
+    the expected next sync."""
+    try:
+        rows = [status_row(spec) for spec in STATUS_SOURCES]
+        payload = {'generatedUtc': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), 'sources': rows}
+        return json_response(start_response, '200 OK', payload)
     except Exception as e:
         return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
 
@@ -385,6 +490,8 @@ def application(environ, start_response):
 
     if method == 'GET' and path_info == '/api/news':
         return handle_news(query_params, start_response)
+    if method == 'GET' and path_info == '/api/status':
+        return handle_status(start_response)
     if method == 'GET' and path_info == '/api/news/topic-counts':
         return handle_news_topic_counts(start_response)
     if method == 'GET' and path_info == '/api/ground-segment-assets':

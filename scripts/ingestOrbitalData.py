@@ -476,10 +476,14 @@ def run_ingestion():
         print(f'  [satnogs] ERROR {err}')
 
     print(f'=== ORBITAL OBJECT INGESTION COMPLETE ({len(seen_ids)} objects touched) ===\n')
+    return len(seen_ids)
 
 
 # 12. Run once and exit -- scheduling (twice daily) is owned by cron, not
 # this script. See readNews.py's own comment for why the self-looping
-# shape was dropped in this port.
+# shape was dropped in this port. Each run is recorded in ingestionRuns for
+# the landing page's data-freshness table ("changes" = objects updated).
 if __name__ == '__main__':
-    run_ingestion()
+    from ingestionLog import trackRun
+    with trackRun(db, 'orbitalElements') as run:
+        run.changes = run_ingestion()

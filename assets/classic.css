@@ -14,77 +14,103 @@
 	font-size: 1.1rem;
 	color-scheme: dark;
 	--lfw: 180px;															/* width of the left hand buttons */
-	--african-violet: #c9f;
-	--almond: #ffaa90;
-	--almond-creme: #fba;
-	--blue: #56f;
-	--bluey: #89f;
-	--butterscotch: #f96;
-	--gold: #fa0;
-	--golden-orange: #f90;
-	--gray: #668;
+	/*
+	  TNG-era LCARS palette, sampled from a TNG LCARS reference screen
+	  (2026-10-09): muted, dusty colours on black, terracotta frames, a small
+	  set of hues repeated, and one vivid red-orange kept for alerts. The
+	  older names below are kept so every rule that uses them follows -- each
+	  is now its nearest TNG colour, so several deliberately share a value.
+	  (Previous, brighter values: see git history before this change.)
+	*/
+	--tng-terracotta: #c97e61;  /* frames and elbows */
+	--tng-periwinkle: #87a6d4;
+	--tng-ice: #afcbd6;
+	--tng-amber: #ea9e41;
+	--tng-sand: #f1c274;
+	--tng-tan: #d9a060;
+	--tng-salmon: #d08968;
+	--tng-mauve: #a3768a;
+	--tng-pink: #ca9bc0;
+	--tng-lavender: #9999d2;
+	--tng-violet: #7d6fab;
+	--tng-plum: #634a4b;        /* dark accent -- never under black text */
+	--tng-alert: #cb4d00;       /* alerts and errors only */
+
+	--african-violet: var(--tng-pink);
+	--almond: var(--tng-sand);
+	--almond-creme: var(--tng-sand);
+	--blue: var(--tng-violet);
+	--bluey: var(--tng-periwinkle);
+	--butterscotch: var(--tng-terracotta);
+	--gold: var(--tng-sand);     /* text labels and headings */
+	--golden-orange: var(--tng-amber);
+	--gray: #646670;
 	--green: #993;
-	--ice: #9cf;
-	--lilac: #c5f;
-	--lima-bean: #cc6;
-	--magenta: #c59;
-	--mars: #f20;
-	--moonlit-violet: #96f;
-	--orange: #f80;
-	--peach: #f86;
-	--red: #c44;
-	--sky: #aaf;
+	--ice: var(--tng-ice);
+	--lilac: var(--tng-lavender);
+	--lima-bean: var(--tng-sand);
+	--magenta: #c16091;
+	--mars: var(--tng-alert);
+	--moonlit-violet: var(--tng-violet);
+	--orange: var(--tng-tan);
+	--peach: var(--tng-salmon);
+	--red: var(--tng-alert);
+	--sky: var(--tng-lavender);
 	--space-white: #f5f6fa;
-	--sunflower: #fc9;
-	--tomato: #f55;
-	--violet-creme: #dbf;
-	--left-frame-top-color: var(--bluey);
-	/* The lower elbow and the left frame behind the menu buttons. A cool
-	   frame colour, not red: red is reserved for alerts, and as the largest
-	   block on screen a red frame read as one. Continued into the bottom
-	   bar by bar-6 and the lower inner corner, the same way the bluey top
-	   elbow runs into bar-1. */
-	--left-frame-color: var(--moonlit-violet);
+	--sunflower: var(--tng-sand);
+	--tomato: var(--tng-alert);
+	--violet-creme: var(--tng-pink);
+	/*
+	  The frame -- both elbows, their inner corners, and the bars that
+	  continue them (bar-1 from the top elbow, bar-6 from the lower) -- is
+	  terracotta throughout, as in TNG. NEWS (panel-3) is transparent inside
+	  the lower elbow's curve, so it is terracotta too.
+	*/
+	--left-frame-top-color: var(--tng-terracotta);
+	--left-frame-color: var(--tng-terracotta);
 	--left-frame-padding: .75rem;
-	--corner-color-top: var(--bluey);
-	--corner-color-bottom: var(--moonlit-violet);
-	--panel-1-color: var(--african-violet);
+	--corner-color-top: var(--tng-terracotta);
+	--corner-color-bottom: var(--tng-terracotta);
+	--panel-1-color: var(--tng-periwinkle);
 	/*
 	  panel-3 through panel-11 are the main section nav buttons (see the
 	  comment above that rule). panel-3 (NEWS) has no colour of its own on
 	  purpose: it sits partly inside the lower elbow's curve, so it is
 	  transparent and shows --left-frame-color as part of the elbow -- an
-	  opaque background would square off the curve. The rest: all warm tones, no red/blue: red is
-	  reserved for alert states elsewhere, blue for diagnostic/science
-	  readouts, neither of which fits routine navigation. Gold stays
-	  reserved for panel-ack (ACKNOWLEDGMENTS) so it reads as the distinct
-	  utility action rather than blending into the regular nav set.
+	  opaque background would square off the curve. The rest follow TNG
+	  practice: warm and cool blocks mixed freely from the palette, no two
+	  neighbours alike; red is never used (alerts only), nor the dark plum
+	  (black text on it is unreadable). ACKNOWLEDGMENTS (panel-ack) has its own
+	  colour, pink, used by no other menu button, so it reads as the
+	  separate utility action.
 	*/
-	--panel-4-color: var(--golden-orange);
-	--panel-5-color: var(--orange);
-	--panel-6-color: var(--butterscotch);
-	--panel-7-color: var(--sunflower);
-	--panel-8-color: var(--peach);
-	--panel-9-color: var(--almond);
-	--panel-10-color: var(--almond-creme);
-	--panel-11-color: #fdb; /* EO -- last nav slot; a shade paler than panel-10's almond-creme so the two adjacent buttons still read apart */
-	--panel-top-button-color: var(--african-violet);
+	--panel-4-color: var(--tng-amber);       /* GRD-TRACK (section id on-orbit) */
+	--panel-4b-color: var(--tng-lavender);   /* ON-ORBIT overview -- cool between two warm neighbours */
+	--panel-5-color: var(--tng-sand);        /* GS OPS */
+	--panel-6-color: var(--tng-periwinkle);  /* DEEP SPACE */
+	--panel-7-color: var(--tng-tan);         /* LAUNCHES */
+	--panel-8-color: var(--tng-mauve);       /* GRND SGMNT */
+	--panel-9-color: var(--tng-sand);        /* ORGANISATIONS */
+	--panel-10-color: var(--tng-ice);        /* WEATHER */
+	--panel-11-color: var(--tng-amber);      /* EO */
+	--panel-ack-color: var(--tng-pink);      /* ACKNOWLEDGMENTS */
+	--panel-top-button-color: var(--tng-pink);
 	--bar-height: 15px;
 	--bar-1-6-width: 40%;
 	--bar-2-7-width: 4%;
 	--bar-3-8-width: 17%;
 	--bar-5-10-width: 4%;
-	--bar-1-color: var(--bluey);
-	--bar-2-color: var(--orange);
-	--bar-3-color: var(--african-violet);
-	--bar-4-color: var(--african-violet);
-	--bar-5-color: var(--golden-orange); /* warm end-cap after bar-3/4's violet, as bar-10 ends the bottom bar */
-	--bar-6-color: var(--moonlit-violet); /* continues the lower elbow (--left-frame-color) */
-	--bar-7-color: var(--butterscotch);
-	--bar-8a-color: var(--gold);
-	--bar-8b-color: var(--sky);
-	--bar-9-color: var(--african-violet);
-	--bar-10-color: var(--butterscotch);
+	--bar-1-color: var(--tng-terracotta);   /* continues the top elbow */
+	--bar-2-color: var(--tng-amber);
+	--bar-3-color: var(--tng-periwinkle);
+	--bar-4-color: var(--tng-mauve);
+	--bar-5-color: var(--tng-sand);
+	--bar-6-color: var(--tng-terracotta);   /* continues the lower elbow */
+	--bar-7-color: var(--tng-tan);
+	--bar-8a-color: var(--tng-amber);
+	--bar-8b-color: var(--tng-ice);
+	--bar-9-color: var(--tng-plum);
+	--bar-10-color: var(--tng-periwinkle);
 
 /* Ultra layout elements */
 
@@ -127,6 +153,15 @@
 	--banner-color: var(--orange);
 	--meta-data-color: var(--african-violet);
 	--data-cascade-color: var(--orange);
+	/* Control-area text, as set by the landing page's data-freshness table
+	   and reused by GS OPS's control area: small uppercase Antonio (the LCARS-style font), gold
+	   labels/headings, muted amber data (cycling to the muted light colour
+	   where animated). One definition so the two can't drift apart. */
+	--status-font: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
+	--status-font-size: 1rem;   /* same as the control-panel buttons (.875rem at <=1300px, below) */
+	--status-label-color: var(--gold);
+	--status-data-color: #c98b4a;
+	--status-data-light-color: #b8b8c4;
 	/* Slightly lighter than --bluey, same hue family -- used for actual
 	   data values (the plotted-objects table's rows, LAT/LON/UTC) as
 	   distinct from --bluey itself, which stays in use elsewhere (map
@@ -139,7 +174,7 @@
 	--h2-color: var(--african-violet);
 	--h3-color: var(--african-violet);
 	--h4-color: var(--african-violet);
-	--link-color: #c16fff;
+	--link-color: var(--tng-lavender);
 	--code-color: var(--orange);
 	--nav-width: 170px;
 	--nav-1-color: var(--bluey);
@@ -179,6 +214,7 @@
 @media (max-width: 1300px) {
 	:root {
 		font-size: 1.2rem;
+		--status-font-size: .875rem;  /* matches the nav buttons' own .875rem step here */
 		--sub-fonts: .9rem;
 		--lfw: 180px;
 		--nav-width: 180px;
@@ -1022,6 +1058,15 @@ button:active {
  	column-gap: .5rem;
 }
 
+/* One typeface for everything on the left side of the control panel --
+   the landing page's data table, the news histogram, and every section's
+   forms, status panels, keys and lists. Set once here and inherited: no
+   rule for content drawn into #default sets its own font-family. (Sizes
+   and colours are still set per element.) */
+#default {
+	font-family: var(--status-font);
+}
+
 .data-column {
 	display: grid;
 	grid-template-columns: 1fr;
@@ -1121,7 +1166,6 @@ button:active {
 	align-items: center;
 	column-gap: .5rem;
 	height: 100%;
-	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
 	/* Same size as the nav buttons beside it: 1rem, and .875rem at <=1300px
 	   (see the matching nav button rule there). */
 	font-size: 1rem;
@@ -1298,7 +1342,6 @@ button:active {
 	width: 100%;
 	height: 100%;
 	gap: 1.5rem;
-	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
 }
 
 /* Label column + input column, both left-aligned and sharing one grid so
@@ -1347,7 +1390,6 @@ button:active {
 	width: 100%;
 	height: 100%;
 	gap: 1.5rem;
-	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
 }
 
 .add-object-fields {
@@ -1547,7 +1589,6 @@ button:active {
 	border: 1px solid var(--red);
 	border-radius: 4px;
 	color: var(--red);
-	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
 	font-weight: bold;
 	text-transform: uppercase;
 	z-index: 1000;
@@ -1564,7 +1605,6 @@ button:active {
 .gs-status {
 	max-width: 12rem;
 	margin-top: .3rem;
-	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
 	font-size: .8rem;
 	line-height: 1.15;
 	text-transform: uppercase;
@@ -1584,7 +1624,6 @@ button:active {
 }
 
 .gs-unit {
-	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
 	font-size: .8rem;
 	font-weight: normal;
 	text-transform: none;
@@ -1691,7 +1730,6 @@ button:active {
 	width: 100%;
 	height: 100%;
 	padding-left: .5rem;
-	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
 	text-transform: uppercase;
 	/* One colour for every label and value in the panel. */
 	color: var(--data-cascade-color);
@@ -1741,6 +1779,29 @@ button:active {
 .key-shape {
 	display: inline-block;
 	flex: none;
+}
+
+/* --- GS OPS control area: same text as the landing page's data table ---
+   Scoped by #default[data-control-section="gs-ops"] (set in updateControlArea(),
+   lcars.js) so the location form it shares with ON-ORBIT and EO only
+   changes here. Covers the VIS NOW status panel, the GRND STN form and the
+   GS LOCN form: 12px uppercase text, gold labels (as the table's
+   headings), muted amber values and typed text (as the table's data --
+   static here, since animated text in a form field would be distracting).
+   The typeface itself comes from #default, as for every section. */
+#default[data-control-section="gs-ops"] :is(.gs-status-panel, .add-object-form, .user-location-form, label,
+	input, select, option, .gs-unit, .gs-key-label, .usrloc-status, .gs-status) {
+	font-size: var(--status-font-size);
+	font-weight: normal;
+	text-transform: uppercase;
+}
+
+#default[data-control-section="gs-ops"] :is(label, .gs-status-stats .k) {
+	color: var(--status-label-color);
+}
+
+#default[data-control-section="gs-ops"] :is(.gs-status-stats .v, .gs-key-label, input, select, .gs-unit) {
+	color: var(--status-data-color);
 }
 
 .key-shape-circle {
@@ -2078,6 +2139,12 @@ button:active {
 	-webkit-user-select: none; 
   -ms-user-select: none; 
   user-select: none;
+}
+
+/* No buttons (the landing page): take no space at all, so the
+   data-freshness table gets the control area's full width. */
+nav:empty {
+	display: none !important;
 }
 
 nav {
@@ -2608,6 +2675,7 @@ nav button:nth-child(4n) {
 
 .panel-3,
 .panel-4,
+.panel-4b,
 .panel-5,
 .panel-6,
 .panel-7,
@@ -2625,6 +2693,7 @@ nav button:nth-child(4n) {
   explicitly or they shrink to fit their own text and leave the sidebar's
   red background exposed on one side.
 */
+.panel-4b,
 .panel-5,
 .panel-6,
 .panel-7,
@@ -2681,7 +2750,7 @@ nav button:nth-child(4n) {
 	text-align: right;
 	line-height: 1;
 	color: black;
-	background-color: var(--gold);
+	background-color: var(--panel-ack-color);
 	border-top: var(--panel-border);
 	padding: 0 var(--left-frame-padding);
 	border-bottom: var(--panel-border);
@@ -2694,6 +2763,7 @@ nav button:nth-child(4n) {
 .panel-2,
 .panel-3,
 .panel-4,
+.panel-4b,
 .panel-5,
 .panel-6,
 .panel-7,
@@ -2709,6 +2779,16 @@ nav button:nth-child(4n) {
 	justify-content: flex-end;
 	height: 4.25rem;
 	background-color: var(--panel-4-color);
+}
+
+/* ON-ORBIT overview button, inserted between panel-4 (GRD-TRACK) and
+   panel-5 (GS OPS) -- named 4b rather than renumbering every later panel. */
+.panel-4b	{
+	display: flex;
+	justify-content: flex-end;
+	align-items: flex-end;
+	height: 4.25rem;
+	background-color: var(--panel-4b-color);
 }
 
 .panel-5	{
@@ -4021,6 +4101,82 @@ footer:has(.footer-frame) {
 	table-layout: fixed;
 }
 
+/* ON-ORBIT overview's control-area status line (onOrbitOverviewPanel.js)
+   -- same size and label colour as the rest of the control-area text. */
+.on-orbit-overview-status {
+	align-self: center;
+	width: 100%;
+	padding-left: 1.5rem;
+	font-size: var(--status-font-size);
+	color: var(--status-label-color);
+	text-transform: uppercase;
+}
+
+/* Data-freshness table in the landing page's control area (see
+   renderStatusTable() in lcars.js) -- same look as the news-headline ticker
+   it replaced: small uppercase text, a thin dark rule between rows, gold
+   headings (as the ticker's date column was), and data cells coloured by
+   the dc-row-1..7 amber/white animation classes. */
+.status-table {
+	/* Fixed column widths (the <col>s in renderStatusTable()) so the table
+	   can never be wider than the control area -- the wrapper right-aligns
+	   its content, so anything wider spilled off the LEFT edge and was cut
+	   off there. The margin keeps a clear gap on the left. */
+	width: calc(100% - 1.5rem);
+	margin-left: 1.5rem;
+	table-layout: fixed;
+	border-collapse: collapse;
+	font-size: var(--status-font-size);
+	/* Tight rows: at the buttons' 1rem (17.6px), a header plus 6 rows must
+	   fit the control area's fixed height -- as little as ~139px (9 x the
+	   1300-1500px --dc-row-height). Line-height 1 + no vertical padding +
+	   1px rule gives ~18.6px a row, ~130px in all. (All-caps Antonio has no
+	   descenders, so line-height 1 doesn't clip.) Adding a row needs this
+	   rechecked: at 7 data rows it would no longer fit. */
+	line-height: 1;
+	text-transform: uppercase;
+	/* Muted versions of the two colours the dc-row-1..7 animation cycles
+	   between (amber and white) -- scoped to this table, so the animation
+	   is kept but the data reads less brightly than the original ticker. */
+	--data-cascade-color: var(--status-data-color);
+	--light-color: var(--status-data-light-color);
+}
+
+.status-table th {
+	padding: 0 10px 0 4px;
+	color: var(--status-label-color);
+	font-weight: normal;
+	text-align: left;
+	white-space: nowrap;
+	border-bottom: 1px solid #333;
+}
+
+.status-table th,
+.status-table td {
+	overflow: hidden;
+	text-overflow: ellipsis;   /* long text ends in "…" rather than overflowing */
+}
+
+/* Slower than the dc-row-1..7 default (6000ms) -- the colour changes
+   are calmer on a table read for detail than on a passing ticker. */
+.status-table td[class^="dc-row-"] {
+	animation-duration: 30000ms;
+}
+
+.status-table td {
+	padding: 0 10px 0 4px;
+	white-space: nowrap;
+	border-bottom: 1px solid #111;
+}
+
+/* Counts and the countdown read better right-aligned. */
+.status-table th:nth-child(5),
+.status-table td:nth-child(5),
+.status-table th:nth-child(6),
+.status-table td:nth-child(6) {
+	text-align: right;
+}
+
 /* Shown under the table header when a news filter button's topic has no
    articles (see fetchAndRenderFullNewsTable() in lcars.js). */
 .news-no-articles {
@@ -4282,15 +4438,15 @@ footer:has(.footer-frame) {
    LCARS colour names/hex values (see the `trekcolors` catalogue of the
    show's own UI palette), not invented for this project. */
 #infrastructure-map .leaflet-popup-content .popup-name {
-	color: #ffcc66; /* golden-tanoi */
+	color: var(--tng-sand); /* was golden-tanoi #ffcc66 */
 }
 
 #infrastructure-map .leaflet-popup-content .popup-meta {
-	color: #9999cc; /* blue-bell */
+	color: var(--tng-lavender); /* was blue-bell #9999cc */
 }
 
 #infrastructure-map .leaflet-popup-content .popup-desc {
-	color: #cc99cc; /* lilac */
+	color: var(--tng-pink); /* was lilac #cc99cc */
 }
 
 /* Satellite-info popups on the GS OPS map (visibleSatPopupHtml() in
@@ -4324,13 +4480,13 @@ footer:has(.footer-frame) {
 #infrastructure-map .leaflet-container a.leaflet-popup-close-button,
 #gs-ops-map .leaflet-container a.leaflet-popup-close-button,
 #on-orbit-map .leaflet-container a.leaflet-popup-close-button {
-	color: #ff9933; /* neon-carrot */
+	color: var(--tng-amber); /* was neon-carrot #ff9933 */
 }
 
 #infrastructure-map .leaflet-container a.leaflet-popup-close-button:hover,
 #gs-ops-map .leaflet-container a.leaflet-popup-close-button:hover,
 #on-orbit-map .leaflet-container a.leaflet-popup-close-button:hover {
-	color: #cc6666; /* chestnut-rose */
+	color: var(--tng-salmon); /* was chestnut-rose #cc6666 */
 }
 
 /* VISIBLE NOW direction-of-travel arrows on the GS OPS map (see
@@ -4400,7 +4556,10 @@ footer:has(.footer-frame) {
 	padding: 0;
 	color: rgba(255, 255, 255, 0.5);
 	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
-	font-size: 0.75rem;
+	/* Was 0.75rem -- too small to read comfortably in narrow Antonio. Each
+	   label is centred on its own grid point (mapCore.js), so a larger size
+	   grows evenly around that point without needing new offsets. */
+	font-size: 1rem;
 	font-weight: normal;
 	text-transform: none;
 	white-space: nowrap;
@@ -4419,7 +4578,7 @@ footer:has(.footer-frame) {
 	border: none;
 	box-shadow: none;
 	padding: 0;
-	color: #fc9;
+	color: var(--tng-sand);
 	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
 	font-size: 0.72rem;
 	font-weight: normal;

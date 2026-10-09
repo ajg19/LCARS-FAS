@@ -53,9 +53,13 @@ crontab -l 2>/dev/null | grep -v "$MARKER" > "$TMPFILE"
 # via scripts/runPipeline.sh so the enrichment steps can only start after
 # ingestion returns; flock -n makes a slow run skip the next tick rather
 # than overlap it. The wrapper writes its own consolidated pipeline_cron.log.
+# GCAT (its own gcat.db) is fetched weekly, Sunday 03:00 server time -- GCAT
+# updates nightly, but its ~30 MB is not worth re-fetching more often, and
+# unchanged files are skipped anyway (If-Modified-Since).
 cat >> "$TMPFILE" << EOF
 */30 * * * * $PYTHON $APP_ROOT/scripts/readNews.py >> $LOG_DIR/readNews_cron.log 2>&1 $MARKER
 0 */12 * * * SPACETRACK_USER="$SPACETRACK_USER" SPACETRACK_PASS="$SPACETRACK_PASS" PYTHON="$PYTHON" LOG_DIR="$LOG_DIR" /usr/bin/flock -n $LOG_DIR/lcarsPipeline.lock /bin/bash $APP_ROOT/scripts/runPipeline.sh >> $LOG_DIR/pipeline_cron.log 2>&1 $MARKER
+0 3 * * 0 $PYTHON $APP_ROOT/scripts/ingestGcat.py >> $LOG_DIR/gcat_cron.log 2>&1 $MARKER
 EOF
 
 crontab "$TMPFILE"

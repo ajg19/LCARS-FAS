@@ -306,10 +306,14 @@ def run_eirp_enrichment():
     print(f'  satellite G/T estimated for {gt_values} payload(s) '
           f'(T_sys = {SAT_NOISE_TEMP_K:.0f} K)')
     print('=== EIRP ENRICHMENT COMPLETE ===\n')
+    return updated
 
 
 # 6. Run once and exit -- cron owns the schedule. Cheap (pure local
 # compute over ~30k rows) so it can run right after each ingestSatcat.py
-# pass, or on its own daily cadence.
+# pass, or on its own daily cadence. Each run is recorded in ingestionRuns
+# for the landing page's data-freshness table ("changes" = rows tagged).
 if __name__ == '__main__':
-    run_eirp_enrichment()
+    from ingestionLog import trackRun
+    with trackRun(db, 'eirp') as run:
+        run.changes = run_eirp_enrichment()

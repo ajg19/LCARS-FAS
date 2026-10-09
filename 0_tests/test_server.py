@@ -84,6 +84,37 @@ def test_news_topic_counts_endpoint_shape():
     assert 'updatedAt' in data
 
 
+def test_status_endpoint_shape():
+    status, headers, body = call_app('/api/status')
+    assert status == '200 OK'
+    data = json.loads(body)
+    assert [row['data'] for row in data['sources']][:2] == ['News', 'Orbital elements']
+    for row in data['sources']:
+        assert set(row) >= {'data', 'source', 'lastRefreshUtc', 'changes', 'lastRunFailed', 'nextSyncUtc'}
+
+
+def test_status_next_sync_is_last_start_plus_interval():
+    import sqlite3
+    conn = sqlite3.connect(':memory:')
+    conn.row_factory = sqlite3.Row
+    conn.execute('CREATE TABLE ingestionRuns (id INTEGER PRIMARY KEY, job TEXT, startedAt TEXT, '
+                 'finishedAt TEXT, succeeded INTEGER, changes INTEGER, note TEXT)')
+    conn.execute("INSERT INTO ingestionRuns (job, startedAt, finishedAt, succeeded, changes) "
+                 "VALUES ('news', '2026-10-09T12:00:00Z', '2026-10-09T12:01:00Z', 1, 7)")
+    conn.execute("INSERT INTO ingestionRuns (job, startedAt, finishedAt, succeeded, changes) "
+                 "VALUES ('news', '2026-10-09T12:30:00Z', '2026-10-09T12:31:00Z', 0, NULL)")
+    original = server.db
+    server.db = conn
+    try:
+        row = server.status_row(server.STATUS_SOURCES[0])
+    finally:
+        server.db = original
+    assert row['nextSyncUtc'] == '2026-10-09T13:00:00Z'     # latest attempt + 30 min
+    assert row['lastRefreshUtc'] == '2026-10-09T12:01:00Z'  # latest *successful* run
+    assert row['changes'] == 7
+    assert row['lastRunFailed'] is True
+
+
 def test_ground_segment_assets_endpoint_returns_json_list():
     status, headers, body = call_app('/api/ground-segment-assets')
     assert status == '200 OK'

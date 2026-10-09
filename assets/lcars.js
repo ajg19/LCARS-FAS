@@ -290,6 +290,10 @@ function updateControlArea(sectionId, label) {
 
     const wrapper = document.getElementById('default');
     if (wrapper) {
+        // Lets classic.css style one section's control area without
+        // touching the same shared markup elsewhere, e.g. the location form
+        // under #default[data-control-section="gs-ops"] only.
+        wrapper.dataset.controlSection = sectionId;
         if (panel && panel.defaultAreaMode === 'key') {
             wrapper.innerHTML = `<div class="control-area-key">${panel.buttons.map(({ label: keyLabel, color, shape }) => `
                 <div class="control-area-key-row">
@@ -333,21 +337,30 @@ async function openInfrastructureSection() {
     initInfrastructureMap();
 }
 
-// Wired to the ON-ORBIT left-menu button, replacing the old three-
-// statement onclick chain (showSection(); initOnOrbitMap();
-// detectObserverLocation();). Same load-before-show reasoning as
-// openInfrastructureSection() above -- onOrbitPanel.js's
-// registerPanelControls() call must have run before showSection() calls
-// updateControlArea(), or the first click renders the placeholder
-// fallback instead of the real buttons.
+// Wired to the GRD-TRACK left-menu button (labelled ON-ORBIT until the
+// ON-ORBIT overview section below was added; its section id stays
+// 'on-orbit'), replacing the old three-statement onclick chain
+// (showSection(); initOnOrbitMap(); detectObserverLocation();). Same
+// load-before-show reasoning as openInfrastructureSection() above --
+// onOrbitPanel.js's registerPanelControls() call must have run before
+// showSection() calls updateControlArea(), or the first click renders the
+// placeholder fallback instead of the real buttons.
 async function openOnOrbitSection() {
     await Promise.all([
         loadScriptOnce('assets/mapCore.js'),
         loadScriptOnce('assets/onOrbitPanel.js'),
     ]);
-    showSection('on-orbit', 'ON ORBIT');
+    showSection('on-orbit', 'GRD TRACK');
     initOnOrbitMap();
     detectObserverLocation();
+}
+
+// Wired to the ON-ORBIT left-menu button: the overview of what is on orbit
+// (nationality, sector, inclination, altitude). Same load-before-show
+// reasoning as above -- the panel module registers its control area.
+async function openOnOrbitOverviewSection() {
+    await loadScriptOnce('assets/onOrbitOverviewPanel.js');
+    showSection('on-orbit-overview', 'ON ORBIT');
 }
 
 // Wired to the EO left-menu button. Same load-before-show reasoning as
@@ -553,7 +566,7 @@ async function fetchAndSortGST() {
 }
 
 /* ==========================================================================
-   SECTION 3: SPACE NEWS FROM RSS FEEDS SCRAPED USING A NODE.JS CRAWLER AND STORED IN SQLite 
+   SECTION 3: SPACE NEWS FROM RSS FEEDS (scripts/readNews.py), STORED IN SQLite
    ========================================================================== */
 
 let globalNewsData = [];
@@ -579,110 +592,133 @@ function formatNewsDate(dateStr) {
 // boundaries (e.g. "Thu, 30 Jul" sorts before "Wed, 29 Jul" alphabetically,
 // even though Thursday is later -- confirmed live against the real DB).
 // Re-sorting here by an actually-parsed Date is what makes "most recent
-// first" true rather than approximate. Shared by both fetchAndRenderNews()
-// and fetchAndRenderFullNewsTable(), so the ticker and the full table can
-// never disagree on ordering.
+// first" true rather than approximate. Used by fetchAndRenderFullNewsTable()
+// for both the unfiltered and topic-filtered lists.
 function sortNewsByDateDesc(items) {
     return items.slice().sort((a, b) => new Date(b.published_date || b.date) - new Date(a.published_date || a.date));
 }
 
-// Fetch news records out of the SQLite backend pipeline
-async function fetchAndRenderNews() {
-    try {
-        // Only fetch if we don’t already have data
-        if (!Array.isArray(globalNewsData) || globalNewsData.length === 0) {
-            
-            const response = await fetch('api/news?limit=50');
+/* ==========================================================================
+   SECTION 3a: DATA-FRESHNESS TABLE (landing page control area)
+   ========================================================================== */
 
-            if (!response.ok) {
-                throw new Error(`HTTP error ${response.status}`);
-            }
+// One row per data source from api/status (server.py) -- when it was last
+// refreshed, how many records that refresh changed, and a live countdown to
+// its next scheduled sync. Shown in the control area on the landing page in
+// place of the old news-headline ticker, using the same dc-row-1..7
+// amber/white animation classes on each row's cells.
 
-            const result = await response.json();
+const STATUS_REFETCH_MS = 5 * 60 * 1000;   // pick up new runs while the page stays open
+let statusTableData = null;
+let statusTableRefetchTimer = null;
 
-            // Handle different API shapes safely
-            globalNewsData = Array.isArray(result)
-                ? result
-                : result.data || result.rows || result.news || [];
+// 'YYYY-MM-DD HH:MM' -- UTC from the ISO string itself, local via the browser.
+function formatStatusTime(isoValue, local) {
+    if (!isoValue) {
+        return '—';
+    }
+    const date = new Date(isoValue);
+    if (isNaN(date.getTime())) {
+        return '—';
+    }
+    const pad = (n) => String(n).padStart(2, '0');
+    const parts = local
+        ? [date.getFullYear(), date.getMonth() + 1, date.getDate(), date.getHours(), date.getMinutes()]
+        : [date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate(), date.getUTCHours(), date.getUTCMinutes()];
+    return `${parts[0]}-${pad(parts[1])}-${pad(parts[2])} ${pad(parts[3])}:${pad(parts[4])}`;
+}
 
-            // Final safety fallback
-            if (!Array.isArray(globalNewsData)) {
-                console.error('Invalid data format:', result);
-                globalNewsData = [];
-            }
+function formatTimeToNextSync(source, nowMs) {
+    if (!source.nextSyncUtc) {
+        return '—';
+    }
+    const remainingSec = Math.round((new Date(source.nextSyncUtc).getTime() - nowMs) / 1000);
+    if (remainingSec <= 0) {
+        return 'OVERDUE';
+    }
+    const h = Math.floor(remainingSec / 3600);
+    const m = Math.floor((remainingSec % 3600) / 60);
+    const s = remainingSec % 60;
+    return h > 0 ? `${h}H ${String(m).padStart(2, '0')}M` : `${m}M ${String(s).padStart(2, '0')}S`;
+}
 
-            globalNewsData = sortNewsByDateDesc(globalNewsData);
+function formatStatusChanges(source) {
+    if (source.lastRunFailed) {
+        return 'FAILED';
+    }
+    return Number.isFinite(source.changes) ? source.changes.toLocaleString('en-GB') : '—';
+}
+
+function renderStatusTable() {
+    const wrapper = document.getElementById('default');
+    if (!wrapper || controlAreaSectionActive || !statusTableData) {
+        return;
+    }
+    const columns = ['DATA', 'SOURCE', 'LAST REFRESH (UTC)', 'LAST REFRESH (LOCAL)', '# CHANGES', 'TIME TO NEXT SYNC'];
+    const nowMs = Date.now();
+    const rows = statusTableData.sources.map((source, index) => {
+        const animationClass = `dc-row-${(index % 7) + 1}`;
+        const cells = [
+            source.data,
+            source.source,
+            formatStatusTime(source.lastRefreshUtc, false),
+            formatStatusTime(source.lastRefreshUtc, true),
+            formatStatusChanges(source),
+            formatTimeToNextSync(source, nowMs),
+        ];
+        // title: the full text on hover, for any cell its column width cuts
+        // short with an ellipsis (e.g. a long Source).
+        return `<tr>${cells.map((text, column) => `<td class="${animationClass}" title="${text}"${
+            column === 5 ? ` data-status-countdown="${index}"` : ''}>${text}</td>`).join('')}</tr>`;
+    }).join('');
+    // Column widths add to 100% -- with table-layout: fixed (classic.css)
+    // the table then always fits the control area.
+    const columnWidths = ['17%', '25%', '15%', '15%', '12%', '16%'];
+    wrapper.innerHTML = `<table class="status-table">
+        <colgroup>${columnWidths.map((width) => `<col style="width:${width}">`).join('')}</colgroup>
+        <thead><tr>${columns.map((title) => `<th>${title}</th>`).join('')}</tr></thead>
+        <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// Updates only the countdown cells' text, every second -- re-rendering the
+// whole table would restart every row's colour animation.
+function tickStatusCountdowns() {
+    if (controlAreaSectionActive || !statusTableData) {
+        return;
+    }
+    const nowMs = Date.now();
+    document.querySelectorAll('#default [data-status-countdown]').forEach((cell) => {
+        const source = statusTableData.sources[Number(cell.dataset.statusCountdown)];
+        if (source) {
+            cell.textContent = formatTimeToNextSync(source, nowMs);
         }
+    });
+}
 
-        // Always safe to call now
-        renderNewsTable(globalNewsData);
-
+async function fetchAndRenderStatusTable() {
+    try {
+        const response = await fetch('api/status');
+        if (!response.ok) {
+            throw new Error(`HTTP error ${response.status}`);
+        }
+        statusTableData = await response.json();
+        renderStatusTable();
     } catch (error) {
-        console.error("Error fetching news from SQLite DB:", error);
-
+        console.error('Error fetching data-source status:', error);
         const wrapper = document.getElementById('default');
-        if (wrapper) {
+        if (wrapper && !controlAreaSectionActive) {
             wrapper.innerHTML =
                 `<div style="color: var(--red); padding: 10px; font-weight: bold;">
-                    ERR: DATABASE_CONN_FAIL
+                    ERR: STATUS_FETCH_FAIL
                  </div>`;
         }
     }
+    clearTimeout(statusTableRefetchTimer);
+    statusTableRefetchTimer = setTimeout(fetchAndRenderStatusTable, STATUS_REFETCH_MS);
 }
 
-// Calculate precise element viewport space and fill rows down to the window fold
-function renderNewsTable(newsItems) {
-    const wrapper = document.getElementById('default');
-    if (!wrapper) return;
-    
-    wrapper.innerHTML = ''; 
-    
-    const table = document.createElement('table');
-    table.style.width = '100%';
-    table.style.borderCollapse = 'collapse';
-    table.style.fontFamily = 'Arial, Helvetica, sans-serif';
-    table.style.fontSize = '12px';
-    table.style.textTransform = 'uppercase'; 
-    
-    // FIXED HEIGHT MATRIX: Matches the 204px CSS header wrapper boundary
-    const rowHeight = 26; 
-    const maxRows = 7; 
-    const itemsToShow = newsItems.slice(0, maxRows);
-    
-    itemsToShow.forEach((item, index) => {
-        const tr = document.createElement('tr');
-        tr.style.height = `${rowHeight}px`;
-        tr.style.borderBottom = '1px solid #111';
-        
-        // Column 1: Datetime Stamp (LCARS CSS Gold Variable remains anchored)
-        const tdDate = document.createElement('td');
-        tdDate.style.color = 'var(--gold)'; 
-        tdDate.style.padding = '2px 12px 2px 4px';
-        tdDate.style.whiteSpace = 'nowrap';
-        tdDate.textContent = formatNewsDate(item.published_date || item.date);
-        
-        // Column 2: Article Title String (Color handled via CSS animation)
-        const tdTitle = document.createElement('td');
-        tdTitle.style.padding = '2px 12px';
-        tdTitle.style.width = '100%';
-        tdTitle.style.maxWidth = '0';
-        tdTitle.style.overflow = 'hidden';
-        tdTitle.style.textOverflow = 'ellipsis';
-        tdTitle.style.whiteSpace = 'nowrap';
-        tdTitle.textContent = item.title;
-        
-        // RESTORE ANIMATION: Assign looping animation rules (dc-row-1 to dc-row-7)
-        // This links the titles directly into the native @keyframes system inside classic.css
-        const animationClass = `dc-row-${(index % 7) + 1}`;
-        tdTitle.classList.add(animationClass);
-        
-        tr.appendChild(tdDate);
-        tr.appendChild(tdTitle);
-        table.appendChild(tr);
-    });
-    
-    wrapper.appendChild(table);
-}
+setInterval(tickStatusCountdowns, 1000);
 
 /* ==========================================================================
    SECTION 3b: FULL NEWS TABLE (Detail View — triggered by 01-ALL button)
@@ -692,11 +728,9 @@ function renderNewsTable(newsItems) {
 // response for an earlier filter button can't overwrite a later one's.
 let fullNewsTableRequestID = 0;
 
-// Unfiltered (topic null): reuses globalNewsData (populated by
-// fetchAndRenderNews if not already loaded) and renders every row, not just
-// the 7-row marquee subset. Filtered: always fetches that topic fresh --
-// globalNewsData is the unfiltered set the ticker shares, so filtered rows
-// must never be cached in it.
+// Unfiltered (topic null): fetched once into globalNewsData, then reused.
+// Filtered: always fetches that topic fresh -- globalNewsData is the
+// unfiltered cache, so filtered rows must never be stored in it.
 async function fetchAndRenderFullNewsTable(topic = null) {
     const wrapper = document.getElementById('news-table-wrapper');
     if (!wrapper) return;
@@ -761,9 +795,14 @@ async function fetchAndRenderFullNewsTable(topic = null) {
 // leaving the app. Field names guessed defensively (title/url/source aren't
 // fully confirmed in the API response shape) — adjust if your /api/news
 // payload differs.
+// The list currently (or last) shown by renderFullNewsTable() -- what the
+// back button returns to from an article's detail view.
+let currentFullNewsItems = [];
+
 function renderFullNewsTable(newsItems) {
     const wrapper = document.getElementById('news-table-wrapper');
     if (!wrapper) return;
+    currentFullNewsItems = newsItems;
 
     // Always resets to "showing the list" -- covers both first render and
     // the back button's return from the detail view.
@@ -915,9 +954,11 @@ function openCurrentArticleInFull() {
 }
 
 // Wired to the bar-7 back button; re-rendering the list also resets its
-// own visibility state (see renderFullNewsTable() above).
+// own visibility state (see renderFullNewsTable() above). Returns to the
+// list the article was opened from -- all news, or one topic's filtered
+// list -- not always the unfiltered one.
 function backToNewsList() {
-    renderFullNewsTable(globalNewsData);
+    renderFullNewsTable(currentFullNewsItems);
     updateEoAckGap();
 }
 
@@ -1151,13 +1192,8 @@ async function initLiveFeedCycler() {
    SECTION 6: SYSTEM EVENT LIFECYCLE LISTENERS
    ========================================================================== */
 
-window.addEventListener('DOMContentLoaded', fetchAndRenderNews);
-// The landing page is the news view, so its nav shows the news filter
-// buttons from the start -- nav strip only, leaving the ticker in #default.
-window.addEventListener('DOMContentLoaded', () => renderControlAreaButtons('news'));
+// The landing page's control area holds only the data-freshness table -- no
+// buttons (the empty nav is hidden by nav:empty in classic.css). Opening
+// any section, NEWS included, renders that section's own buttons.
+window.addEventListener('DOMContentLoaded', fetchAndRenderStatusTable);
 window.addEventListener('DOMContentLoaded', initLiveFeedCycler);
-window.addEventListener('resize', () => {
-    if (!controlAreaSectionActive && globalNewsData.length > 0) {
-        renderNewsTable(globalNewsData);
-    }
-});

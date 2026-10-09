@@ -300,8 +300,10 @@ def fetch_space_track_satcat():
 
 # 6. Main enrichment run
 def run_satcat_ingestion():
+    """Returns the number of objects enriched, from both sources."""
     print(f'\n=== [{time.strftime("%H:%M:%S")}] Starting SATCAT Metadata Ingestion ===')
     seen_ids = set()
+    totalEnriched = 0
 
     try:
         rows = fetch_celestrak_satcat()
@@ -315,6 +317,7 @@ def run_satcat_ingestion():
                 updated += 1
             seen_ids.add(row['noradID'])
         print(f'  [celestrak] {len(rows)} catalogue rows read, {updated} existing objects enriched')
+        totalEnriched += updated
     except Exception as err:
         print(f'  [celestrak] ERROR {err}')
 
@@ -334,15 +337,20 @@ def run_satcat_ingestion():
                 if cursor.rowcount > 0:
                     updated += 1
             print(f'  [space-track] {updated} additional objects enriched')
+            totalEnriched += updated
     except Exception as err:
         print(f'  [space-track] ERROR {err}')
 
     print('=== SATCAT METADATA INGESTION COMPLETE ===\n')
+    return totalEnriched
 
 
 # 7. Run once and exit -- scheduling (once daily, deliberately more
 # conservative than the TLE job's twice-daily cadence since object type/
 # owner/launch/decay data changes on the order of days-to-never, not
-# hours) is owned by cron, not this script.
+# hours) is owned by cron, not this script. Each run is recorded in
+# ingestionRuns for the landing page's data-freshness table.
 if __name__ == '__main__':
-    run_satcat_ingestion()
+    from ingestionLog import trackRun
+    with trackRun(db, 'satcat') as run:
+        run.changes = run_satcat_ingestion()
