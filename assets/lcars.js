@@ -437,9 +437,20 @@ function fetchNewsTopicCounts() {
     return newsTopicCountsPromise;
 }
 
+// A round axis maximum at or above `maxCount`, and a tick step giving
+// roughly four intervals -- step is 1, 2 or 5 times a power of ten (141
+// -> step 50, top 150), and never below 1, since counts are whole articles.
+function niceHistogramAxis(maxCount) {
+    const roughStep = maxCount / 4;
+    const magnitude = 10 ** Math.floor(Math.log10(roughStep));
+    const step = Math.max(1, [1, 2, 5, 10].map((m) => m * magnitude).find((s) => s >= roughStep));
+    return { step, top: Math.ceil(maxCount / step) * step };
+}
+
 // LCARS-style horizontal histogram in the control panel, one bar per
-// filter button in button order, each in its button's colour, scaled to
-// the largest topic. Left blank if there are no counts yet.
+// filter button in button order, each in its button's colour, read
+// against a horizontal axis with a rounded scale along the bottom. Left
+// blank if there are no counts yet.
 async function renderNewsTopicHistogram() {
     const wrapper = document.getElementById('default');
     if (!wrapper) {
@@ -461,16 +472,28 @@ async function renderNewsTopicHistogram() {
         return;
     }
 
-    wrapper.innerHTML = `<div class="news-histogram">${NEWS_TOPICS.map(({ topic, label, color }) => {
+    const { step, top } = niceHistogramAxis(maxCount);
+    const ticks = [];
+    for (let value = 0; value <= top; value += step) {
+        ticks.push(value);
+    }
+
+    const barRows = NEWS_TOPICS.map(({ topic, label, color }) => {
         const count = counts[topic] || 0;
-        const widthPercent = (count / maxCount) * 100;
         return `
             <div class="news-histogram-label">${label}</div>
-            <div class="news-histogram-track">
-                <div class="news-histogram-bar" style="width:${widthPercent}%; background-color:${color}"></div>
-            </div>
-            <div class="news-histogram-count" style="color:${color}">${count}</div>`;
-    }).join('')}</div>`;
+            <div class="news-histogram-track" title="${count}">
+                <div class="news-histogram-bar" style="width:${(count / top) * 100}%; background-color:${color}"></div>
+            </div>`;
+    }).join('');
+
+    const axisRow = `
+        <div></div>
+        <div class="news-histogram-axis">${ticks.map((value) => `
+            <span class="news-histogram-tick" style="left:${(value / top) * 100}%">${value}</span>`).join('')}
+        </div>`;
+
+    wrapper.innerHTML = `<div class="news-histogram">${barRows}${axisRow}</div>`;
 }
 
 registerPanelControls('news', {

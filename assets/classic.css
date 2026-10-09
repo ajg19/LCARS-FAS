@@ -1089,13 +1089,16 @@ button:active {
 
 /* News topic histogram shown in the control area while the news section
    is open (see renderNewsTopicHistogram() in lcars.js) -- one row per
-   filter button, filling the wrapper's fixed nine-row height exactly.
-   LCARS bar style: flat colour, pill-rounded right end, square left end
-   butting against the right-aligned label, count in the bar's colour. */
+   filter button plus a scale axis along the bottom, together filling the
+   wrapper's fixed height. LCARS bar style: flat colour, pill-rounded
+   right end, square left end butting against the right-aligned label.
+   Right padding leaves room for the last tick label, centred on the axis
+   end. */
 .news-histogram {
 	display: grid;
-	grid-template-columns: max-content 1fr 3.5ch;
-	grid-template-rows: repeat(9, 1fr);
+	grid-template-columns: max-content 1fr;
+	grid-template-rows: repeat(9, 1fr) auto;
+	padding-right: 1rem;
 	align-items: center;
 	column-gap: .5rem;
 	width: 100%;
@@ -1122,8 +1125,30 @@ button:active {
 	border-radius: 0 100vmax 100vmax 0;
 }
 
-.news-histogram-count {
-	text-align: left;
+/* Horizontal axis: a thin orange rule with a tick mark and value at each
+   step, aligned under the bars' track so 0 sits at the bars' left end. */
+.news-histogram-axis {
+	position: relative;
+	height: calc(var(--dc-row-height) * 1.5);
+	border-top: 2px solid var(--data-cascade-color);
+}
+
+.news-histogram-tick {
+	position: absolute;
+	top: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	transform: translateX(-50%);
+	color: var(--data-cascade-color);
+}
+
+.news-histogram-tick::before {
+	content: '';
+	width: 2px;
+	height: 4px;
+	margin-bottom: 2px;
+	background-color: var(--data-cascade-color);
 }
 
 /*
