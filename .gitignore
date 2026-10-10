@@ -6,11 +6,12 @@ __pycache__/
 *.db-shm
 ~$*
 
-# Working backups -- 0_tools/bugs.py writes the first on every save
+# Working backup -- 0_tools/bugs.py writes it on every save
 bugsDB.xlsx.bak
-ingestionDBs/space_news.db.bak
 
-# Rebuilt weekly from GCAT by scripts/ingestGcat.py -- never committed (16+ MB).
-ingestionDBs/gcat.db
-# Derived ON-ORBIT figures, rebuilt by scripts/orbitStats.py -- never committed.
-ingestionDBs/onOrbitStats.db
+# Databases are never committed: each is rebuilt or kept current by its own
+# ingestion job (news, orbital pipeline, GCAT, orbitStats), the live server
+# keeps its own, and committed copies would republish Space-Track data.
+# The one exception is groundSegmentAssets.db, which can't easily be rebuilt.
+ingestionDBs/*
+!ingestionDBs/groundSegmentAssets.db
