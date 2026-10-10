@@ -57,6 +57,7 @@ FIELDS = [
     ('date_fixed', 'Date Fixed'),
     ('phase', 'Phase'),
     ('type', 'Bug / Feature Request'),
+    ('notes', 'Notes'),
 ]
 DATE_HEADERS = {'Date Found', 'Date Fixed'}
 DEFAULTS = {
@@ -317,6 +318,7 @@ def addFieldOptions(parser, forAdd):
                        help='YYYY-MM-DD, "today", or "none" to clear')
     group.add_argument('--phase', help='Pre-Alpha / Alpha / Beta' + (' (default Pre-Alpha)' if forAdd else ''))
     group.add_argument('--type', help='Bug / Feature-Request' + (' (default Bug)' if forAdd else ''))
+    group.add_argument('--notes', help='anything else, e.g. what a partial fix left to do')
 
 
 def buildParser():
