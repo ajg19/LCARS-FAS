@@ -36,6 +36,16 @@
 	--tng-plum: #634a4b;        /* dark accent -- never under black text */
 	--tng-alert: #cb4d00;       /* alerts and errors only */
 
+	/* GCAT sector classes -- the same colour wherever a sector is shown
+	   (ON-ORBIT sector pie, LAUNCHES payloads chart, ...). Academic blue,
+	   commercial earthy, civil amber, defence brick red (kept clear of
+	   --tng-alert, which is for alerts only). */
+	--sector-academic: var(--tng-periwinkle);
+	--sector-commercial: #a08a66;
+	--sector-civil: var(--tng-amber);
+	--sector-defence: #c45a50;
+	--sector-unknown: var(--tng-mauve);
+
 	--african-violet: var(--tng-pink);
 	--almond: var(--tng-sand);
 	--almond-creme: var(--tng-sand);
@@ -2210,6 +2220,15 @@ nav.nav-grid-dynamic {
 	display: flex;
 	align-self: center;
 	gap: .5rem;
+}
+
+/* ON-ORBIT: a vertical amber rule between the control area's content (the
+   regime table) and its buttons -- drawn on the left edge of the button
+   area that comes first (#control-area-groups, holding the second 2 x 2
+   group). */
+#default[data-control-section="on-orbit"] ~ .control-area-groups {
+	padding-left: 1.5rem;
+	border-left: 3px solid var(--tng-amber);
 }
 
 /* One button stack within .control-area-groups -- see
@@ -4396,6 +4415,159 @@ footer:has(.footer-frame) {
 	color: var(--status-data-color);
 }
 
+/* LCARS line chart (lineChartHtml() in launchesPanel.js), SVG: faint
+   gridlines, blue axis numbers, sand axis title, a periwinkle line with a
+   dot per point, the last point labelled. */
+.lcars-line-chart {
+	display: block;
+	max-width: 100%;
+	overflow: visible;
+	font-family: var(--status-font);
+}
+
+.lcars-line-grid {
+	stroke: #222;
+	stroke-width: 1;
+}
+
+.lcars-line-axis,
+.lcars-line-xtick-mark {
+	stroke: var(--data-cascade-color);
+	stroke-width: 2;
+}
+
+.lcars-line-ytick,
+.lcars-line-xtick,
+.lcars-line-last {
+	fill: var(--status-data-color);
+	font-variant-numeric: tabular-nums;
+}
+
+.lcars-line-axis-title {
+	fill: var(--status-label-color);
+	text-transform: uppercase;
+}
+
+.lcars-line-path {
+	fill: none;
+	stroke: var(--tng-periwinkle);
+	stroke-width: 2.5;
+	stroke-linejoin: round;
+}
+
+/* LAUNCHES control area: start / end year inputs (launchesPanel.js) --
+   control-area text size, sand labels, blue typed values, as GS OPS's form;
+   a red outline and message when a value is refused. */
+/* Start above end, at the left of the control area; labels left-aligned in
+   a fixed-width column so the two inputs line up, the whole block set in
+   from the LCARS frame's spine. */
+.launch-years {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	justify-content: center;
+	gap: .5rem;
+	width: 100%;
+	padding-left: 2rem;
+	font-size: var(--status-font-size);
+	text-transform: uppercase;
+}
+
+.launch-years-field {
+	display: grid;
+	grid-template-columns: 6.5em auto;
+	align-items: center;
+	text-align: left;
+	color: var(--status-label-color);
+}
+
+.launch-years-field input {
+	width: 4.2em;
+	padding: .15rem .4rem;
+	border: 1px solid var(--bluey);
+	border-radius: 4px;
+	background: black;
+	color: var(--status-data-color);
+	font: inherit;
+	font-variant-numeric: tabular-nums;
+	text-align: center;
+}
+
+.launch-years-field input.is-invalid {
+	border-color: var(--red);
+}
+
+.launch-years-message {
+	min-height: 1.2em;
+	color: var(--red);
+}
+
+/* Stacked charts: legend under the title bar (swatch + sand label),
+   flat area bands, invisible hover strips / bar groups carrying tooltips. */
+.lcars-chart-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .4rem 1.4rem;
+	margin: -.3rem 0 .6rem 1.5rem;
+	text-transform: uppercase;
+	color: var(--status-label-color);
+}
+
+.lcars-chart-legend-item {
+	display: inline-flex;
+	align-items: center;
+	gap: .45rem;
+}
+
+.lcars-chart-swatch {
+	width: .9rem;
+	height: .9rem;
+	border-radius: 50%;
+}
+
+.lcars-area-band {
+	stroke: black;
+	stroke-width: .5;
+}
+
+.lcars-hover-strip {
+	fill: transparent;
+	cursor: help;
+}
+
+.lcars-hover-strip:hover {
+	fill: rgba(245, 246, 250, .08);
+}
+
+.lcars-bar {
+	cursor: help;
+}
+
+.lcars-bar:hover rect {
+	opacity: .8;
+}
+
+/* Two-axis line chart: one line per series in its own colour (set inline);
+   the right-axis series dashed, so it reads as a different scale. */
+.lcars-dual-line {
+	fill: none;
+	stroke-width: 2.5;
+	stroke-linejoin: round;
+}
+
+.lcars-dual-line-right {
+	stroke-dasharray: 6 4;
+}
+
+.lcars-line-dot {
+	fill: var(--tng-periwinkle);
+	cursor: help;
+}
+
+.lcars-line-dot:hover {
+	fill: var(--space-white);
+}
+
 /* A header-bar total with an explanatory tooltip: help cursor as the cue. */
 .orbit-chart-total-tip {
 	cursor: help;
@@ -4511,8 +4683,7 @@ footer:has(.footer-frame) {
    fixed height (as little as ~139px at 1300-1500px wide; the font drops to
    .875rem at <=1300px). The first column -- row names, headed SATELLITES
    or ALL SPACECRAFT -- is left-aligned and wide enough for the longer
-   label, so the table doesn't shift when the KIND toggle changes. The
-   "no current orbit" note sits beside the table. */
+   label, so the table doesn't shift when the KIND toggle changes. */
 .orbit-regime-panel {
 	display: flex;
 	align-items: center;
@@ -4554,11 +4725,16 @@ footer:has(.footer-frame) {
 .orbit-regime-table th:first-child,
 .orbit-regime-table td:first-child {
 	text-align: left;
-	min-width: 7.5em;   /* fits "ALL SPACECRAFT" in Antonio */
+	width: 7.5em;   /* fits "ALL SPACECRAFT" / "ALL OBJECTS" in Antonio */
 }
 
+/* Fixed column widths, so the table doesn't shrink and grow as the
+   figures change with the filters: each number column fits the widest
+   value it can hold ("31,878", "100.0%"). On a table cell, width acts as
+   a minimum (min-width isn't reliably honoured there). */
 .orbit-regime-table th:not(:first-child),
 .orbit-regime-table td:not(:first-child) {
+	width: 3.4em;
 	text-align: right;
 }
 
@@ -4567,15 +4743,7 @@ footer:has(.footer-frame) {
    by the rule above). */
 .orbit-regime-table .orbit-regime-total {
 	border-left: 1px solid var(--status-label-color);
-	min-width: 6em;
-}
-
-.orbit-regime-note {
-	max-width: 14rem;
-	font-size: .8rem;
-	line-height: 1.2;
-	text-transform: uppercase;
-	color: var(--status-text-color);
+	width: 6em;
 }
 
 /* ON-ORBIT overview's control-area status line (onOrbitPanel.js)

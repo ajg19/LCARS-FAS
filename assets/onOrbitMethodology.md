@@ -81,7 +81,7 @@ Each object is placed from its **current** orbit in two steps:
 Classifying shape first matters: by mean altitude alone a Molniya orbit (average about 20,000 km) would look like **MEO**, and a very eccentric science orbit like **> GEO**.
 
 ### Objects with no current orbit
-A handful of payloads in the catalogue have no current orbit on file. They are **not placed in any regime** (rather than being guessed), and their number is shown beside the table.
+A handful of payloads in the catalogue have no current orbit on file. They are **not placed in any regime** (rather than being guessed), and their number is given on the DEFINITIONS page's reconciliation.
 
 ---
 

@@ -3,8 +3,9 @@ in ingestionDBs/onOrbitStats.db (a derived database: rebuilt by this
 script, never committed).
 
 Population: the NORAD catalogue (orbitalObjects.db -- CelesTrak and
-Space-Track, refreshed by the orbital pipeline every 12 h): payloads
-(objectType PAY) that have not decayed, with their CURRENT perigee/apogee.
+Space-Track, refreshed by the orbital pipeline every 12 h): every object
+that has not decayed -- payloads (objectType PAY), rocket bodies, debris and
+unknown or untyped objects -- with its CURRENT perigee/apogee.
 GCAT (gcat.db, scripts/ingestGcat.py, weekly) is joined in by NORAD number
 only for ownership (state, owner organisations) and its payload category.
 GCAT's own perigee/apogee are the orbit a satellite was first placed in
@@ -18,6 +19,8 @@ switch between them without recomputing:
   kind:   'satellites' -- all spacecraft minus crewed stations and their
                           visiting vehicles, and passive objects
           'spacecraft' -- every payload
+          'objects'    -- every catalogued object: payloads, rocket bodies,
+                          debris and unknown objects
   spacex: 'with'       -- SpaceX's payloads included        (charts only: the
           'without'    -- SpaceX's payloads left out         regime table shows both)
 A station or visiting vehicle is GCAT category SS (ISS / Tiangong modules,
@@ -46,7 +49,7 @@ GCAT_DB = os.path.join(DB_DIR, 'gcat.db')
 ORBITAL_DB = os.path.join(DB_DIR, 'orbitalObjects.db')
 
 STATUS_FILTERS = ['active', 'all']
-KIND_FILTERS = ['satellites', 'spacecraft']
+KIND_FILTERS = ['satellites', 'spacecraft', 'objects']
 SPACEX_FILTERS = ['with', 'without']
 STATION_CATEGORY_PREFIX = 'SS'
 PASSIVE_CATEGORIES = {'CAL', 'TARG'}
@@ -55,7 +58,7 @@ PASSIVE_CATEGORIES = {'CAL', 'TARG'}
 SPACEX_ORG_CODES = {'SPX', 'SPXES', 'SPXS', 'SPXT', 'SPXTX'}
 
 POPULATION_SQL = '''
-    SELECT o.noradID, o.name, o.perigee, o.apogee, o.inclination,
+    SELECT o.noradID, o.name, o.objectType, o.perigee, o.apogee, o.inclination,
            g.jcat, g.stateCode, g.owners, p.category, p.payloadClass,
            o.noradID IN (SELECT noradID FROM orb.orbital_object_groups WHERE groupName = 'active')   AS inActive,
            o.noradID IN (SELECT noradID FROM orb.orbital_object_groups WHERE groupName = 'stations') AS inStations,
@@ -63,7 +66,7 @@ POPULATION_SQL = '''
     FROM orb.orbital_objects o
     LEFT JOIN gcat.gcatObjects g ON g.noradID = o.noradID
     LEFT JOIN gcat.gcatPayloads p ON p.jcat = g.jcat
-    WHERE o.objectType = 'PAY' AND o.decayDate IS NULL
+    WHERE o.decayDate IS NULL
 '''
 
 
@@ -93,12 +96,15 @@ def replaceRows(db, table, columns, rows):
 # --- Population -----------------------------------------------------------------
 
 def loadPopulation(db):
-    """One dict per in-orbit payload in the NORAD catalogue, with its filter
-    flags and ownership worked out."""
+    """One dict per in-orbit object in the NORAD catalogue, with its filter
+    flags and ownership worked out. Only payloads can be satellites or
+    stations; for a rocket body or debris, GCAT's owner and state are those
+    GCAT records for that object."""
     orgClasses = dict(db.execute('SELECT code, orgClass FROM gcat.gcatOrgs'))
     population = []
-    for (norad, name, perigee, apogee, inclination, jcat, state, owners, category, payloadClass,
+    for (norad, name, objectType, perigee, apogee, inclination, jcat, state, owners, category, payloadClass,
          inActive, inStations, inStarlink) in db.execute(POPULATION_SQL):
+        payload = objectType == 'PAY'
         categories = set((category or '').replace('?', '').replace('*', '').split('/'))
         station = (category or '').startswith(STATION_CATEGORY_PREFIX) or (jcat is None and bool(inStations))
         passive = bool(categories & PASSIVE_CATEGORIES)
@@ -106,7 +112,8 @@ def loadPopulation(db):
         spacex = bool(SPACEX_ORG_CODES.intersection((owners or '').split('/'))) or (jcat is None and starlink)
         population.append({
             'perigee': perigee, 'apogee': apogee, 'inclination': inclination, 'state': state,
-            'active': bool(inActive), 'satellite': not station and not passive,
+            'active': bool(inActive), 'payload': payload,
+            'satellite': payload and not station and not passive,
             'starlink': starlink, 'spacex': spacex,
             'sector': payloadSector(jcat, payloadClass, owners, orgClasses),
             # First-listed GCAT owner code; None if not in GCAT. A multi-owner
@@ -135,7 +142,13 @@ def payloadSector(jcat, payloadClass, owners, orgClasses):
 
 
 def matchesFilters(item, status, kind):
-    return (status == 'all' or item['active']) and (kind == 'spacecraft' or item['satellite'])
+    if status == 'active' and not item['active']:
+        return False
+    if kind == 'satellites':
+        return item['satellite']
+    if kind == 'spacecraft':
+        return item['payload']
+    return True   # 'objects
 
 
 def filteredSets(population):
@@ -369,7 +382,81 @@ def storeOwners(db, population=None):
     return rows
 
 
-ALL_STATS = [storeNationality, storeRegimes, storeInclination, storeSector, storeOwners]
+# --- Launch history (LAUNCHES section) ------------------------------------------
+# From GCAT alone. Payloads launched each year since 1957 (the current year:
+# to date), by GCAT sector (Starlink within commercial), counted by launch
+# date. Payloads that never reached orbit (GCAT status N,
+# launch failures) are left out, so this is new payloads in orbit per year. Re-entries per year come
+# from gcatDecays (scripts/ingestGcat.py): objects that came back down --
+# status R re-entered, D de-orbited, L landed (and their uncertain R? / L?) --
+# by coarse type. Attached / docked objects (AR, DK ...) come down with what
+# they are attached to and aren't counted again; departures to deep space
+# (E, DSO ...) aren't re-entries.
+PAYLOAD_SERIES = [('A', 'Academic & amateur'), ('B', 'Commercial'), ('C', 'Civil government'),
+                  ('D', 'Defence'), ('unknown', 'Unknown sector')]
+REENTRY_STATUSES = {'R', 'R?', 'D', 'L', 'L?'}
+REENTRY_KINDS = [('P', 'Payloads'), ('R', 'Rocket bodies'), ('D', 'Debris'), ('other', 'Other')]
+
+
+def payloadsLaunchedByYear(db, today=None):
+    today = today or datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    orgClasses = dict(db.execute('SELECT code, orgClass FROM gcat.gcatOrgs'))
+    payloads = []
+    for jcat, name, launchDate, decayDate, status, owners, payloadClass in db.execute(
+            "SELECT g.jcat, g.name, g.launchDate, g.decayDate, g.status, g.owners, p.payloadClass "
+            "FROM gcat.gcatObjects g LEFT JOIN gcat.gcatPayloads p ON p.jcat = g.jcat "
+            "WHERE g.coarseType = 'P' AND g.launchDate IS NOT NULL AND COALESCE(g.status, '') <> 'N'"):
+        sector = payloadSector(jcat, payloadClass, owners, orgClasses)
+        spacex = bool(SPACEX_ORG_CODES.intersection((owners or '').split('/')))
+        payloads.append((int(launchDate[:4]), sector or 'unknown', spacex))
+    counts = {}
+    for year, series, spacex in payloads:
+        for spacexFilter in SPACEX_FILTERS:
+            if spacexFilter == 'without' and spacex:
+                continue
+            counts[(spacexFilter, year, series)] = counts.get((spacexFilter, year, series), 0) + 1
+    rows = []
+    for spacexFilter in SPACEX_FILTERS:
+        for year in range(1957, int(today[:4]) + 1):
+            rows += [(spacexFilter, year, key, order, counts.get((spacexFilter, year, key), 0))
+                     for order, (key, _) in enumerate(PAYLOAD_SERIES, start=1)]
+    return rows
+
+
+def reentriesByYear(db):
+    try:
+        found = db.execute('SELECT year, coarseType, status, spacex, objects FROM gcat.gcatDecays').fetchall()
+    except sqlite3.OperationalError:
+        return []   # GCAT not yet re-ingested with the decay summary
+    counts = {}
+    for year, coarseType, status, spacex, n in found:
+        if status not in REENTRY_STATUSES:
+            continue
+        kind = coarseType if coarseType in ('P', 'R', 'D') else 'other'
+        for spacexFilter in SPACEX_FILTERS:
+            if spacexFilter == 'without' and spacex:
+                continue
+            counts[(spacexFilter, year, kind)] = counts.get((spacexFilter, year, kind), 0) + n
+    years = sorted({year for _, year, _ in counts})
+    return [(spacexFilter, year, kind, order, counts.get((spacexFilter, year, kind), 0))
+            for spacexFilter in SPACEX_FILTERS
+            for year in years for order, (kind, _) in enumerate(REENTRY_KINDS, start=1)]
+
+
+def storeLaunchHistory(db, population=None):
+    rows = payloadsLaunchedByYear(db)
+    db.execute('DROP TABLE IF EXISTS launchPayloadsInOrbit')   # replaced by launchPayloadsLaunched
+    replaceRows(db, 'launchPayloadsLaunched',
+                'spacexFilter TEXT, year INTEGER, series TEXT, sortOrder INTEGER, payloads INTEGER, '
+                'PRIMARY KEY (spacexFilter, year, series)', rows)
+    reentries = reentriesByYear(db)
+    replaceRows(db, 'launchReentries',
+                'spacexFilter TEXT, year INTEGER, kind TEXT, sortOrder INTEGER, objects INTEGER, '
+                'PRIMARY KEY (spacexFilter, year, kind)', reentries)
+    return rows, reentries
+
+
+ALL_STATS = [storeNationality, storeRegimes, storeInclination, storeSector, storeOwners, storeLaunchHistory]
 
 
 def refreshAll():
@@ -385,7 +472,7 @@ def refreshAll():
         for stat in ALL_STATS:
             stat(db, population)
         print(f'  [orbitStats] {len(ALL_STATS)} tables refreshed in {os.path.basename(STATS_DB)} '
-              f'({len(population)} payloads in orbit)')
+              f'({len(population)} objects in orbit, {sum(1 for i in population if i["payload"])} payloads)')
     finally:
         db.close()
     return True

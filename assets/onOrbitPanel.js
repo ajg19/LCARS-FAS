@@ -21,10 +21,21 @@
 
 // The filters. Values match scripts/orbitStats.py's STATUS_FILTERS /
 // KIND_FILTERS / SPACEX_FILTERS (and server.py's ON_ORBIT_*_FILTERS); the
-// first of each is the default. status and kind apply to every ON-ORBIT
+// first of each is the default (kind has three: satellites, spacecraft,
+// objects). status and kind apply to every ON-ORBIT
 // figure; spacex to every chart (the regime table already shows ALL and
 // EXCL SPACEX side by side, and ignores it).
 const onOrbitFilters = { status: 'active', kind: 'satellites', spacex: 'with' };
+
+// KIND, a three-way toggle: the order clicks cycle through, the button's
+// text, and the noun the charts use for each.
+const ON_ORBIT_KINDS = ['satellites', 'spacecraft', 'objects'];
+const ON_ORBIT_KIND_LABELS = { satellites: 'SATELLITES', spacecraft: 'ALL SPACECRAFT', objects: 'ALL OBJECTS' };
+const ON_ORBIT_KIND_NOUNS = { satellites: 'satellites', spacecraft: 'spacecraft', objects: 'objects' };
+// Short (Okudagram-style) button texts; ON_ORBIT_KIND_LABELS stays for the
+// regime table's heading.
+const ON_ORBIT_KIND_BUTTONS = { satellites: 'SAT ONLY', spacecraft: 'ALL S-CRFT', objects: 'ALL-OBJ' };
+const ON_ORBIT_STATUS_BUTTONS = { active: 'ACT-ONLY', all: 'ACT +DEAD' };
 
 function onOrbitQuery() {
     return `status=${onOrbitFilters.status}&kind=${onOrbitFilters.kind}&spacex=${onOrbitFilters.spacex}`;
@@ -78,11 +89,11 @@ async function renderOnOrbitReconciliation() {
         getJson(`api/on-orbit/nationality?status=${s}&kind=${k}&spacex=${spacex}`).then((d) => d.totalPayloads);
     let html;
     try {
-        const otherKind = kind === 'satellites' ? 'spacecraft' : 'satellites';
+        const otherKinds = ON_ORBIT_KINDS.filter((k) => k !== kind);
         const otherStatus = status === 'active' ? 'all' : 'active';
-        const [population, otherKindPopulation, otherStatusPopulation, regimes, inclination] = await Promise.all([
+        const [population, otherKindPopulations, otherStatusPopulation, regimes, inclination] = await Promise.all([
             populationOf(status, kind),
-            populationOf(status, otherKind),
+            Promise.all(otherKinds.map((k) => populationOf(status, k))),
             populationOf(otherStatus, kind),
             getJson(`api/on-orbit/regimes?status=${status}&kind=${kind}`),
             getJson(`api/on-orbit/inclination?${onOrbitQuery()}`),
@@ -107,9 +118,9 @@ async function renderOnOrbitReconciliation() {
                 ${line(`= Regime table TOTAL (${spacex === 'with' ? 'ALL' : 'EXCL SPACEX'} row)`, format(tableTotal), 'orbit-recon-key')}
                 ${line('Population, less: no inclination on file', `− ${format(inclination.noInclination)}`)}
                 ${line('= Inclination chart total', format(inclinationTotal), 'orbit-recon-key')}
-                ${line(`${kind === 'satellites' ? 'ALL SPACECRAFT' : 'SATELLITES'} instead`,
-                       `${format(otherKindPopulation)} (${signed(otherKindPopulation - population)})`)}
-                ${line(`${status === 'active' ? 'ACTIVE + INACTIVE' : 'ACTIVE'} instead`,
+                ${otherKinds.map((k, i) => line(`${ON_ORBIT_KIND_BUTTONS[k]} instead`,
+                       `${format(otherKindPopulations[i])} (${signed(otherKindPopulations[i] - population)})`)).join('')}
+                ${line(`${ON_ORBIT_STATUS_BUTTONS[otherStatus]} instead`,
                        `${format(otherStatusPopulation)} (${signed(otherStatusPopulation - population)})`)}
             </table>
             ${population - noOrbit !== tableTotal || population - inclination.noInclination !== inclinationTotal
@@ -140,8 +151,8 @@ function refreshOnOrbitView() {
 // Control area (left side): payloads in orbit per CURRENT orbit regime --
 // columns VLEO, LEO, MEO, GEO, > GEO, HEO and TOTAL; rows ALL and EXCL SPACEX,
 // each followed by its % of that row's total. Payloads with no
-// current orbit on file aren't placed in a regime; their count is noted
-// beside the table instead.
+// current orbit on file aren't placed in a regime (their count is in the
+// orbit-type pie's tooltip and the DEFINITIONS page's reconciliation).
 async function renderOnOrbitRegimeTable() {
     const wrapper = document.getElementById('default');
     if (!wrapper) {
@@ -167,7 +178,6 @@ async function renderOnOrbitRegimeTable() {
     }
     const format = (n) => n.toLocaleString('en-GB');
     const regimes = rows.filter((row) => row.regime !== 'unclassified');
-    const unclassified = rows.find((row) => row.regime === 'unclassified');
     const totalAll = regimes.reduce((sum, row) => sum + row.all, 0);
     const totalExcl = regimes.reduce((sum, row) => sum + row.exclSpacex, 0);
     const percent = (n, total) => (total ? `${((n / total) * 100).toFixed(1)}%` : '—');
@@ -182,7 +192,7 @@ async function renderOnOrbitRegimeTable() {
     const rowHtml = (label, valueOf) =>
         `<tr><td>${label}</td>${columns.map((column) => cell(column, valueOf(column))).join('')}</tr>`;
     // Same wording as the KIND toggle.
-    const heading = onOrbitFilters.kind === 'satellites' ? 'SATELLITES' : 'ALL SPACECRAFT';
+    const heading = ON_ORBIT_KIND_LABELS[onOrbitFilters.kind];
     wrapper.innerHTML = `
         <div class="orbit-regime-panel">
             <table class="orbit-regime-table">
@@ -195,9 +205,6 @@ async function renderOnOrbitRegimeTable() {
                     ${rowHtml('%', (column) => percent(column.excl, totalExcl))}
                 </tbody>
             </table>
-            ${unclassified && unclassified.all
-                ? `<div class="orbit-regime-note">+ ${format(unclassified.all)} IN ORBIT WITH NO CURRENT ORBIT ON FILE, NOT INCLUDED</div>`
-                : ''}
         </div>`;
 }
 
@@ -212,7 +219,7 @@ registerPanelControls('on-orbit', {
         {
             label: 'STATUS',
             color: 'var(--tng-sand)',
-            getText: () => (onOrbitFilters.status === 'active' ? 'ACTIVE' : 'ACTIVE + INACTIVE'),
+            getText: () => ON_ORBIT_STATUS_BUTTONS[onOrbitFilters.status],
             onClick: () => {
                 onOrbitFilters.status = onOrbitFilters.status === 'active' ? 'all' : 'active';
                 refreshOnOrbitView();
@@ -221,16 +228,18 @@ registerPanelControls('on-orbit', {
         {
             label: 'KIND',
             color: 'var(--tng-periwinkle)',
-            getText: () => (onOrbitFilters.kind === 'satellites' ? 'SATELLITES' : 'ALL SPACECRAFT'),
+            // Three-way: SATELLITES -> ALL SPACECRAFT -> ALL OBJECTS -> ...
+            getText: () => ON_ORBIT_KIND_BUTTONS[onOrbitFilters.kind],
             onClick: () => {
-                onOrbitFilters.kind = onOrbitFilters.kind === 'satellites' ? 'spacecraft' : 'satellites';
+                const next = (ON_ORBIT_KINDS.indexOf(onOrbitFilters.kind) + 1) % ON_ORBIT_KINDS.length;
+                onOrbitFilters.kind = ON_ORBIT_KINDS[next];
                 refreshOnOrbitView();
             },
         },
         {
             label: 'SPACEX',
             color: 'var(--tng-lavender)',
-            getText: () => (onOrbitFilters.spacex === 'with' ? 'WITH SPACEX' : 'W/O SPACEX'),
+            getText: () => (onOrbitFilters.spacex === 'with' ? 'INC SPACEX' : 'EX SPACEX'),
             onClick: () => {
                 onOrbitFilters.spacex = onOrbitFilters.spacex === 'with' ? 'without' : 'with';
                 renderOnOrbitCharts();
@@ -239,13 +248,21 @@ registerPanelControls('on-orbit', {
                 }
             },
         },
+        // A second 2 x 2 group, to the left of the four above (grouped buttons
+        // render into #control-area-groups, beside nav): two stacks of two,
+        // LOCN over DEBRIS and COMMERCIAL over COMMS. Placeholders -- no
+        // action yet.
+        { label: 'LOCN', color: 'var(--tng-tan)', group: 'on-orbit-extra-1' },
+        { label: 'COMMERCIAL', color: 'var(--tng-ice)', group: 'on-orbit-extra-2' },
+        { label: 'DEBRIS', color: 'var(--tng-periwinkle)', group: 'on-orbit-extra-1' },
+        { label: 'COMMS', color: 'var(--tng-salmon)', group: 'on-orbit-extra-2' },
         {
             // Toggles the main area between the charts and the definitions,
             // labelled with what a click will show: DEFINITIONS while the
             // charts are up, CHARTS while the definitions are.
             label: 'DEFINITIONS',
             color: 'var(--tng-amber)',
-            getText: () => (onOrbitShowingDefinitions ? 'CHARTS' : 'DEFINITIONS'),
+            getText: () => (onOrbitShowingDefinitions ? 'CHARTS' : 'DEFS'),
             onClick: () => {
                 onOrbitShowingDefinitions = !onOrbitShowingDefinitions;
                 applyOnOrbitMainView();
@@ -380,12 +397,14 @@ const ORBIT_REGIME_COLOURS = {
     VLEO: 'var(--tng-sand)', LEO: 'var(--tng-periwinkle)', MEO: 'var(--tng-amber)',
     GEO: 'var(--tng-lavender)', '> GEO': 'var(--tng-salmon)', HEO: 'var(--tng-pink)',
 };
+// Sector colours: the --sector-* tokens in classic.css, used for every
+// sector chart site-wide.
 const ORBIT_SECTORS = {
-    A: { label: 'A – Academic & amateur', color: 'var(--tng-sand)' },
-    B: { label: 'B – Commercial', color: 'var(--tng-periwinkle)' },
-    C: { label: 'C – Civil government', color: 'var(--tng-amber)' },
-    D: { label: 'D – Defence', color: 'var(--tng-lavender)' },
-    unknown: { label: 'Unknown', color: 'var(--tng-mauve)' },
+    A: { label: 'A – Academic & amateur', color: 'var(--sector-academic)' },
+    B: { label: 'B – Commercial', color: 'var(--sector-commercial)' },
+    C: { label: 'C – Civil government', color: 'var(--sector-civil)' },
+    D: { label: 'D – Defence', color: 'var(--sector-defence)' },
+    unknown: { label: 'Unknown', color: 'var(--sector-unknown)' },
 };
 
 // Vertical-bar histogram (LCARS: flat bars, pill-rounded tops): a log
@@ -440,7 +459,7 @@ function orbitColumnChartHtml(title, totalText, buckets, xTitle, yTitle, xTickEv
 
 // What the current filters select, in words -- for chart titles.
 function onOrbitPopulationLabel() {
-    const kind = onOrbitFilters.kind === 'satellites' ? 'satellites' : 'spacecraft';
+    const kind = onOrbitNoun();
     const label = onOrbitFilters.status === 'active' ? `Active ${kind}` : `All ${kind}`;
     return onOrbitFilters.spacex === 'with' ? label : `${label} excl SpaceX`;
 }
@@ -452,7 +471,7 @@ function onOrbitPopulationLabel() {
 const ON_ORBIT_CHARTS = [
     {
         // Same counts as the control-area regime table (its ALL row, or EXCL
-        // SPACEX with W/O SPACEX on), as a share of the whole.
+        // SPACEX with EX SPACEX on), as a share of the whole.
         key: 'regime-pie',
         title: 'orbit regime',
         group: 'pies',
@@ -597,7 +616,7 @@ const ON_ORBIT_CHARTS = [
 ];
 
 function onOrbitNoun() {
-    return onOrbitFilters.kind === 'satellites' ? 'satellites' : 'spacecraft';
+    return ON_ORBIT_KIND_NOUNS[onOrbitFilters.kind];
 }
 
 // Bumped per chart on every load, so a slow response for an earlier filter

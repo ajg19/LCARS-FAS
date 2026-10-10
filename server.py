@@ -264,7 +264,7 @@ def handle_status(start_response):
 # (scripts/orbitStats.py); a missing or unrecognised value falls back to the
 # default rather than erroring.
 ON_ORBIT_STATUS_FILTERS = ('active', 'all')
-ON_ORBIT_KIND_FILTERS = ('satellites', 'spacecraft')
+ON_ORBIT_KIND_FILTERS = ('satellites', 'spacecraft', 'objects')
 # Charts only (orbitStats.py SPACEX_FILTERS): the regime table shows both.
 ON_ORBIT_SPACEX_FILTERS = ('with', 'without')
 
@@ -398,6 +398,124 @@ def handle_on_orbit_owners(query_params, start_response):
             'noOwner': noOwner[0]['payloads'] if noOwner else 0,
         }
         return json_response(start_response, '200 OK', payload)
+    except Exception as e:
+        return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
+
+
+# GCAT organisation codes for SpaceX (as scripts/orbitStats.py): W/O SPACEX
+# on the LAUNCHES charts leaves out launches SpaceX carried out (launch
+# agency) and objects SpaceX owns.
+SPACEX_ORG_CODES = ('SPX', 'SPXES', 'SPXS', 'SPXT', 'SPXTX')
+# ?outcome=all|success on the launch-log charts: every attempt, or only those
+# GCAT records as successful (second letter of the launch code S).
+LAUNCH_OUTCOME_FILTERS = ('all', 'success')
+
+
+def launch_log_where(query_params):
+    """(spacex, outcome, WHERE clause, params) shared by the launch-log
+    endpoints: orbital and deep-space attempts, less SpaceX's / failures as
+    the filters say."""
+    spacex = on_orbit_spacex_filter(query_params)
+    outcome = get_param(query_params, 'outcome')
+    outcome = outcome if outcome in LAUNCH_OUTCOME_FILTERS else LAUNCH_OUTCOME_FILTERS[0]
+    where = "substr(launchCode, 1, 1) IN ('O', 'D') AND launchDate IS NOT NULL"
+    params = ()
+    if spacex == 'without':
+        where += f" AND COALESCE(agency, '') NOT IN ({','.join('?' * len(SPACEX_ORG_CODES))})"
+        params = SPACEX_ORG_CODES
+    if outcome == 'success':
+        where += " AND substr(launchCode, 2, 1) = 'S'"
+    return spacex, outcome, where, params
+
+
+def handle_launches_per_year(query_params, start_response):
+    """LAUNCHES line chart: orbital and deep-space launch attempts per year
+    (GCAT launch codes O* and D*, successes and failures; suborbital N*/X*
+    tests left out), from gcat.db's launch log -- one row per payload, so
+    launches are counted by distinct launch tag. Counted on request: a few
+    tens of thousands of rows."""
+    try:
+        spacex, outcome, where, params = launch_log_where(query_params)
+        conn = gcat_db()
+        rows = []
+        latest = None
+        if conn is not None:
+            rows = conn.execute(
+                # The launch log has one row per payload, so COUNT(*) is the
+                # payloads those launches carried (including any lost).
+                "SELECT substr(launchDate, 1, 4) AS year, COUNT(DISTINCT launchTag) AS launches, "
+                "COUNT(*) AS payloads, "
+                "COUNT(DISTINCT CASE WHEN substr(launchCode, 2, 1) = 'F' THEN launchTag END) AS failures "
+                f"FROM gcatLaunches WHERE {where} GROUP BY year ORDER BY year", params).fetchall()
+            latest = conn.execute(f"SELECT MAX(launchDate) FROM gcatLaunches WHERE {where}", params).fetchone()[0]
+        payload = {
+            'spacex': spacex,
+            'outcome': outcome,
+            'rows': [{'year': r['year'], 'launches': r['launches'], 'payloads': r['payloads'],
+                      'failures': r['failures']} for r in rows],
+            'latestLaunch': latest,
+        }
+        return json_response(start_response, '200 OK', payload)
+    except Exception as e:
+        return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
+
+
+# Launch-vehicle country (GCAT lvState) -> chart series, in stacking order.
+# European launchers are one series; GCAT codes Rocket Lab's Electron as NZ.
+LAUNCH_COUNTRY_SERIES = ['US', 'SU', 'RU', 'CN', 'EU', 'J', 'IN', 'NZ', 'other']
+LAUNCH_COUNTRY_GROUPS = {'F': 'EU', 'I-ESA': 'EU', 'I-ELDO': 'EU', 'I': 'EU', 'D': 'EU', 'UK': 'EU'}
+
+
+def handle_launches_by_country(query_params, start_response):
+    """LAUNCHES stacked bar chart: orbital and deep-space launch attempts per
+    year by launch-vehicle country (LAUNCH_COUNTRY_SERIES), counted on
+    request from gcat.db's launch log; W/O SPACEX leaves out SpaceX's."""
+    try:
+        spacex, outcome, where, params = launch_log_where(query_params)
+        conn = gcat_db()
+        counts = {}
+        if conn is not None:
+            for r in conn.execute("SELECT CAST(substr(launchDate, 1, 4) AS INTEGER) AS year, lvState, "
+                                  f"COUNT(DISTINCT launchTag) AS launches FROM gcatLaunches WHERE {where} "
+                                  "GROUP BY year, lvState", params):
+                state = r['lvState'] or ''
+                series = LAUNCH_COUNTRY_GROUPS.get(state, state if state in LAUNCH_COUNTRY_SERIES else 'other')
+                key = (r['year'], series)
+                counts[key] = counts.get(key, 0) + r['launches']
+        years = sorted({year for year, _ in counts})
+        rows = [{'year': year, 'country': series, 'launches': counts.get((year, series), 0)}
+                for year in years for series in LAUNCH_COUNTRY_SERIES]
+        return json_response(start_response, '200 OK', {'spacex': spacex, 'outcome': outcome, 'rows': rows})
+    except Exception as e:
+        return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
+
+
+def handle_launches_payloads_launched(query_params, start_response):
+    """LAUNCHES stacked area chart: new payloads reaching orbit each year (this
+    year: to date), Starlink separately and the rest by GCAT sector -- stored
+    by scripts/orbitStats.py (storeLaunchHistory)."""
+    try:
+        spacex = on_orbit_spacex_filter(query_params)
+        rows = stats_rows('SELECT year, series, payloads FROM launchPayloadsLaunched WHERE spacexFilter = ? '
+                          'ORDER BY year, sortOrder', (spacex,))
+        return json_response(start_response, '200 OK', {
+            'spacex': spacex,
+            'rows': [{'year': r['year'], 'series': r['series'], 'payloads': r['payloads']} for r in rows]})
+    except Exception as e:
+        return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
+
+
+def handle_launches_reentries(query_params, start_response):
+    """LAUNCHES stacked bar chart: objects that came back down each year
+    (re-entered, de-orbited or landed), by payload / rocket body / debris /
+    other -- stored by scripts/orbitStats.py (storeLaunchHistory)."""
+    try:
+        spacex = on_orbit_spacex_filter(query_params)
+        rows = stats_rows('SELECT year, kind, objects FROM launchReentries WHERE spacexFilter = ? '
+                          'ORDER BY year, sortOrder', (spacex,))
+        return json_response(start_response, '200 OK', {
+            'spacex': spacex,
+            'rows': [{'year': r['year'], 'kind': r['kind'], 'objects': r['objects']} for r in rows]})
     except Exception as e:
         return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
 
@@ -683,6 +801,14 @@ def application(environ, start_response):
         return handle_on_orbit_sector(query_params, start_response)
     if method == 'GET' and path_info == '/api/on-orbit/owners':
         return handle_on_orbit_owners(query_params, start_response)
+    if method == 'GET' and path_info == '/api/launches/per-year':
+        return handle_launches_per_year(query_params, start_response)
+    if method == 'GET' and path_info == '/api/launches/payloads-launched':
+        return handle_launches_payloads_launched(query_params, start_response)
+    if method == 'GET' and path_info == '/api/launches/by-country':
+        return handle_launches_by_country(query_params, start_response)
+    if method == 'GET' and path_info == '/api/launches/reentries':
+        return handle_launches_reentries(query_params, start_response)
     if method == 'GET' and path_info == '/api/news/topic-counts':
         return handle_news_topic_counts(start_response)
     if method == 'GET' and path_info == '/api/ground-segment-assets':

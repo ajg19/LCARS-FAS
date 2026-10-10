@@ -63,7 +63,7 @@
 					<button class="panel-4b section-toggle" data-section="on-orbit" onclick="openOnOrbitSection();">ON-<span class="hop"> ORBIT</span></button>
 					<button class="panel-5 section-toggle" data-section="gs-ops" onclick="openGsOpsSection();">GS OPS</button>
 					<button class="panel-6 section-toggle" data-section="deep-space" onclick="showSection('deep-space', 'DEEP SPACE')">DEEP<span class="hop">&nbsp;SPACE</span></button>
-					<button class="panel-7 section-toggle" data-section="launches" onclick="showSection('launches', 'LAUNCHES')">LAUNCHES</button>
+					<button class="panel-7 section-toggle" data-section="launches" onclick="openLaunchesSection()">LAUNCHES</button>
 					<button class="panel-8 section-toggle" data-section="infrastructure" onclick="openInfrastructureSection();">GRND SGMNT</button>
 					<button class="panel-9 section-toggle" data-section="organisations" onclick="showSection('organisations', 'ORGANISATIONS')">ORG<span class="hop">ANISATIONS</span></button>
 					<button class="panel-10 section-toggle" data-section="sw-drivers" onclick="showSection('sw-drivers', 'WEATHER'); fetchAndSortGST();">WEATHER</button>
@@ -144,6 +144,8 @@
 								<div class="orbit-defs-text">Every payload still in orbit (not yet re-entered).</div>
 								<div class="orbit-defs-term">Satellites</div>
 								<div class="orbit-defs-text">All spacecraft except crewed space stations and the vehicles that visit them, and passive objects. Small satellites released from a station count as satellites.</div>
+								<div class="orbit-defs-term">All objects</div>
+								<div class="orbit-defs-text">Every catalogued object still in orbit: all spacecraft, plus rocket bodies (spent upper stages), debris (fragments from break-ups, collisions and launches) and objects the catalogue lists as unknown or has not yet given a type. CelesTrak's active list is of working satellites, so ACT-ONLY with ALL-OBJ adds almost nothing to ACT-ONLY with ALL S-CRFT: only the odd active satellite the catalogue has not yet typed as a payload. For a rocket body or debris, country and owner are those GCAT records for that object.</div>
 								<div class="orbit-defs-term">Space station / visiting vehicle</div>
 								<div class="orbit-defs-text">GCAT category SS: ISS and Tiangong modules, Progress, Shenzhou, Tianzhou, Cygnus, Dragon and the like. A visitor GCAT has not catalogued yet is recognised by its membership of CelesTrak's stations list.</div>
 								<div class="orbit-defs-term">Passive object</div>
@@ -153,7 +155,7 @@
 								<div class="orbit-defs-term">Active + inactive</div>
 								<div class="orbit-defs-text">Every payload in orbit regardless of operational status, including dead satellites.</div>
 								<div class="orbit-defs-term">Excl SpaceX</div>
-								<div class="orbit-defs-text">(Table row; the W/O SPACEX button does the same for the charts.) Leaving out every payload with SpaceX among its owners in GCAT (any of its SpaceX codes, including Starlink's operator). For a payload not yet in GCAT, membership of CelesTrak's Starlink list is used instead.</div>
+								<div class="orbit-defs-text">(Table row; the EX SPACEX button does the same for the charts.) Leaving out every payload with SpaceX among its owners in GCAT (any of its SpaceX codes, including Starlink's operator). For a payload not yet in GCAT, membership of CelesTrak's Starlink list is used instead.</div>
 								<div class="orbit-defs-term">Perigee / apogee</div>
 								<div class="orbit-defs-text">The lowest and highest points of an orbit, as altitudes above the Earth's surface.</div>
 								<div class="orbit-defs-term">Mean altitude</div>
@@ -192,11 +194,11 @@
 								<div class="orbit-defs-term">Data sources</div>
 								<div class="orbit-defs-text"><p><b>Orbits and status:</b> the NORAD satellite catalogue, published by the US Space Force, taken as OMM element sets from CelesTrak and Space-Track (a few from SatNOGS). It gives each object's current orbit, whether it is a payload, and whether it has re-entered. CelesTrak's lists supply which payloads are active, which are space stations and visitors, and which are Starlink. Refreshed every 12 hours.</p><p><b>Ownership, country and category:</b> GCAT, the General Catalog of Artificial Space Objects by Jonathan McDowell (planet4589.org), refreshed weekly. GCAT's own orbits are the orbit each object was first placed in (Starlinks at about 280 km before they raise to about 470 km), so they are never used.</p><p>The two are matched by NORAD number. All figures are recalculated after every refresh of either source.</p></div>
 								<div class="orbit-defs-term">Population</div>
-								<div class="orbit-defs-text"><p>Every payload in the catalogue that has not re-entered. The ACTIVE / ACTIVE + INACTIVE and SATELLITES / ALL SPACECRAFT buttons then narrow it, and apply to the table and both charts alike. WITH SPACEX / W/O SPACEX applies to both charts; the table needs no such button, as it shows ALL and EXCL SPACEX side by side.</p></div>
+								<div class="orbit-defs-text"><p>Every object in the catalogue that has not re-entered; payloads only, unless ALL-OBJ is selected. The ACT-ONLY / ACT +DEAD and SAT ONLY / ALL S-CRFT / ALL-OBJ buttons then narrow or widen it (the second cycles through its three settings), and apply to the table and every chart alike. INC SPACEX / EX SPACEX applies to every chart; the table needs no such button, as it shows ALL and EXCL SPACEX side by side.</p></div>
 								<div class="orbit-defs-term">Pie charts</div>
-								<div class="orbit-defs-text"><p><b>Orbit regime pie:</b> the regime table's counts (its ALL row, or EXCL SPACEX with W/O SPACEX on) as shares of the whole. Payloads with no current orbit are left out, as from the table.</p><p><b>Sector pie:</b> every payload in the population by GCAT sector class (see Sector, above), so its total is the nationality chart's. Thin slices are hard to see; the legend gives every count and share.</p></div>
+								<div class="orbit-defs-text"><p><b>Orbit regime pie:</b> the regime table's counts (its ALL row, or EXCL SPACEX with EX SPACEX on) as shares of the whole. Payloads with no current orbit are left out, as from the table.</p><p><b>Sector pie:</b> every payload in the population by GCAT sector class (see Sector, above), so its total is the nationality chart's. Thin slices are hard to see; the legend gives every count and share.</p></div>
 								<div class="orbit-defs-term">Orbit regime table</div>
-								<div class="orbit-defs-text"><p>Each payload is placed from its current orbit in two steps: <b>shape first</b>, so an eccentricity above 0.25 is HEO whatever its altitude; <b>then mean altitude</b> for every other orbit, into VLEO, LEO, MEO, GEO or > GEO.</p><p>ALL counts every payload in the population; EXCL SPACEX leaves out SpaceX's. Each % row is a share of its own row's TOTAL. A few payloads with no current orbit on file are not placed, and their number is shown beside the table.</p></div>
+								<div class="orbit-defs-text"><p>Each payload is placed from its current orbit in two steps: <b>shape first</b>, so an eccentricity above 0.25 is HEO whatever its altitude; <b>then mean altitude</b> for every other orbit, into VLEO, LEO, MEO, GEO or > GEO.</p><p>ALL counts every payload in the population; EXCL SPACEX leaves out SpaceX's. Each % row is a share of its own row's TOTAL. A few payloads with no current orbit on file are not placed; their number is in the reconciliation below and in the orbit-type pie's tooltip.</p></div>
 								<div class="orbit-defs-term">Nationality chart</div>
 								<div class="orbit-defs-text"><p>Payloads counted by GCAT country. The 12 countries with the most are shown individually, plus the European Space Agency wherever it ranks; the rest are combined as Other, together with the payloads not yet in GCAT (about 3%), which have no country.</p><p>The United States is split into Starlink (CelesTrak's Starlink list, or a STARLINK name) and the rest. Copernicus satellites, such as the Sentinels, are GCAT's EU, not ESA. A jointly owned satellite counts once, under the single state GCAT gives it.</p><p>Log scale, because the largest bar is hundreds of times the smallest.</p></div>
 								<div class="orbit-defs-term">Inclination chart</div>
@@ -217,7 +219,7 @@
 								<div class="orbit-defs-term">Nationality chart</div>
 								<div class="orbit-defs-text"><p>The full population. Every payload has a bar to go in: those not yet in GCAT (about 3%, mostly recent launches) have no country and are counted under Other rather than left out. So this is the largest of the chart and table totals, and the reference the others are measured against.</p></div>
 								<div class="orbit-defs-term">Regime table TOTAL</div>
-								<div class="orbit-defs-text"><p>The population less payloads with <b>no current perigee or apogee</b> on file, which cannot be placed in a regime; their number is shown beside the table. They are a handful of objects (at the last check, six) known only from a SatNOGS element set, which carries no perigee or apogee: mostly military reconnaissance satellites whose orbits the official catalogue does not publish, plus the Aditya-L1 solar observatory, which is not in Earth orbit at all.</p><p>With W/O SPACEX selected, compare the charts with the table's EXCL SPACEX row: the table does not change with that button, as it always shows both.</p></div>
+								<div class="orbit-defs-text"><p>The population less payloads with <b>no current perigee or apogee</b> on file, which cannot be placed in a regime; their number is given in the figures above. They are a handful of objects (at the last check, six) known only from a SatNOGS element set, which carries no perigee or apogee: mostly military reconnaissance satellites whose orbits the official catalogue does not publish, plus the Aditya-L1 solar observatory, which is not in Earth orbit at all.</p><p>With EX SPACEX selected, compare the charts with the table's EXCL SPACEX row: the table does not change with that button, as it always shows both.</p></div>
 								<div class="orbit-defs-term">Pie chart totals</div>
 								<div class="orbit-defs-text"><p>The orbit regime pie's total is the regime table's TOTAL; the sector pie's is the full population, the nationality chart's, with payloads not in GCAT as Unknown.</p></div>
 								<div class="orbit-defs-term">Inclination chart total</div>
@@ -227,9 +229,9 @@
 								<div class="orbit-defs-term">Satellites vs all spacecraft</div>
 								<div class="orbit-defs-text"><p>SATELLITES is ALL SPACECRAFT less crewed space stations and the vehicles visiting them, and passive objects. At the last check that was 65 payloads in all: 40 calibration spheres, 16 station modules and visiting vehicles, and 9 anti-satellite test targets. Only 35 of them are active, as most calibration spheres and targets are not.</p></div>
 								<div class="orbit-defs-term">Active vs active + inactive</div>
-								<div class="orbit-defs-text"><p>ACTIVE is CelesTrak's list of operational payloads; ACTIVE + INACTIVE adds every payload still in orbit that is not on it: about 3,100 dead or retired payloads, spread across every regime and including nearly all of those in the graveyard orbits above GEO.</p></div>
+								<div class="orbit-defs-text"><p>ACT-ONLY counts CelesTrak's list of operational payloads; ACT +DEAD adds every payload still in orbit that is not on it: about 3,100 dead or retired payloads, spread across every regime and including nearly all of those in the graveyard orbits above GEO.</p></div>
 								<div class="orbit-defs-term">With vs without SpaceX</div>
-								<div class="orbit-defs-text"><p>W/O SPACEX removes every payload SpaceX owns, almost all Starlink, from both charts. The charts' totals then equal the table's EXCL SPACEX row (less any payloads with no current orbit), which applies the same rule.</p></div>
+								<div class="orbit-defs-text"><p>EX SPACEX removes every payload SpaceX owns, almost all Starlink, from both charts. The charts' totals then equal the table's EXCL SPACEX row (less any payloads with no current orbit), which applies the same rule.</p></div>
 								<div class="orbit-defs-term">Other published counts</div>
 								<div class="orbit-defs-text"><p>Counts elsewhere often differ from these, for reasons of definition rather than error: some count only satellites believed operational by their own research, some include rocket bodies or exclude cubesats, some count only satellites with a confirmed owner. Most are also snapshots taken at a different time. Classified satellites whose orbits are not published are missing from the public catalogue altogether, so no count based on it, including this one, includes them.</p></div>
 								</div>
@@ -249,8 +251,60 @@
 					</div>
 
 					<div data-section="launches" style="display:none;">
-						<h2>Launch Database</h2>
-						<p class="go-big">Launch schedule and history placeholder.</p>
+						<!-- Charts drawn by assets/launchesPanel.js (renderLaunchesPerYear()). -->
+						<div id="launches-charts" class="orbit-charts"></div>
+						<!-- DEFINITIONS button (launchesPanel.js) shows this in place of the
+						     charts. Keep in step with scripts/orbitStats.py and server.py. -->
+						<div id="launches-definitions" class="orbit-defs-panel" style="display:none;">
+							<section class="orbit-chart">
+								<header class="orbit-chart-header"><span>Definitions</span></header>
+								<div class="orbit-defs">
+								<div class="orbit-defs-term">Launch attempt</div>
+								<div class="orbit-defs-text">One rocket launch intended to reach orbit or beyond, counted once however many payloads it carried, whether it succeeded or failed.</div>
+								<div class="orbit-defs-term">Orbital / deep-space</div>
+								<div class="orbit-defs-text">GCAT's launch codes O (to Earth orbit) and D (beyond: the Moon, planets, the Sun's orbit). Suborbital tests (codes N and X) are not counted.</div>
+								<div class="orbit-defs-term">Failed launch</div>
+								<div class="orbit-defs-text">A launch GCAT records as a failure (second letter of its code F): the vehicle did not deliver its payloads to the intended orbit.</div>
+								<div class="orbit-defs-term">Payload</div>
+								<div class="orbit-defs-text">A catalogued object launched to do a job: a satellite, probe, crewed vehicle or station module. Not the rocket stages or debris a launch also leaves behind.</div>
+								<div class="orbit-defs-term">Payload launched</div>
+								<div class="orbit-defs-text">A payload that reached orbit (or beyond), counted in the year it was launched. Payloads lost in a launch failure (GCAT status N, never reached orbit) are not counted.</div>
+								<div class="orbit-defs-term">Sector</div>
+								<div class="orbit-defs-text">GCAT's class for each payload, in the same colours across the site: A academic, amateur or non-profit (blue); B commercial (earth); C civil government (amber); D defence, military or intelligence (red). A payload with no class of its own takes its owner organisation's.</div>
+								<div class="orbit-defs-term">Re-entry</div>
+								<div class="orbit-defs-text">A catalogued object coming back down: re-entering the atmosphere (GCAT status R), deliberately de-orbited (D) or landed (L: crew capsules, returned vehicles), counted in the year it came down.</div>
+								<div class="orbit-defs-term">Rocket body / debris / other</div>
+								<div class="orbit-defs-text">Rocket bodies are spent stages; debris is fragments from break-ups, collisions and launches; other is components such as fairings and adapters that were catalogued.</div>
+								<div class="orbit-defs-term">EX SPACEX</div>
+								<div class="orbit-defs-text">For launch attempts: launches carried out by SpaceX (Falcon 1, Falcon 9, Falcon Heavy, Starship) are left out. For payloads and re-entries: objects SpaceX owns are left out -- almost all Starlink satellites and Falcon upper stages.</div>
+								<div class="orbit-defs-term">Successful launches</div>
+								<div class="orbit-defs-text">The LCH-OK setting (LCH-ALL: every attempt) counts only launches GCAT records as successful (second letter of the launch code S). It applies to the launch-attempts, launches-and-payloads and by-country charts; the payloads-launched chart already counts only payloads that reached orbit, and re-entries are not launches.</div>
+								<div class="orbit-defs-term">Start and end year</div>
+								<div class="orbit-defs-text">The years shown on every chart, typed into the control panel; they default to the full range, from 1957 to this year. A new value is used when you press Enter or leave the field, if it is a year in that range and the start is no later than the end; otherwise the previous value is put back. Totals in the title bars cover the years shown.</div>
+								<div class="orbit-defs-term">Year to date</div>
+								<div class="orbit-defs-text">The current year is still running, so its figures are counts so far. In the launch-attempts chart its point is shown on its own, not joined to the line.</div>
+								</div>
+							</section>
+							<section class="orbit-chart">
+								<header class="orbit-chart-header"><span>How the charts are built</span></header>
+								<div class="orbit-defs">
+								<div class="orbit-defs-term">Data source</div>
+								<div class="orbit-defs-text"><p>GCAT, the General Catalog of Artificial Space Objects by Jonathan McDowell (planet4589.org), refreshed weekly: its launch log for launches, and its satellite catalogue for payloads and decays. The payload and re-entry figures are recalculated after every refresh; launch attempts are counted each time the chart is drawn.</p></div>
+								<div class="orbit-defs-term">Launch attempts chart</div>
+								<div class="orbit-defs-text"><p>Distinct launches per calendar year since 1957, from GCAT's launch log (one row per payload, so each launch is counted once), orbital and deep-space, successes and failures. Hover over a point for the year's count and how many failed.</p></div>
+								<div class="orbit-defs-term">Launches and payloads chart</div>
+								<div class="orbit-defs-text"><p>Launches and the payloads they carried per year on the left axis, and payloads per launch -- their ratio -- on the right axis (dashed line). All three come from GCAT's launch log, so they agree with one another; payloads here include any lost in a failed launch, so the count is slightly above the payloads-launched chart's. With EX SPACEX, SpaceX launches and everything they carried are left out.</p></div>
+								<div class="orbit-defs-term">Launches by country chart</div>
+								<div class="orbit-defs-text"><p>The launch attempts per year, stacked by the country GCAT gives each launch vehicle -- so each year's bar adds up to the launch-attempts chart's point. Europe combines France (Arianespace), ESA, ELDO, Italy, Germany and the UK. GCAT codes Rocket Lab's Electron as New Zealand, where it launches from, although the company is American. The Soviet Union and Russia are kept separate. Other: Iran, Israel, North and South Korea, Brazil, Australia and the Cayman Islands.</p></div>
+								<div class="orbit-defs-term">Payloads launched chart</div>
+								<div class="orbit-defs-text"><p>Payloads that reached orbit, by launch year, stacked by sector. Starlink is counted within commercial; EX SPACEX takes it out.</p></div>
+								<div class="orbit-defs-term">Re-entries chart</div>
+								<div class="orbit-defs-text"><p>Catalogued objects that came back down, by the year of their decay date, stacked by type. Objects that came down docked or attached to another (e.g. a cargo ship on a station) are not counted again, and departures to deep space are not re-entries. Debris too small to be catalogued is not included, and some decay dates are approximate (the year is normally right).</p></div>
+								<div class="orbit-defs-term">Limitations</div>
+								<div class="orbit-defs-text"><p>Every classification -- success or failure, sector, object type, how an object left orbit -- is GCAT's own. The current year is a count to date.</p></div>
+								</div>
+							</section>
+						</div>
 					</div>
 
 					<div data-section="infrastructure" style="display:none;">

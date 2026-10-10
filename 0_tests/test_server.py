@@ -153,6 +153,60 @@ def test_on_orbit_spacex_filter_reaches_every_chart_endpoint():
         assert json.loads(body)['spacex'] == 'with'     # unknown value falls back to the default
 
 
+def test_launches_per_year_endpoint_shape():
+    status, headers, body = call_app('/api/launches/per-year')
+    assert status == '200 OK'
+    data = json.loads(body)
+    years = [row['year'] for row in data['rows']]
+    assert years == sorted(years)
+    for row in data['rows']:
+        assert set(row) == {'year', 'launches', 'payloads', 'failures'}
+        assert 0 <= row['failures'] <= row['launches'] <= row['payloads']
+
+
+@pytest.mark.parametrize('path, field', [
+    ('/api/launches/payloads-launched', 'payloads'),
+    ('/api/launches/reentries', 'objects'),
+])
+def test_launch_history_endpoints_shape(path, field):
+    status, headers, body = call_app(path)
+    assert status == '200 OK'
+    for row in json.loads(body)['rows']:
+        assert isinstance(row['year'], int) and row[field] >= 0
+
+
+@pytest.mark.parametrize('path', ['/api/launches/per-year', '/api/launches/by-country'])
+def test_launch_log_charts_take_the_outcome_filter(path):
+    every = json.loads(call_app(path, 'outcome=all')[2])
+    success = json.loads(call_app(path, 'outcome=success')[2])
+    assert (every['outcome'], success['outcome']) == ('all', 'success')
+    assert json.loads(call_app(path, 'outcome=nonsense')[2])['outcome'] == 'all'
+    assert sum(r['launches'] for r in success['rows']) <= sum(r['launches'] for r in every['rows'])
+    if path.endswith('per-year'):
+        assert all(r['failures'] == 0 for r in success['rows'])
+
+
+def test_launches_by_country_groups_and_matches_the_yearly_total():
+    status, headers, body = call_app('/api/launches/by-country')
+    assert status == '200 OK'
+    rows = json.loads(body)['rows']
+    assert {row['country'] for row in rows} <= set(server.LAUNCH_COUNTRY_SERIES)
+    perYear = {row['year']: row['launches'] for row in json.loads(call_app('/api/launches/per-year')[2])['rows']}
+    byCountry = {}
+    for row in rows:
+        byCountry[str(row['year'])] = byCountry.get(str(row['year']), 0) + row['launches']
+    assert byCountry == perYear     # every launch in exactly one country
+
+
+@pytest.mark.parametrize('path', ['/api/launches/per-year', '/api/launches/payloads-launched',
+                                  '/api/launches/by-country', '/api/launches/reentries'])
+def test_launch_charts_take_the_spacex_filter(path):
+    status, headers, body = call_app(path, 'spacex=without')
+    assert json.loads(body)['spacex'] == 'without'
+    status, headers, body = call_app(path, 'spacex=bogus')
+    assert json.loads(body)['spacex'] == 'with'     # unknown value falls back to the default
+
+
 def test_on_orbit_filters_are_honoured_and_bad_values_fall_back():
     status, headers, body = call_app('/api/on-orbit/nationality', 'status=all&kind=spacecraft')
     assert (json.loads(body)['status'], json.loads(body)['kind']) == ('all', 'spacecraft')

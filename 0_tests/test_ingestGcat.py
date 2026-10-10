@@ -143,7 +143,7 @@ def test_replace_table_refuses_to_empty():
 
 def test_full_run_loads_every_table(monkeypatch):
     monkeypatch.setattr(ingestGcat, 'fetchIfModified',
-                        lambda db, path: (FILES[path], 'Thu, 08 Oct 2026 23:59:07 GMT'))
+                        lambda db, path, force=False: (FILES[path], 'Thu, 08 Oct 2026 23:59:07 GMT'))
     db = sqlite3.connect(':memory:')
     assert ingestGcat.runGcatIngestion(db) == 2   # two new objects
     counts = {t: db.execute(f'SELECT COUNT(*) FROM {t}').fetchone()[0]
@@ -154,13 +154,36 @@ def test_full_run_loads_every_table(monkeypatch):
 
 
 def test_unchanged_files_are_skipped(monkeypatch):
-    monkeypatch.setattr(ingestGcat, 'fetchIfModified', lambda db, path: (None, None))
+    monkeypatch.setattr(ingestGcat, 'fetchIfModified', lambda db, path, force=False: (None, None))
     db = sqlite3.connect(':memory:')
     assert ingestGcat.runGcatIngestion(db) == 0
 
 
+def test_decay_summary_counts_by_year_type_and_status():
+    rows = ingestGcat.decayRows([
+        {'Type': 'P', 'Status': 'R', 'DDate': '2025 Mar  3', 'Owner': 'NASA'},
+        {'Type': 'P', 'Status': 'R', 'DDate': '2025 Jun', 'Owner': 'SPXS'},
+        {'Type': 'P', 'Status': 'R', 'DDate': '2025 Jul', 'Owner': 'ESA'},
+        {'Type': 'R2', 'Status': 'R', 'DDate': '2025', 'Owner': 'SPX'},
+        {'Type': 'P', 'Status': 'O', 'DDate': '-'},     # still in orbit: no decay date
+    ])
+    assert rows == [(2025, 'P', 'R', 0, 2), (2025, 'P', 'R', 1, 1), (2025, 'R', 'R', 1, 1)]
+
+
+def test_unchanged_satcat_is_reloaded_while_the_decay_summary_is_empty(monkeypatch):
+    forced = {}
+
+    def fetch(db, path, force=False):
+        forced[path] = force
+        return None, None
+    monkeypatch.setattr(ingestGcat, 'fetchIfModified', fetch)
+    ingestGcat.runGcatIngestion(sqlite3.connect(':memory:'))
+    assert forced['cat/satcat.tsv'] is True
+    assert forced['cat/psatcat.tsv'] is False
+
+
 def test_all_downloads_failing_raises(monkeypatch):
-    def unreachable(db, path):
+    def unreachable(db, path, force=False):
         raise urllib.error.URLError('connection refused')
     monkeypatch.setattr(ingestGcat, 'fetchIfModified', unreachable)
     with pytest.raises(RuntimeError):

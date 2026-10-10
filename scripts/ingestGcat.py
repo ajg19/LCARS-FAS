@@ -225,6 +225,33 @@ TABLES = [
 ]
 
 
+# Every object GCAT has a decay date for, summarised: one row per decay year,
+# coarse type (P payload, R rocket stage, D debris, C component ...) and
+# status (R re-entered, D de-orbited, L landed, E / DSO left Earth orbit,
+# N never reached orbit ...). gcatObjects drops re-entered stages and debris
+# to stay small, so this is where re-entries per year come from. Built from
+# the same download as gcatObjects.
+# spacex: 1 if SpaceX is among the object's owners (any of its GCAT codes,
+# as orbitStats.SPACEX_ORG_CODES), for the LAUNCHES W/O SPACEX filter.
+DECAY_TABLE = ('gcatDecays', """
+    year INTEGER, coarseType TEXT, status TEXT, spacex INTEGER, objects INTEGER,
+    PRIMARY KEY (year, coarseType, status, spacex)""")
+SPACEX_ORG_CODES = {'SPX', 'SPXES', 'SPXS', 'SPXT', 'SPXTX'}
+
+
+def decayRows(satcatRows):
+    counts = {}
+    for r in satcatRows:
+        decayDate, _ = parseVagueDate(r.get('DDate'))
+        if not decayDate:
+            continue
+        spacex = int(bool(SPACEX_ORG_CODES.intersection((r.get('Owner') or '').split('/'))))
+        key = (int(decayDate[:4]), (r.get('Type') or '')[:1] or None, r.get('Status'), spacex)
+        counts[key] = counts.get(key, 0) + 1
+    return [(*key, n) for key, n in sorted(
+        counts.items(), key=lambda kv: (kv[0][0], kv[0][1] or '', kv[0][2] or '', kv[0][3]))]
+
+
 # --- Database ---------------------------------------------------------------
 
 def ensureSchema(db):
@@ -232,6 +259,12 @@ def ensureSchema(db):
         db.execute(f'CREATE TABLE IF NOT EXISTS {table} ({columns})')
         for statement in indexes:
             db.execute(statement)
+    # An older gcatDecays without the spacex column is dropped, so it's
+    # rebuilt (empty -> the satellite catalogue is reloaded this run).
+    decayColumns = [row[1] for row in db.execute(f'PRAGMA table_info({DECAY_TABLE[0]})')]
+    if decayColumns and 'spacex' not in decayColumns:
+        db.execute(f'DROP TABLE {DECAY_TABLE[0]}')
+    db.execute(f'CREATE TABLE IF NOT EXISTS {DECAY_TABLE[0]} ({DECAY_TABLE[1]})')
     db.execute('''
         CREATE TABLE IF NOT EXISTS gcatFiles (
             path         TEXT PRIMARY KEY,
@@ -259,12 +292,12 @@ def replaceTable(db, table, rows):
 
 # --- Download -----------------------------------------------------------------
 
-def fetchIfModified(db, path):
+def fetchIfModified(db, path, force=False):
     """(text, Last-Modified header), or (None, None) when GCAT reports the
-    file unchanged since our last fetch (HTTP 304)."""
+    file unchanged since our last fetch (HTTP 304). force skips the check."""
     request = urllib.request.Request(GCAT_BASE_URL + path, headers={'User-Agent': USER_AGENT})
     known = db.execute('SELECT lastModified FROM gcatFiles WHERE path = ?', (path,)).fetchone()
-    if known and known[0]:
+    if known and known[0] and not force:
         request.add_header('If-Modified-Since', known[0])
     try:
         with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SEC) as response:
@@ -285,9 +318,13 @@ def runGcatIngestion(db):
     failures = []
     handled = 0   # files loaded, or confirmed unchanged
 
+    # A table derived from a file but still empty (e.g. gcatDecays, the first
+    # run after it was added) means that file must be loaded even if unchanged.
+    decaysMissing = not db.execute(f'SELECT 1 FROM {DECAY_TABLE[0]} LIMIT 1').fetchone()
+
     for path, table, _, buildRows, _ in TABLES:
         try:
-            text, lastModified = fetchIfModified(db, path)
+            text, lastModified = fetchIfModified(db, path, force=(table == 'gcatObjects' and decaysMissing))
         except (urllib.error.URLError, socket.timeout) as error:
             # One unreachable file shouldn't stop the others.
             print(f'  [{path}] ERROR {error}')
@@ -297,7 +334,13 @@ def runGcatIngestion(db):
         if text is None:
             print(f'  [{path}] unchanged since last fetch -- skipped')
             continue
-        count = replaceTable(db, table, buildRows(parseTsv(text)))
+        parsed = parseTsv(text)
+        count = replaceTable(db, table, buildRows(parsed))
+        if table == 'gcatObjects':
+            decays = decayRows(parsed)
+            if decays:
+                replaceTable(db, DECAY_TABLE[0], decays)
+            print(f'  [{path}] {len(decays)} decay-summary rows -> {DECAY_TABLE[0]}')
         db.execute(
             'INSERT OR REPLACE INTO gcatFiles (path, lastModified, fetchedAt, bytes, rows) '
             "VALUES (?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), ?, ?)",

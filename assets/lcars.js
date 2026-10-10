@@ -368,6 +368,16 @@ async function openOnOrbitSection() {
     renderOnOrbitCharts();
 }
 
+// Wired to the LAUNCHES left-menu button: launch charts (assets/launchesPanel.js).
+async function openLaunchesSection() {
+    await loadScriptOnce('assets/launchesPanel.js');
+    // Always opens on the charts -- before showSection(), so the
+    // DEFINITIONS/CHARTS button is drawn with the right label.
+    showLaunchCharts();
+    showSection('launches', 'LAUNCHES');
+    renderLaunchesPerYear();
+}
+
 // Wired to the EO left-menu button. Same load-before-show reasoning as
 // openGrdTrackSection() -- the panel module's registerPanelControls() call
 // must have run before showSection() -> updateControlArea() looks the
