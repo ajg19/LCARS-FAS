@@ -183,6 +183,19 @@ def gcat_db():
 _gcat_db = None
 
 
+def stats_db():
+    """onOrbitStats.db (scripts/orbitStats.py's precomputed ON-ORBIT figures),
+    opened read-only on first use -- or None until it exists. Lazy for the
+    same reason as gcat_db()."""
+    global _stats_db
+    if _stats_db is None and os.path.exists(os.path.join(DB_DIR, 'onOrbitStats.db')):
+        _stats_db = open_db('onOrbitStats.db', read_only=True)
+    return _stats_db
+
+
+_stats_db = None
+
+
 def to_utc_iso(value):
     """SQLite CURRENT_TIMESTAMP text ('YYYY-MM-DD HH:MM:SS', UTC) or an ISO
     string -> 'YYYY-MM-DDTHH:MM:SSZ'; None stays None."""
@@ -242,6 +255,148 @@ def handle_status(start_response):
     try:
         rows = [status_row(spec) for spec in STATUS_SOURCES]
         payload = {'generatedUtc': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), 'sources': rows}
+        return json_response(start_response, '200 OK', payload)
+    except Exception as e:
+        return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
+
+
+# ON-ORBIT figures are stored for every combination of these two filters
+# (scripts/orbitStats.py); a missing or unrecognised value falls back to the
+# default rather than erroring.
+ON_ORBIT_STATUS_FILTERS = ('active', 'all')
+ON_ORBIT_KIND_FILTERS = ('satellites', 'spacecraft')
+# Charts only (orbitStats.py SPACEX_FILTERS): the regime table shows both.
+ON_ORBIT_SPACEX_FILTERS = ('with', 'without')
+
+
+def on_orbit_filters(query_params):
+    status = get_param(query_params, 'status')
+    kind = get_param(query_params, 'kind')
+    return (status if status in ON_ORBIT_STATUS_FILTERS else ON_ORBIT_STATUS_FILTERS[0],
+            kind if kind in ON_ORBIT_KIND_FILTERS else ON_ORBIT_KIND_FILTERS[0])
+
+
+def on_orbit_spacex_filter(query_params):
+    spacex = get_param(query_params, 'spacex')
+    return spacex if spacex in ON_ORBIT_SPACEX_FILTERS else ON_ORBIT_SPACEX_FILTERS[0]
+
+
+def stats_rows(sql, params):
+    """Rows from onOrbitStats.db, or [] until it (or the table) exists."""
+    conn = stats_db()
+    if conn is None:
+        return []
+    try:
+        return conn.execute(sql, params).fetchall()
+    except sqlite3.OperationalError as e:
+        if 'no such table' in str(e):
+            return []
+        raise
+
+
+def handle_on_orbit_nationality(query_params, start_response):
+    """ON-ORBIT overview's nationality chart: payloads in orbit by state for
+    ?status=active|all&kind=satellites|spacecraft (default active,
+    satellites), as stored by scripts/orbitStats.py (storeNationality)."""
+    try:
+        status, kind = on_orbit_filters(query_params)
+        spacex = on_orbit_spacex_filter(query_params)
+        rows = stats_rows('SELECT label, stateCode, payloads FROM onOrbitNationality '
+                          'WHERE statusFilter = ? AND kindFilter = ? AND spacexFilter = ? ORDER BY rank',
+                          (status, kind, spacex))
+        payload = {
+            'status': status, 'kind': kind, 'spacex': spacex,
+            'rows': [{'label': r['label'], 'stateCode': r['stateCode'], 'payloads': r['payloads']} for r in rows],
+            'totalPayloads': sum(r['payloads'] for r in rows),
+        }
+        return json_response(start_response, '200 OK', payload)
+    except Exception as e:
+        return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
+
+
+def handle_on_orbit_regimes(query_params, start_response):
+    """ON-ORBIT control-area table: payloads in orbit per CURRENT orbit regime
+    (VLEO / LEO / MEO / GEO / > GEO, plus 'unclassified' -- no current orbit
+    on file), all and excluding SpaceX, for the same filters -- stored by
+    scripts/orbitStats.py (storeRegimes)."""
+    try:
+        status, kind = on_orbit_filters(query_params)
+        rows = stats_rows('SELECT regime, allPayloads, exclSpacex FROM onOrbitRegimes '
+                          'WHERE statusFilter = ? AND kindFilter = ? ORDER BY sortOrder', (status, kind))
+        payload = {'status': status, 'kind': kind,
+                   'rows': [{'regime': r['regime'], 'all': r['allPayloads'], 'exclSpacex': r['exclSpacex']}
+                            for r in rows]}
+        return json_response(start_response, '200 OK', payload)
+    except Exception as e:
+        return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
+
+
+def handle_on_orbit_inclination(query_params, start_response):
+    """ON-ORBIT inclination histogram: payloads in orbit per 5-degree bucket
+    of CURRENT inclination, 0-180 (every bucket, empty ones included), plus
+    the number with no inclination on file, for the same filters -- stored
+    by scripts/orbitStats.py (storeInclination)."""
+    try:
+        status, kind = on_orbit_filters(query_params)
+        spacex = on_orbit_spacex_filter(query_params)
+        rows = stats_rows('SELECT bucketStart, bucketEnd, payloads FROM onOrbitInclination '
+                          'WHERE statusFilter = ? AND kindFilter = ? AND spacexFilter = ? ORDER BY bucketStart',
+                          (status, kind, spacex))
+        payload = {
+            'status': status, 'kind': kind, 'spacex': spacex,
+            'buckets': [{'from': r['bucketStart'], 'to': r['bucketEnd'], 'payloads': r['payloads']}
+                        for r in rows if r['bucketStart'] is not None],
+            'noInclination': sum(r['payloads'] for r in rows if r['bucketStart'] is None),
+        }
+        return json_response(start_response, '200 OK', payload)
+    except Exception as e:
+        return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
+
+
+def handle_on_orbit_sector(query_params, start_response):
+    """ON-ORBIT sector pie: payloads in orbit per GCAT sector class -- A
+    academic/amateur, B commercial, C civil government, D defence, plus
+    'unknown' -- for the same three filters, as stored by
+    scripts/orbitStats.py (storeSector)."""
+    try:
+        status, kind = on_orbit_filters(query_params)
+        spacex = on_orbit_spacex_filter(query_params)
+        rows = stats_rows('SELECT sector, payloads FROM onOrbitSector '
+                          'WHERE statusFilter = ? AND kindFilter = ? AND spacexFilter = ? ORDER BY sortOrder',
+                          (status, kind, spacex))
+        payload = {'status': status, 'kind': kind, 'spacex': spacex,
+                   'rows': [{'sector': r['sector'], 'payloads': r['payloads']} for r in rows]}
+        return json_response(start_response, '200 OK', payload)
+    except Exception as e:
+        return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
+
+
+ON_ORBIT_OWNERS_MAX = 200   # more than any screen can show; the page picks how many
+
+
+def handle_on_orbit_owners(query_params, start_response):
+    """ON-ORBIT owners chart: the largest owners by payloads in orbit (first
+    ON_ORBIT_OWNERS_MAX, ranked), plus totals over ALL owners -- how many
+    owners, how many payloads have one, how many don't -- for the same three
+    filters, as stored by scripts/orbitStats.py (storeOwners)."""
+    try:
+        status, kind = on_orbit_filters(query_params)
+        spacex = on_orbit_spacex_filter(query_params)
+        params = (status, kind, spacex)
+        where = 'WHERE statusFilter = ? AND kindFilter = ? AND spacexFilter = ?'
+        rows = stats_rows(f'SELECT ownerCode, label, fullName, stateCode, payloads FROM onOrbitOwners {where} '
+                          f'AND rank > 0 ORDER BY rank LIMIT {ON_ORBIT_OWNERS_MAX}', params)
+        totals = stats_rows(f'SELECT COUNT(*) AS owners, COALESCE(SUM(payloads), 0) AS payloads FROM onOrbitOwners '
+                            f'{where} AND rank > 0', params)
+        noOwner = stats_rows(f'SELECT payloads FROM onOrbitOwners {where} AND rank = 0', params)
+        payload = {
+            'status': status, 'kind': kind, 'spacex': spacex,
+            'rows': [{'code': r['ownerCode'], 'label': r['label'], 'fullName': r['fullName'],
+                      'stateCode': r['stateCode'], 'payloads': r['payloads']} for r in rows],
+            'totalOwners': totals[0]['owners'] if totals else 0,
+            'ownedPayloads': totals[0]['payloads'] if totals else 0,
+            'noOwner': noOwner[0]['payloads'] if noOwner else 0,
+        }
         return json_response(start_response, '200 OK', payload)
     except Exception as e:
         return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
@@ -492,6 +647,16 @@ def application(environ, start_response):
         return handle_news(query_params, start_response)
     if method == 'GET' and path_info == '/api/status':
         return handle_status(start_response)
+    if method == 'GET' and path_info == '/api/on-orbit/nationality':
+        return handle_on_orbit_nationality(query_params, start_response)
+    if method == 'GET' and path_info == '/api/on-orbit/regimes':
+        return handle_on_orbit_regimes(query_params, start_response)
+    if method == 'GET' and path_info == '/api/on-orbit/inclination':
+        return handle_on_orbit_inclination(query_params, start_response)
+    if method == 'GET' and path_info == '/api/on-orbit/sector':
+        return handle_on_orbit_sector(query_params, start_response)
+    if method == 'GET' and path_info == '/api/on-orbit/owners':
+        return handle_on_orbit_owners(query_params, start_response)
     if method == 'GET' and path_info == '/api/news/topic-counts':
         return handle_news_topic_counts(start_response)
     if method == 'GET' and path_info == '/api/ground-segment-assets':

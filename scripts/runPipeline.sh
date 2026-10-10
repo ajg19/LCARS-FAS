@@ -7,9 +7,12 @@
 #   2. ingestSatcat.py        objectType / owner / period       (daily, or RUN_SATCAT=1)
 #   3. enrichEirp.py          downlinkBand / EIRP / sat G/T      (every run)
 #   4. ingestSatnogsRf.py     dl/ul frequency / mode / baud      (every run)
+#   5. orbitStats.py          ON-ORBIT overview figures           (every run)
 #
 # Steps 3-4 need step 1 (and 3 also needs 2); they are independent of each
-# other. Every step is idempotent, so 3-4 run on every pass rather than
+# other. Step 5 needs the current orbits from 1-2 (and GCAT's ownership,
+# from the separate weekly ingestGcat.py -- it skips itself until gcat.db
+# exists). Every step is idempotent, so 3-5 run on every pass rather than
 # trying to detect whether new objects were actually added.
 #
 # Invoked by a single cron entry wrapped in `flock -n` (see setupCron.sh)
@@ -48,5 +51,6 @@ fi
 
 step enrichEirp.py
 step ingestSatnogsRf.py
+step orbitStats.py
 
 echo "[$(date -Is)] === pipeline end ===" >> "$LOG"

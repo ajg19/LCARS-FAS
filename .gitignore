@@ -9,3 +9,8 @@ __pycache__/
 # Working backups -- 0_tools/bugs.py writes the first on every save
 bugsDB.xlsx.bak
 ingestionDBs/space_news.db.bak
+
+# Rebuilt weekly from GCAT by scripts/ingestGcat.py -- never committed (16+ MB).
+ingestionDBs/gcat.db
+# Derived ON-ORBIT figures, rebuilt by scripts/orbitStats.py -- never committed.
+ingestionDBs/onOrbitStats.db

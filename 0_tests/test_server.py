@@ -115,6 +115,52 @@ def test_status_next_sync_is_last_start_plus_interval():
     assert row['lastRunFailed'] is True
 
 
+def test_on_orbit_nationality_endpoint_shape():
+    status, headers, body = call_app('/api/on-orbit/nationality')
+    assert status == '200 OK'
+    data = json.loads(body)
+    assert isinstance(data['rows'], list)
+    assert data['totalPayloads'] == sum(row['payloads'] for row in data['rows'])
+
+
+def test_on_orbit_regimes_endpoint_shape():
+    status, headers, body = call_app('/api/on-orbit/regimes')
+    assert status == '200 OK'
+    data = json.loads(body)
+    assert (data['status'], data['kind']) == ('active', 'satellites')   # defaults
+    for row in data['rows']:
+        assert set(row) == {'regime', 'all', 'exclSpacex'}
+        assert row['exclSpacex'] <= row['all']
+
+
+def test_on_orbit_inclination_endpoint_shape():
+    status, headers, body = call_app('/api/on-orbit/inclination', 'status=all&kind=spacecraft')
+    assert status == '200 OK'
+    data = json.loads(body)
+    assert (data['status'], data['kind']) == ('all', 'spacecraft')
+    assert isinstance(data['noInclination'], int)
+    for bucket in data['buckets']:
+        assert set(bucket) == {'from', 'to', 'payloads'}
+        assert bucket['to'] - bucket['from'] == 5
+
+
+def test_on_orbit_spacex_filter_reaches_every_chart_endpoint():
+    for path in ('/api/on-orbit/nationality', '/api/on-orbit/inclination', '/api/on-orbit/sector',
+                 '/api/on-orbit/owners'):
+        status, headers, body = call_app(path, 'spacex=without')
+        assert json.loads(body)['spacex'] == 'without'
+        status, headers, body = call_app(path, 'spacex=bogus')
+        assert json.loads(body)['spacex'] == 'with'     # unknown value falls back to the default
+
+
+def test_on_orbit_filters_are_honoured_and_bad_values_fall_back():
+    status, headers, body = call_app('/api/on-orbit/nationality', 'status=all&kind=spacecraft')
+    assert (json.loads(body)['status'], json.loads(body)['kind']) == ('all', 'spacecraft')
+    status, headers, body = call_app('/api/on-orbit/regimes', "status=%27%3B+DROP+TABLE+x%3B--&kind=nope")
+    assert status == '200 OK'
+    assert (json.loads(body)['status'], json.loads(body)['kind']) == ('active', 'satellites')
+
+
 def test_ground_segment_assets_endpoint_returns_json_list():
     status, headers, body = call_app('/api/ground-segment-assets')
     assert status == '200 OK'

@@ -153,22 +153,28 @@
 	--banner-color: var(--orange);
 	--meta-data-color: var(--african-violet);
 	--data-cascade-color: var(--orange);
-	/* Control-area text, as set by the landing page's data-freshness table
-	   and reused by GS OPS's control area: small uppercase Antonio (the LCARS-style font), gold
-	   labels/headings, muted amber data (cycling to the muted light colour
-	   where animated). One definition so the two can't drift apart. */
+	/* Text colours, site-wide -- the labels-versus-data convention
+	   (2026-10-09; design doc, GUI > Colour Conventions): text is amber,
+	   data is blue.
+	     --status-label-color  labels, headings, row/column names (sand)
+	     --status-text-color   other text: notes, units, titles, sources (muted amber)
+	     --status-data-color   data values and numbers: counts, %, dates,
+	                           times, coordinates, axis numbers, typed values (TNG ice)
+	     --status-data-light-color  a moving highlight, whatever it passes over
+	   Also the control area's font and size (Antonio, matching the buttons). */
 	--status-font: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
 	--status-font-size: 1rem;   /* same as the control-panel buttons (.875rem at <=1300px, below) */
 	--status-label-color: var(--gold);
-	--status-data-color: #c98b4a;
-	--status-data-light-color: #b8b8c4;
+	--status-text-color: #c98b4a;
+	--status-data-color: var(--tng-ice);
+	--status-data-light-color: #f0f0f4;
 	/* Slightly lighter than --bluey, same hue family -- used for actual
 	   data values (the plotted-objects table's rows, LAT/LON/UTC) as
 	   distinct from --bluey itself, which stays in use elsewhere (map
 	   borders, the PLACE dropdown, etc). One named value here rather than
 	   hardcoding var(--sky) at each call site, so retuning it later is a
 	   single change. */
-	--data-value-color: var(--space-white);
+	--data-value-color: var(--status-data-color);   /* data values in tables, readouts, pop-ups: blue */
 	--light-color: white;
 	--h1-color: var(--african-violet);
 	--h2-color: var(--african-violet);
@@ -1134,10 +1140,11 @@ button:active {
 	align-items: center;
 	justify-content: flex-end;
 	gap: .4rem;
-	font-size: 1.15rem;
-	font-weight: bold;
+	/* Same size and weight as all other control-area text (and the buttons). */
+	font-size: var(--status-font-size);
+	font-weight: normal;
 	text-transform: uppercase;
-	color: var(--data-cascade-color);
+	color: var(--status-text-color);   /* key text: text, as GS OPS's key (.gs-key-label) */
 }
 
 /* News topic histogram shown in the control area while the news section
@@ -1207,7 +1214,7 @@ button:active {
 	flex-direction: column;
 	align-items: center;
 	transform: translateX(-50%);
-	color: var(--data-cascade-color);
+	color: var(--status-data-color);   /* scale numbers: data */
 }
 
 .news-histogram-tick::before {
@@ -1518,7 +1525,7 @@ button:active {
 	border: 1px solid var(--bluey);
 	border-radius: 4px;
 	background: black;
-	color: var(--bluey);
+	color: var(--status-data-color);   /* typed values: data */
 	font-family: inherit;
 	padding: .25rem .5rem;
 }
@@ -1567,7 +1574,7 @@ button:active {
 
 .place-suggestion {
 	padding: .4rem .6rem;
-	color: var(--bluey);
+	color: var(--status-data-color);   /* suggested values: data */
 	font-family: inherit;
 	text-transform: uppercase;
 	cursor: pointer;
@@ -1628,7 +1635,7 @@ button:active {
 	font-weight: normal;
 	text-transform: none;
 	white-space: nowrap;
-	color: var(--bluey);
+	color: var(--status-text-color);   /* units: text */
 }
 
 /* --- GRND STN link-budget form (5 columns of 4) ------------------------
@@ -1800,8 +1807,12 @@ button:active {
 	color: var(--status-label-color);
 }
 
-#default[data-control-section="gs-ops"] :is(.gs-status-stats .v, .gs-key-label, input, select, .gs-unit) {
-	color: var(--status-data-color);
+#default[data-control-section="gs-ops"] :is(.gs-status-stats .v, input, select) {
+	color: var(--status-data-color);   /* values and typed numbers: data */
+}
+
+#default[data-control-section="gs-ops"] :is(.gs-key-label, .gs-unit) {
+	color: var(--status-text-color);   /* key text and units: text */
 }
 
 .key-shape-circle {
@@ -3107,7 +3118,7 @@ iframe {
 
 .live-feed-credit {
 	text-align: right;
-	color: var(--bluey);
+	color: var(--status-text-color);   /* credit line: text */
 	font-size: .9rem;
 	margin-top: .5rem;
 }
@@ -4101,6 +4112,472 @@ footer:has(.footer-frame) {
 	table-layout: fixed;
 }
 
+/* --- ON-ORBIT overview charts (orbitBarChartHtml() in onOrbitPanel.js) ---
+   One <section class="orbit-chart"> per chart, in LCARS style: a header bar
+   (pill-ended on the left, black uppercase title, total at the far end),
+   flat pill-ended bars on black, sand labels, muted amber counts just past
+   each bar's end, and a numbered amber axis. Charts are separated by black
+   space; each carries its own header, per LCARS practice. */
+.orbit-charts {
+	width: 100%;   /* charts span the full main area */
+	margin-top: 1rem;
+}
+
+.orbit-chart {
+	margin-bottom: 2rem;
+}
+
+.orbit-chart-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: .9rem;
+	padding: .2rem 1rem .2rem 1.5rem;
+	border-radius: 100vmax 0 0 100vmax;
+	background-color: var(--tng-periwinkle);
+	color: black;
+	font-weight: bold;
+	text-transform: uppercase;
+}
+
+.orbit-chart-grid {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	align-items: center;
+	column-gap: .75rem;
+	row-gap: .35rem;
+	/* Room for the count printed past the longest bar, and for the last
+	   axis label centred on the axis end. */
+	padding-right: 4.5rem;
+}
+
+.orbit-chart-label {
+	text-align: right;
+	white-space: nowrap;
+	text-transform: uppercase;
+	color: var(--status-label-color);
+}
+
+/* Bar and its count side by side; the bar keeps its exact percentage
+   width (flex: none) so it lines up with the axis below. */
+.orbit-chart-track {
+	display: flex;
+	align-items: center;
+	gap: .5rem;
+	height: 1.15rem;
+}
+
+.orbit-chart-bar {
+	flex: none;
+	height: 100%;
+	min-width: 4px;
+	border-radius: 0 100vmax 100vmax 0;
+	background-color: var(--tng-periwinkle);
+}
+
+/* "Other": a lumped total, not a single state. */
+.orbit-chart-bar-muted {
+	background-color: var(--tng-mauve);
+}
+
+.orbit-chart-value {
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+	color: var(--status-data-color);
+}
+
+.orbit-chart-axis {
+	position: relative;
+	height: 1.6em;
+	margin-top: .3rem;
+	border-top: 2px solid var(--data-cascade-color);
+}
+
+.orbit-chart-tick {
+	position: absolute;
+	top: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	transform: translateX(-50%);
+	color: var(--status-data-color);   /* scale numbers: data */
+}
+
+/* ON-ORBIT definitions panel (DEFINITIONS button; markup in index.html):
+   two pill-titled sections, each a two-column list -- the term in amber
+   (15% of the width), its definition or description in blue. */
+.orbit-defs-panel {
+	width: 100%;
+	margin-top: 1rem;
+}
+
+.orbit-defs {
+	display: grid;
+	grid-template-columns: 15% 1fr;
+	column-gap: 1.5rem;
+	row-gap: .7rem;
+	line-height: 1.45;
+}
+
+.orbit-defs-term {
+	text-transform: uppercase;
+	color: var(--status-label-color);
+}
+
+.orbit-defs-text {
+	color: var(--status-data-color);
+}
+
+.orbit-defs-text p {
+	margin: 0 0 .5rem;
+}
+
+.orbit-defs-text p:last-child {
+	margin-bottom: 0;
+}
+
+.orbit-defs-text b {
+	color: var(--status-label-color);
+	font-weight: normal;
+}
+
+/* Reconciliation section's live figures: amber labels, blue numbers,
+   right-aligned; the totals (rows marking a chart or table total) ruled
+   off above. */
+.orbit-recon-live p {
+	margin: 0 0 .4rem;
+}
+
+.orbit-recon-table {
+	border-collapse: collapse;
+	margin-bottom: .4rem;
+}
+
+.orbit-recon-table td {
+	padding: .1rem 2rem .1rem 0;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+.orbit-recon-table td:first-child {
+	color: var(--status-label-color);
+}
+
+.orbit-recon-table td:last-child {
+	text-align: right;
+	color: var(--status-data-color);
+}
+
+.orbit-recon-table .orbit-recon-key td {
+	border-top: 1px solid #333;
+}
+
+.orbit-recon-warn {
+	color: var(--red);
+}
+
+/* Owners chart's x-axis labels (orbitRankedColumnChartHtml()): one per bar,
+   same widths and gap as the plot's columns, each name turned 90 degrees
+   to read upwards from just under the axis. Long names are cut off with
+   an ellipsis; the bar's tooltip has the full name. */
+.orbit-ranked-labels {
+	display: flex;
+	gap: 2px;
+	height: 9rem;
+	padding-top: .3rem;
+	border-top: 2px solid var(--data-cascade-color);
+}
+
+.orbit-ranked-label {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	justify-content: center;
+}
+
+.orbit-ranked-label span {
+	writing-mode: vertical-rl;
+	transform: rotate(180deg);
+	max-height: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	/* No font-size of its own: the same size as the y-axis numbers
+	   (.orbit-histogram-ytick), which inherit the page's. ownersThatFit()
+	   in onOrbitPanel.js sizes the bars from it. */
+	text-transform: uppercase;
+	color: var(--status-label-color);
+}
+
+/* Owners chart: counts above the bars a little larger than the inclination
+   chart's -- its bars are wider. */
+.orbit-ranked .orbit-histogram-value {
+	font-size: .8rem;
+}
+
+/* Owners chart: each bar's % of the population, written up the inside of
+   the bar from its foot, in black on the bar's colour. */
+.orbit-histogram-bar {
+	display: flex;
+	justify-content: center;
+	align-items: flex-end;
+	overflow: hidden;
+}
+
+.orbit-bar-percent {
+	writing-mode: vertical-rl;
+	transform: rotate(180deg);
+	padding: .3rem 0;
+	font-size: .85rem;
+	line-height: 1;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+	color: black;
+}
+
+/* "Other" bar in the owners chart: a lumped total, as in the nationality chart. */
+.orbit-histogram-bar.orbit-chart-bar-muted {
+	background-color: var(--tng-mauve);
+}
+
+/* Charts side by side (a chart group, e.g. the two pies), stacking on
+   narrow screens. */
+.orbit-chart-row {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	column-gap: 2rem;
+}
+
+@media (max-width: 950px) {
+	.orbit-chart-row {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* Pie chart (orbitPieChartHtml() in onOrbitPanel.js): disc beside a
+   legend of swatch, amber label, blue count and share. */
+.orbit-pie {
+	display: flex;
+	align-items: center;
+	gap: 2rem;
+	padding-left: 1rem;
+}
+
+.orbit-pie-disc {
+	flex: none;
+	width: 12rem;
+	height: 12rem;
+	border-radius: 50%;
+}
+
+.orbit-pie-legend {
+	display: grid;
+	grid-template-columns: auto auto auto auto;
+	align-items: center;
+	column-gap: .9rem;
+	row-gap: .35rem;
+}
+
+.orbit-pie-swatch {
+	width: .9rem;
+	height: .9rem;
+	border-radius: 50%;
+}
+
+.orbit-pie-label {
+	white-space: nowrap;
+	text-transform: uppercase;
+	color: var(--status-label-color);
+}
+
+.orbit-pie-value {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+	color: var(--status-data-color);
+}
+
+/* A header-bar total with an explanatory tooltip: help cursor as the cue. */
+.orbit-chart-total-tip {
+	cursor: help;
+}
+
+/* Axis title: just above the axis line, at its right-hand end (both
+   chart kinds). A log axis says so in its title: "... (LOG SCALE)". */
+.orbit-chart-axis-title {
+	position: absolute;
+	right: 0;
+	bottom: 100%;
+	margin-bottom: .2rem;
+	white-space: nowrap;
+	text-transform: uppercase;
+	color: var(--status-label-color);
+}
+
+.orbit-chart-tick::before {
+	content: '';
+	width: 2px;
+	height: 5px;
+	margin-bottom: 2px;
+	background-color: currentColor;
+}
+
+/* Vertical-bar histogram (orbitColumnChartHtml() in onOrbitPanel.js):
+   y-axis numbers | plot, then the shared x axis (.orbit-chart-axis /
+   .orbit-chart-tick) and its title under the plot. Same palette as the
+   bar chart above: periwinkle bars, blue numbers, faint gridlines. */
+.orbit-histogram {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	column-gap: .75rem;
+	/* Room for the last x label, centred on the axis end. */
+	padding-right: 1rem;
+}
+
+/* Plot and y axis: the same height and the same top margin (headroom for
+   the tallest bar's count, kept outside both boxes so bars, gridlines and
+   y labels all measure their % from the same 19.2rem). */
+.orbit-histogram-yaxis {
+	position: relative;
+	height: 19.2rem;   /* 16rem + 20% */
+	margin-top: 1.2rem;
+	min-width: 3.5em;
+}
+
+.orbit-histogram-ytick {
+	position: absolute;
+	right: 0;
+	transform: translateY(50%);
+	font-variant-numeric: tabular-nums;
+	color: var(--status-data-color);   /* scale numbers: data */
+}
+
+.orbit-histogram-plot {
+	position: relative;
+	display: flex;
+	align-items: stretch;
+	gap: 2px;
+	height: 19.2rem;   /* 16rem + 20% */
+	margin-top: 1.2rem;
+}
+
+.orbit-histogram-grid {
+	position: absolute;
+	left: 0;
+	right: 0;
+	border-top: 1px solid #222;
+}
+
+.orbit-histogram-col {
+	position: relative;
+	flex: 1;
+}
+
+.orbit-histogram-bar {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	min-height: 3px;   /* a count of 1 sits at the log axis's 0 -- still shown */
+	border-radius: 100vmax 100vmax 0 0;
+	background-color: var(--tng-periwinkle);
+}
+
+.orbit-histogram-value {
+	position: absolute;
+	left: 50%;
+	transform: translate(-50%, -2px);
+	font-size: .7rem;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+	color: var(--status-data-color);
+}
+
+
+
+.orbit-chart-note {
+	margin-top: .4rem;
+	font-size: .8rem;
+	text-transform: uppercase;
+	color: var(--status-text-color);
+}
+
+/* ON-ORBIT control-area table (renderOnOrbitRegimeTable() in
+   onOrbitPanel.js): satellites per current orbit regime. Regimes are the
+   columns (TOTAL last, ruled off); ALL, %, EXCL SPACEX, % are the rows.
+   Same text treatment as the landing page's data table -- control-area
+   size, sand headings and row names, blue counts, thin dark rules -- with
+   right-aligned counts. Line height 1.4 plus a little cell padding for
+   legibility: a header plus 4 rows is ~128px, inside the control area's
+   fixed height (as little as ~139px at 1300-1500px wide; the font drops to
+   .875rem at <=1300px). The first column -- row names, headed SATELLITES
+   or ALL SPACECRAFT -- is left-aligned and wide enough for the longer
+   label, so the table doesn't shift when the KIND toggle changes. The
+   "no current orbit" note sits beside the table. */
+.orbit-regime-panel {
+	display: flex;
+	align-items: center;
+	gap: 2rem;
+	width: 100%;
+	padding-left: 1.5rem;
+}
+
+.orbit-regime-table {
+	border-collapse: collapse;
+	font-size: var(--status-font-size);
+	line-height: 1.4;
+	text-transform: uppercase;
+}
+
+.orbit-regime-table th,
+.orbit-regime-table td {
+	padding: .1rem 1.2rem .1rem 4px;
+	white-space: nowrap;
+}
+
+.orbit-regime-table th {
+	font-weight: normal;
+	color: var(--status-label-color);
+	border-bottom: 1px solid #333;
+}
+
+.orbit-regime-table td {
+	color: var(--status-data-color);
+	border-bottom: 1px solid #111;
+	font-variant-numeric: tabular-nums;
+}
+
+/* Regime names read as row labels, like the headings. */
+.orbit-regime-table td:first-child {
+	color: var(--status-label-color);
+}
+
+.orbit-regime-table th:first-child,
+.orbit-regime-table td:first-child {
+	text-align: left;
+	min-width: 7.5em;   /* fits "ALL SPACECRAFT" in Antonio */
+}
+
+.orbit-regime-table th:not(:first-child),
+.orbit-regime-table td:not(:first-child) {
+	text-align: right;
+}
+
+/* TOTAL column, set off from the regime columns to its left, and wider
+   than them so its figures stand clear of the rule (still right-aligned,
+   by the rule above). */
+.orbit-regime-table .orbit-regime-total {
+	border-left: 1px solid var(--status-label-color);
+	min-width: 6em;
+}
+
+.orbit-regime-note {
+	max-width: 14rem;
+	font-size: .8rem;
+	line-height: 1.2;
+	text-transform: uppercase;
+	color: var(--status-text-color);
+}
+
 /* ON-ORBIT overview's control-area status line (onOrbitPanel.js)
    -- same size and label colour as the rest of the control-area text. */
 .on-orbit-status {
@@ -4115,8 +4592,8 @@ footer:has(.footer-frame) {
 /* Data-freshness table in the landing page's control area (see
    renderStatusTable() in lcars.js) -- same look as the news-headline ticker
    it replaced: small uppercase text, a thin dark rule between rows, gold
-   headings (as the ticker's date column was), and data cells coloured by
-   the dc-row-1..7 amber/white animation classes. */
+   headings (as the ticker's date column was), and muted amber data rows
+   with a soft-white highlight stepping down them (see below). */
 .status-table {
 	/* Fixed column widths (the <col>s in renderStatusTable()) so the table
 	   can never be wider than the control area -- the wrapper right-aligns
@@ -4135,11 +4612,26 @@ footer:has(.footer-frame) {
 	   rechecked: at 7 data rows it would no longer fit. */
 	line-height: 1;
 	text-transform: uppercase;
-	/* Muted versions of the two colours the dc-row-1..7 animation cycles
-	   between (amber and white) -- scoped to this table, so the animation
-	   is kept but the data reads less brightly than the original ticker. */
-	--data-cascade-color: var(--status-data-color);
-	--light-color: var(--status-data-light-color);
+}
+
+/* Every data row in muted amber, drawn at once; one row at a time in the
+   soft white, stepped down the table every 3 s by stepStatusHighlight()
+   in lcars.js. */
+.status-table td {
+	color: var(--status-data-color);   /* times, counts, countdowns: data */
+}
+
+/* DATA (the row's name) and SOURCE are text, not data. */
+.status-table td:nth-child(1) {
+	color: var(--status-label-color);
+}
+
+.status-table td:nth-child(2) {
+	color: var(--status-text-color);
+}
+
+.status-table tr.status-row-highlight td {
+	color: var(--status-data-light-color);
 }
 
 .status-table th {
@@ -4155,12 +4647,6 @@ footer:has(.footer-frame) {
 .status-table td {
 	overflow: hidden;
 	text-overflow: ellipsis;   /* long text ends in "…" rather than overflowing */
-}
-
-/* Slower than the dc-row-1..7 default (6000ms) -- the colour changes
-   are calmer on a table read for detail than on a passing ticker. */
-.status-table td[class^="dc-row-"] {
-	animation-duration: 30000ms;
 }
 
 .status-table td {
@@ -4248,12 +4734,13 @@ footer:has(.footer-frame) {
 
 .news-col-date {
 	width: 12%;
-	color: var(--gold);
+	color: var(--status-data-color);   /* dates: data */
 	white-space: nowrap;
 }
 
 .news-col-title {
 	width: 75%;
+	color: var(--status-text-color);
 	overflow: hidden;
 	text-overflow: ellipsis;
 }
@@ -4269,7 +4756,7 @@ footer:has(.footer-frame) {
 
 .news-col-source {
 	width: 13%;
-	color: var(--bluey);
+	color: var(--status-text-color);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -4298,13 +4785,19 @@ footer:has(.footer-frame) {
 	margin: 0 0 1rem;
 }
 
+/* "SOURCE:" / "PUBLISHED:" are labels; the source name is text, the date
+   is data (showNewsArticleDetail() in lcars.js). */
+.news-detail-meta .news-detail-meta-date {
+	color: var(--status-data-color);
+}
+
 .news-detail-meta {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 1.5rem;
 	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
 	text-transform: uppercase;
-	color: var(--bluey);
+	color: var(--status-text-color);   /* labels; values below */
 	font-size: .875rem;
 	border-top: 1px solid #333;
 	border-bottom: 1px solid #333;
@@ -4381,13 +4874,13 @@ footer:has(.footer-frame) {
 
 #infrastructure-map .leaflet-control-attribution {
 	background-color: rgba(0, 0, 0, 0.7);
-	color: var(--bluey);
+	color: var(--status-text-color);
 	border-radius: var(--card-radius, 8px);
 	padding: 2px 8px;
 }
 
 #infrastructure-map .leaflet-control-attribution a {
-	color: var(--bluey);
+	color: var(--status-text-color);
 }
 
 /* Asset markers reuse the .key-shape-* shapes from the control-area key
@@ -4442,11 +4935,11 @@ footer:has(.footer-frame) {
 }
 
 #infrastructure-map .leaflet-popup-content .popup-meta {
-	color: var(--tng-lavender); /* was blue-bell #9999cc */
+	color: var(--status-text-color); /* text (type, operator) -- was blue-bell, then lavender */
 }
 
 #infrastructure-map .leaflet-popup-content .popup-desc {
-	color: var(--tng-pink); /* was lilac #cc99cc */
+	color: var(--status-text-color); /* text (description) -- was lilac, then pink */
 }
 
 /* Satellite-info popups on the GS OPS map (visibleSatPopupHtml() in
@@ -4469,7 +4962,7 @@ footer:has(.footer-frame) {
 
 #gs-ops-map .leaflet-popup-content .popup-meta,
 #grd-track-map .leaflet-popup-content .popup-meta {
-	color: var(--bluey);
+	color: var(--status-label-color);   /* field labels: text */
 }
 
 #gs-ops-map .leaflet-popup-content .popup-value,
@@ -4554,7 +5047,7 @@ footer:has(.footer-frame) {
 	border: none;
 	box-shadow: none;
 	padding: 0;
-	color: rgba(255, 255, 255, 0.5);
+	color: rgba(175, 203, 214, 0.6);   /* TNG ice (numbers are data), kept faint so the map stays primary */
 	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
 	/* Was 0.75rem -- too small to read comfortably in narrow Antonio. Each
 	   label is centred on its own grid point (mapCore.js), so a larger size

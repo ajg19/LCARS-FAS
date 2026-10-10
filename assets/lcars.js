@@ -360,7 +360,12 @@ async function openGrdTrackSection() {
 // reasoning as above -- the panel module registers its control area.
 async function openOnOrbitSection() {
     await loadScriptOnce('assets/onOrbitPanel.js');
+    // Always opens on the charts, even if the definitions were showing --
+    // before showSection(), so the DEFINITIONS/CHARTS button is drawn with
+    // the right label.
+    showOnOrbitCharts();
     showSection('on-orbit', 'ON ORBIT');
+    renderOnOrbitCharts();
 }
 
 // Wired to the EO left-menu button. Same load-before-show reasoning as
@@ -605,8 +610,9 @@ function sortNewsByDateDesc(items) {
 // One row per data source from api/status (server.py) -- when it was last
 // refreshed, how many records that refresh changed, and a live countdown to
 // its next scheduled sync. Shown in the control area on the landing page in
-// place of the old news-headline ticker, using the same dc-row-1..7
-// amber/white animation classes on each row's cells.
+// place of the old news-headline ticker: every row in muted amber, with a
+// soft-white highlight stepping down one row at a time (see
+// stepStatusHighlight() below).
 
 const STATUS_REFETCH_MS = 5 * 60 * 1000;   // pick up new runs while the page stays open
 let statusTableData = null;
@@ -657,7 +663,6 @@ function renderStatusTable() {
     const columns = ['DATA', 'SOURCE', 'LAST REFRESH (UTC)', 'LAST REFRESH (LOCAL)', '# CHANGES', 'TIME TO NEXT SYNC'];
     const nowMs = Date.now();
     const rows = statusTableData.sources.map((source, index) => {
-        const animationClass = `dc-row-${(index % 7) + 1}`;
         const cells = [
             source.data,
             source.source,
@@ -668,7 +673,8 @@ function renderStatusTable() {
         ];
         // title: the full text on hover, for any cell its column width cuts
         // short with an ellipsis (e.g. a long Source).
-        return `<tr>${cells.map((text, column) => `<td class="${animationClass}" title="${text}"${
+        const highlight = index === statusHighlightRow % statusTableData.sources.length;
+        return `<tr${highlight ? ' class="status-row-highlight"' : ''}>${cells.map((text, column) => `<td title="${text}"${
             column === 5 ? ` data-status-countdown="${index}"` : ''}>${text}</td>`).join('')}</tr>`;
     }).join('');
     // Column widths add to 100% -- with table-layout: fixed (classic.css)
@@ -682,7 +688,7 @@ function renderStatusTable() {
 }
 
 // Updates only the countdown cells' text, every second -- re-rendering the
-// whole table would restart every row's colour animation.
+// whole table every second would be needless work.
 function tickStatusCountdowns() {
     if (controlAreaSectionActive || !statusTableData) {
         return;
@@ -719,6 +725,28 @@ async function fetchAndRenderStatusTable() {
 }
 
 setInterval(tickStatusCountdowns, 1000);
+
+// Every row is drawn at once in the muted amber; a single soft-white
+// highlight then steps down one row every STATUS_HIGHLIGHT_STEP_MS,
+// wrapping back to the top after the last row. The current row is kept in
+// statusHighlightRow, so the 5-minute refetch (which redraws the table)
+// carries on from where the highlight was rather than restarting it.
+const STATUS_HIGHLIGHT_STEP_MS = 3000;
+let statusHighlightRow = 0;
+
+function stepStatusHighlight() {
+    if (controlAreaSectionActive || !statusTableData) {
+        return;
+    }
+    const rows = document.querySelectorAll('#default .status-table tbody tr');
+    if (rows.length === 0) {
+        return;
+    }
+    statusHighlightRow = (statusHighlightRow + 1) % rows.length;
+    rows.forEach((row, index) => row.classList.toggle('status-row-highlight', index === statusHighlightRow));
+}
+
+setInterval(stepStatusHighlight, STATUS_HIGHLIGHT_STEP_MS);
 
 /* ==========================================================================
    SECTION 3b: FULL NEWS TABLE (Detail View — triggered by 01-ALL button)
@@ -908,8 +936,14 @@ function showNewsArticleDetail(item) {
     meta.className = 'news-detail-meta';
     const metaSource = document.createElement('span');
     metaSource.textContent = `SOURCE: ${source}`;
+    // Label and value in separate spans -- the date is data, so it takes the
+    // data colour (classic.css .news-detail-meta-date).
     const metaDate = document.createElement('span');
-    metaDate.textContent = `PUBLISHED: ${formatNewsDate(item.published_date || item.date)}`;
+    metaDate.textContent = 'PUBLISHED: ';
+    const metaDateValue = document.createElement('span');
+    metaDateValue.className = 'news-detail-meta-date';
+    metaDateValue.textContent = formatNewsDate(item.published_date || item.date);
+    metaDate.appendChild(metaDateValue);
     meta.appendChild(metaSource);
     meta.appendChild(metaDate);
 

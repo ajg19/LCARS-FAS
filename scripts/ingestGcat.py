@@ -325,3 +325,8 @@ if __name__ == '__main__':
     db.commit()
     db.execute('VACUUM')
     db.close()
+    # The ON-ORBIT overview's figures draw on GCAT, so refresh them after
+    # every run -- even when GCAT's files were unchanged, as that's cheap and
+    # keeps them right after a change to a chart's rules.
+    from orbitStats import refreshAll
+    refreshAll()
