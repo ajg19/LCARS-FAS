@@ -604,16 +604,42 @@ def handle_orbital_objects_search(query_params, start_response):
         return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
 
 
-# Serves frontend static assets. Maps "/" to index.html, otherwise looks
-# for the requested file relative to this script's own directory. Content-
-# type mapping only branches for .js/.css/.json, defaulting to text/html
-# for anything else (including images/fonts) -- matches server.js exactly,
-# quirk and all.
-def handle_static(path_info, start_response):
-    rel_path = 'index.html' if path_info == '/' else path_info.lstrip('/')
-    file_path = os.path.join(BASE_DIR, rel_path)
+# Only these are ever served as files: the page itself and everything under
+# assets/. Anything else -- server.py, scripts/, ingestionDBs/, setupCron.sh,
+# spacetrack.env, tmp/ ... -- is a 404, as is any path that resolves outside
+# assets/ (e.g. /assets/../server.py). An allowlist rather than a blocklist,
+# so a new file type can't slip through (bug 7). On the live site the
+# .htaccess rules refuse the same files before they reach this; this is the
+# second layer, and the only one when running locally.
+STATIC_ROOT_FILES = {'index.html'}
+STATIC_DIR = os.path.realpath(os.path.join(BASE_DIR, 'assets'))
 
-    if not os.path.isfile(file_path):
+
+def static_file_path(path_info):
+    """The file to serve for a request path, or None if it isn't one of the
+    allowed static files."""
+    rel_path = 'index.html' if path_info in ('', '/') else path_info.lstrip('/')
+    if rel_path in STATIC_ROOT_FILES:
+        return os.path.join(BASE_DIR, rel_path)
+    if not rel_path.startswith('assets/'):
+        return None
+    try:
+        file_path = os.path.realpath(os.path.join(BASE_DIR, rel_path))
+    except ValueError:   # e.g. an embedded NUL
+        return None
+    if not file_path.startswith(STATIC_DIR + os.sep):
+        return None
+    return file_path
+
+
+# Serves frontend static assets: "/" (and /index.html) is the page, anything
+# else must be under assets/ (static_file_path). Content-type mapping only
+# branches for .js/.css/.json, defaulting to text/html for anything else
+# (including images/fonts) -- matches server.js exactly, quirk and all.
+def handle_static(path_info, start_response):
+    file_path = static_file_path(path_info)
+
+    if file_path is None or not os.path.isfile(file_path):
         start_response('404 Not Found', [('Content-Type', 'text/plain')])
         return [b'404 Not Found']
 

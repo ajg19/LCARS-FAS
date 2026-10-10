@@ -263,6 +263,43 @@ def test_missing_file_returns_404():
     assert status == '404 Not Found'
 
 
+# Only index.html and assets/ are served (bug 7): server code, scripts,
+# databases and credentials must never come back as files, however the path
+# is dressed up.
+
+def test_index_html_by_name_is_served():
+    status, headers, body = call_app('/index.html')
+    assert status == '200 OK'
+    assert b'LCARS' in body
+
+
+def test_nested_asset_is_served():
+    status, headers, body = call_app('/assets/leaflet/leaflet.js')
+    assert status == '200 OK'
+
+
+@pytest.mark.parametrize('path', [
+    '/server.py',
+    '/setupCron.sh',
+    '/deployToGoDaddy.sh',
+    '/spacetrack.env.example',
+    '/scripts/readNews.py',
+    '/ingestionDBs/groundSegmentAssets.db',
+    '/.gitignore',
+    '/bugsDB.xlsx',
+    '/assets/../server.py',
+    '/assets/../../server.py',
+    '/assets/leaflet/../../server.py',
+    r'/assets/..\server.py',   # Windows separator
+    '/assets/../ingestionDBs/groundSegmentAssets.db',
+    '/assets\x00.js',
+])
+def test_files_outside_index_and_assets_are_not_served(path):
+    status, headers, body = call_app(path)
+    assert status == '404 Not Found'
+    assert body == b'404 Not Found'
+
+
 # --- Pure logic unit tests ------------------------------------------------
 # Fast, no-DB unit tests for standalone functions.
 
