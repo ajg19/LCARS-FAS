@@ -136,6 +136,38 @@ UPDATE_FROM_SPACETRACK_SQL = '''
 '''
 
 
+# Object types are stored as CelesTrak's short codes -- PAY, R/B, DEB, UNK --
+# whichever source a row came from: every reader (server.py's catalogue
+# queries, enrichEirp.py, orbitStats.py, the GRD-TRACK search) filters on
+# them. Space-Track spells the same types out in full; mapped here. Without
+# this, a server where CelesTrak is unreachable (GoDaddy, October 2026) ends
+# up with a catalogue of PAYLOAD / ROCKET BODY / DEBRIS that nothing matches.
+SPACETRACK_OBJECT_TYPES = {
+    'PAYLOAD': 'PAY',
+    'ROCKET BODY': 'R/B',
+    'DEBRIS': 'DEB',
+    'UNKNOWN': 'UNK',
+}
+
+
+def normalise_object_type(value):
+    if not value:
+        return None
+    value = value.strip().upper()
+    return SPACETRACK_OBJECT_TYPES.get(value, value)
+
+
+def normalise_stored_object_types():
+    """Rewrites any full-name types already in the table (written before
+    this mapping existed) as codes. Idempotent; returns rows changed."""
+    changed = 0
+    for longName, code in SPACETRACK_OBJECT_TYPES.items():
+        changed += db.execute('UPDATE orbital_objects SET objectType = ? WHERE objectType = ?',
+                              (code, longName)).rowcount
+    db.commit()
+    return changed
+
+
 # 3. Minimal dependency-free CSV parser -- satcat.csv is a plain,
 # header-led CSV with the occasional quoted field (object names can
 # contain commas). Fields are looked up by header name rather than fixed
@@ -207,7 +239,7 @@ def parse_satcat_csv(text):
             continue
         rows.append({
             'noradID': norad_id,
-            'objectType': field_at(fields, idx_object_type) or None,
+            'objectType': normalise_object_type(field_at(fields, idx_object_type)),
             'owner': field_at(fields, idx_owner) or None,
             'launchDate': field_at(fields, idx_launch_date) or None,
             'launchSite': field_at(fields, idx_launch_site) or None,
@@ -286,7 +318,7 @@ def fetch_space_track_satcat():
             continue
         rows.append({
             'noradID': int(r['NORAD_CAT_ID']),
-            'objectType': r.get('OBJECT_TYPE') or None,
+            'objectType': normalise_object_type(r.get('OBJECT_TYPE')),
             'owner': r.get('COUNTRY_CODE') or None,
             'launchDate': r.get('LAUNCH_DATE') or None,
             'launchSite': r.get('SITE') or None,
@@ -341,6 +373,9 @@ def run_satcat_ingestion():
     except Exception as err:
         print(f'  [space-track] ERROR {err}')
 
+    fixed = normalise_stored_object_types()
+    if fixed:
+        print(f'  {fixed} stored object types rewritten as codes (PAYLOAD -> PAY etc.)')
     print('=== SATCAT METADATA INGESTION COMPLETE ===\n')
     return totalEnriched
 

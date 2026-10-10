@@ -43,8 +43,12 @@ EXCLUDE_PATTERNS=(
     0_tools
     bugsDB.xlsx
     bugsDB.xlsx.bak
-    '~$bugsDB.xlsx'
+    '~$*'
+    orbital_rocket_families-2.xlsx
     toDo.md
+    .gitignore
+    .gitattributes
+    deployToGoDaddy.sh
     nodePersistenceTest.js
     persistenceTest.log
     tmp
@@ -66,8 +70,13 @@ printf '%s\n' "${EXCLUDE_PATTERNS[@]}" > "$EXCLUDE_FILE"
 TAR_EXCLUDES=()
 for p in "${EXCLUDE_PATTERNS[@]}"; do TAR_EXCLUDES+=(--exclude="$p"); done
 
+# Built outside the working directory: tar refuses ("file changed as we
+# read it") when the archive it is writing sits inside the tree it reads.
+BUILD_DIR="$(mktemp -d)"
+trap 'rm -rf "$BUILD_DIR"' EXIT
+
 echo "Packaging..."
-tar -czf "$ARCHIVE" "${TAR_EXCLUDES[@]}" .
+tar -czf "$BUILD_DIR/$ARCHIVE" "${TAR_EXCLUDES[@]}" .
 
 RSYNC_OPTS="-a --delete"
 RESTART_CMD="touch tmp/restart.txt"
@@ -78,7 +87,7 @@ if [ -n "${DRY_RUN:-}" ]; then
 fi
 
 echo "Uploading..."
-scp -i "$SSH_KEY" "$ARCHIVE" "$EXCLUDE_FILE" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_PATH/"
+scp -i "$SSH_KEY" "$BUILD_DIR/$ARCHIVE" "$EXCLUDE_FILE" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_PATH/"
 
 echo "Staging and syncing on server..."
 ssh -i "$SSH_KEY" "$REMOTE_USER@$REMOTE_HOST" "
@@ -92,5 +101,5 @@ ssh -i "$SSH_KEY" "$REMOTE_USER@$REMOTE_HOST" "
     $RESTART_CMD
 "
 
-rm -f "$ARCHIVE" "$EXCLUDE_FILE"
+rm -f "$EXCLUDE_FILE"
 echo "Deploy complete."
