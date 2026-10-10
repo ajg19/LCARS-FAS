@@ -520,6 +520,142 @@ def handle_launches_reentries(query_params, start_response):
         return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
 
 
+# --- ON-ORBIT group charts, counted on request ---------------------------------------
+# From onOrbitStats.db's onOrbitObjects (one row per object in orbit, written
+# by scripts/orbitStats.py storeObjectTable), with the page's three filters
+# applied in SQL. Each chart: a query returning rows; the page draws them.
+ON_ORBIT_REGIMES = ['VLEO', 'LEO', 'MEO', 'GEO', '> GEO', 'HEO']
+ON_ORBIT_ALL_OBJECT_CHARTS = ('catalogue-by-type', 'debris-altitude', 'debris-inclination', 'debris-history',
+                              'rocket-bodies-country', 'rocket-bodies-vehicle', 'debris-origin')
+
+
+def on_orbit_object_where(status, kind, spacex, ignore_status=False):
+    clauses = []
+    if status == 'active' and not ignore_status:
+        clauses.append('active = 1')
+    if kind == 'satellites':
+        clauses.append('satellite = 1')
+    elif kind == 'spacecraft':
+        clauses.append('payload = 1')
+    if spacex == 'without':
+        clauses.append('spacex = 0')
+    return ('WHERE ' + ' AND '.join(clauses)) if clauses else ''
+
+
+def on_orbit_chart_rows(name, status, kind, spacex):
+    """Rows for one group chart, or None for an unknown name."""
+    where = on_orbit_object_where(status, kind, spacex)
+    andWhere = (where + ' AND') if where else 'WHERE'
+    queries = {
+        # LOCN
+        'inclination-by-regime': f"SELECT MIN(CAST(inclination / 5 AS INTEGER) * 5, 175) AS band, regime, "
+                                 f"COUNT(*) AS n FROM onOrbitObjects {andWhere} inclination IS NOT NULL "
+                                 f"AND regime IS NOT NULL GROUP BY band, regime",
+        'altitude': f"SELECT CAST(meanAltitudeKm / 25 AS INTEGER) * 25 AS band, COUNT(*) AS n FROM onOrbitObjects "
+                    f"{andWhere} meanAltitudeKm < 2000 AND meanAltitudeKm >= 0 GROUP BY band",
+        'altitude-vs-inclination': f"SELECT CAST(meanAltitudeKm / 25 AS INTEGER) * 25 AS alt, "
+                                   f"CAST(inclination AS INTEGER) AS inc, sector, COUNT(*) AS n FROM onOrbitObjects "
+                                   f"{andWhere} meanAltitudeKm < 2000 AND meanAltitudeKm >= 0 "
+                                   f"AND inclination IS NOT NULL GROUP BY alt, inc, sector",
+        'geo-belt': f"SELECT CAST((geoLongitude + 180) / 2 AS INTEGER) * 2 - 180 AS band, sector, COUNT(*) AS n "
+                    f"FROM onOrbitObjects {andWhere} regime = 'GEO' AND geoLongitude IS NOT NULL "
+                    f"GROUP BY band, sector",
+        'active-by-regime': f"SELECT regime, active, COUNT(*) AS n FROM onOrbitObjects "
+                            f"{on_orbit_object_where(status, kind, spacex, ignore_status=True) or 'WHERE 1'} "
+                            f"AND regime IS NOT NULL GROUP BY regime, active",
+        'age': f"SELECT MIN(CAST(strftime('%Y', 'now') AS INTEGER) - launchYear, 30) AS band, regime, "
+               f"COUNT(*) AS n FROM onOrbitObjects {andWhere} launchYear IS NOT NULL AND regime IS NOT NULL "
+               f"GROUP BY band, regime",
+        # COMMERCIAL
+        'mission': f"SELECT COALESCE(category, 'none') AS category, COUNT(*) AS n FROM onOrbitObjects {where} "
+                   f"GROUP BY 1",
+        'sector-by-country': f"SELECT COALESCE(stateCode, '') AS state, sector, COUNT(*) AS n FROM onOrbitObjects "
+                             f"{where} GROUP BY state, sector",
+        'manufacturers': f"SELECT manufacturerCode AS code, manufacturerName AS name, COUNT(*) AS n "
+                         f"FROM onOrbitObjects {andWhere} manufacturerCode IS NOT NULL AND manufacturerCode <> 'UNK' "
+                         f"GROUP BY code ORDER BY n DESC LIMIT 20",
+        'buses': f"SELECT bus, COUNT(*) AS n FROM onOrbitObjects {andWhere} bus IS NOT NULL "
+                 f"GROUP BY bus ORDER BY n DESC LIMIT 20",
+    }
+    # DEBRIS: every object in orbit -- the status and kind buttons don't
+    # apply (debris is never active, and isn't a payload); SpaceX does.
+    everything = on_orbit_object_where('all', 'objects', spacex)
+    andEverything = (everything + ' AND') if everything else 'WHERE'
+    queries.update({
+        'catalogue-by-type': f"SELECT regime, objectType, COUNT(*) AS n FROM onOrbitObjects {andEverything} "
+                             f"regime IS NOT NULL GROUP BY regime, objectType",
+        'debris-altitude': f"SELECT CAST(meanAltitudeKm / 25 AS INTEGER) * 25 AS band, objectType, COUNT(*) AS n "
+                           f"FROM onOrbitObjects {andEverything} meanAltitudeKm < 2000 AND meanAltitudeKm >= 0 "
+                           f"GROUP BY band, objectType",
+        'debris-inclination': f"SELECT MIN(CAST(inclination / 5 AS INTEGER) * 5, 175) AS band, COUNT(*) AS n "
+                              f"FROM onOrbitObjects {andEverything} objectType = 'DEB' AND inclination IS NOT NULL "
+                              f"GROUP BY band",
+        'rocket-bodies-country': f"SELECT COALESCE(stateCode, '') AS state, COUNT(*) AS n FROM onOrbitObjects "
+                                 f"{andEverything} objectType = 'R/B' GROUP BY state ORDER BY n DESC",
+        'rocket-bodies-vehicle': f"SELECT COALESCE(launchVehicle, '') AS vehicle, COUNT(*) AS n FROM onOrbitObjects "
+                                 f"{andEverything} objectType = 'R/B' GROUP BY vehicle ORDER BY n DESC",
+        'debris-origin': f"SELECT COALESCE(parentJcat, '') AS parent, parentName AS name, "
+                         f"parentLaunchYear AS year, COUNT(*) AS n FROM onOrbitObjects {andEverything} "
+                         f"objectType = 'DEB' GROUP BY parent ORDER BY n DESC",
+        # COMMS: all three buttons apply.
+        'band': f"SELECT COALESCE(downlinkBand, 'none') AS band, COUNT(*) AS n FROM onOrbitObjects {where} "
+                f"GROUP BY 1",
+        'band-by-mission': f"SELECT downlinkBand AS band, COALESCE(category, 'none') AS category, COUNT(*) AS n "
+                           f"FROM onOrbitObjects {andWhere} downlinkBand IS NOT NULL GROUP BY band, category",
+        'band-by-regime': f"SELECT downlinkBand AS band, regime, COUNT(*) AS n FROM onOrbitObjects {andWhere} "
+                          f"downlinkBand IS NOT NULL AND regime IS NOT NULL GROUP BY band, regime",
+        # COMMERCIAL: the country -> owner tree.
+        'country-owner': f"SELECT COALESCE(stateCode, '') AS state, COALESCE(ownerCode, '') AS owner, "
+                         f"COALESCE(ownerName, ownerCode, '') AS ownerName, COUNT(*) AS n FROM onOrbitObjects "
+                         f"{where} GROUP BY state, owner",
+    })
+    if name == 'debris-history':
+        return stats_rows('SELECT year, created, reentered, inOrbit FROM onOrbitDebrisByYear '
+                          'WHERE spacexFilter = ? ORDER BY year', (spacex,))
+    if name == 'payloads-by-year':
+        return stats_rows('SELECT year, sector, payloads AS n FROM onOrbitPayloadsByYear WHERE spacexFilter = ? '
+                          'ORDER BY year, sortOrder', (spacex,))
+    if name not in queries:
+        return None
+    return stats_rows(queries[name], ())
+
+
+def handle_on_orbit_chart(query_params, start_response):
+    """ON-ORBIT group charts (LOCN, COMMERCIAL): ?name=<chart> plus the usual
+    status / kind / spacex filters. Returns {name, status, kind, spacex,
+    rows, total} -- total being the objects the filters select, for the
+    title bars -- plus, for country charts, display names."""
+    try:
+        status, kind = on_orbit_filters(query_params)
+        spacex = on_orbit_spacex_filter(query_params)
+        name = get_param(query_params, 'name') or ''
+        rows = on_orbit_chart_rows(name, status, kind, spacex)
+        if rows is None:
+            return json_response(start_response, '404 Not Found', {'error': f'unknown chart {name!r}'})
+        # DEBRIS charts count every object (status and kind don't apply).
+        if name in ON_ORBIT_ALL_OBJECT_CHARTS:
+            where = on_orbit_object_where('all', 'objects', spacex)
+        else:
+            where = on_orbit_object_where(status, kind, spacex)
+        total = stats_rows(f'SELECT COUNT(*) AS n FROM onOrbitObjects {where}', ())
+        payload = {
+            'name': name, 'status': status, 'kind': kind, 'spacex': spacex,
+            'rows': [dict(r) for r in rows],
+            'total': total[0]['n'] if total else 0,
+        }
+        if name in ('sector-by-country', 'rocket-bodies-country', 'country-owner'):
+            conn = gcat_db()
+            states = {r['state'] for r in rows if r['state']}
+            payload['stateNames'] = {}
+            if conn is not None and states:
+                found = conn.execute(f"SELECT code, shortName, name FROM gcatOrgs WHERE code IN "
+                                     f"({','.join('?' * len(states))})", tuple(states)).fetchall()
+                payload['stateNames'] = {r['code']: r['shortName'] or r['name'] for r in found}
+        return json_response(start_response, '200 OK', payload)
+    except Exception as e:
+        return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
+
+
 def handle_news_topic_counts(start_response):
     """Per-topic article totals for the news control panel histogram --
     precomputed by scripts/tagNews.py on every refresh, so this is a plain
@@ -799,6 +935,8 @@ def application(environ, start_response):
         return handle_on_orbit_inclination(query_params, start_response)
     if method == 'GET' and path_info == '/api/on-orbit/sector':
         return handle_on_orbit_sector(query_params, start_response)
+    if method == 'GET' and path_info == '/api/on-orbit/chart':
+        return handle_on_orbit_chart(query_params, start_response)
     if method == 'GET' and path_info == '/api/on-orbit/owners':
         return handle_on_orbit_owners(query_params, start_response)
     if method == 'GET' and path_info == '/api/launches/per-year':

@@ -2231,6 +2231,18 @@ nav.nav-grid-dynamic {
 	border-left: 3px solid var(--tng-amber);
 }
 
+/* Control-area buttons: the selected one of a set (e.g. the ON-ORBIT chart
+   group showing) in LCARS white; a disabled one dimmed. !important: the
+   buttons' own colours are set inline. */
+.data-cascade-button-group button.is-selected {
+	background-color: var(--space-white) !important;
+}
+
+.data-cascade-button-group button.is-disabled {
+	opacity: .3;
+	cursor: not-allowed;
+}
+
 /* One button stack within .control-area-groups -- see
    renderControlAreaButtons() (lcars.js) for how buttons sharing an
    info.group land in the same one of these. */
@@ -4143,7 +4155,7 @@ footer:has(.footer-frame) {
 }
 
 .orbit-chart {
-	margin-bottom: 2rem;
+	margin-bottom: 2.75rem;   /* black space between charts (and DEFS sections) */
 }
 
 .orbit-chart-header {
@@ -4436,6 +4448,13 @@ footer:has(.footer-frame) {
 	stroke-width: 2;
 }
 
+/* Text that must keep its case under the uppercase LCARS styling -- Ku and
+   Ka bands (lower-case u / a). Axis tick labels are never uppercased. */
+.keep-case,
+.lcars-line-xtick {
+	text-transform: none;
+}
+
 .lcars-line-ytick,
 .lcars-line-xtick,
 .lcars-line-last {
@@ -4500,6 +4519,150 @@ footer:has(.footer-frame) {
 .launch-years-message {
 	min-height: 1.2em;
 	color: var(--red);
+}
+
+/* ON-ORBIT sector-by-country: one 100% bar per country (label | bar |
+   total), segments coloured by sector, the % written in wide ones. */
+.orbit-share-grid {
+	display: grid;
+	grid-template-columns: max-content 1fr max-content;
+	align-items: center;
+	column-gap: .75rem;
+	row-gap: .35rem;
+}
+
+.orbit-share-bar {
+	display: flex;
+	height: 1.15rem;
+	border-radius: 0 100vmax 100vmax 0;
+	overflow: hidden;
+}
+
+.orbit-share-seg {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: .75rem;
+	color: black;
+	cursor: help;
+}
+
+/* Country -> owner tree (orbitTreeHtml() in onOrbitPanel.js): a directory
+   listing -- amber branch lines drawn with borders (├── │ └──), names in
+   sand, a dotted leader, counts in blue, a small bar for the share. */
+.orbit-tree {
+	max-width: 52rem;
+	text-transform: uppercase;
+}
+
+.orbit-tree ul {
+	margin: 0 0 0 .55rem;
+	padding: 0;
+	list-style: none;
+}
+
+.orbit-tree li {
+	position: relative;
+	padding-left: 1.6rem;
+}
+
+/* The elbow to each item (└─ / ├─) ... */
+.orbit-tree li::before {
+	content: '';
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 1.2rem;
+	height: .8em;
+	border-left: 2px solid var(--tng-amber);
+	border-bottom: 2px solid var(--tng-amber);
+}
+
+/* ... and the line carrying on to the next item (│), except after the last. */
+.orbit-tree li::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	top: .8em;
+	bottom: 0;
+	border-left: 2px solid var(--tng-amber);
+}
+
+.orbit-tree li:last-child::after {
+	display: none;
+}
+
+.orbit-tree summary {
+	list-style: none;
+	cursor: pointer;
+}
+
+.orbit-tree summary::-webkit-details-marker {
+	display: none;
+}
+
+.orbit-tree-row {
+	display: flex;
+	align-items: baseline;
+	gap: .5rem;
+	line-height: 1.6;
+}
+
+.orbit-tree-name {
+	white-space: nowrap;
+	color: var(--status-label-color);
+}
+
+/* Open / closed marker on a country. */
+.orbit-tree summary .orbit-tree-name::before {
+	content: '+ ';
+	color: var(--tng-amber);
+}
+
+.orbit-tree details[open] > summary .orbit-tree-name::before {
+	content: '− ';
+}
+
+.orbit-tree-row.is-root .orbit-tree-name,
+.orbit-tree-row.is-country .orbit-tree-name {
+	font-weight: bold;
+}
+
+.orbit-tree-row.is-more .orbit-tree-name {
+	color: var(--status-text-color);
+}
+
+.orbit-tree-leader {
+	flex: 1;
+	min-width: 1rem;
+	border-bottom: 1px dotted #444;
+}
+
+.orbit-tree-count {
+	min-width: 4.5em;
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+	color: var(--status-data-color);
+}
+
+.orbit-tree-barbox {
+	width: 8rem;
+	flex: none;
+}
+
+.orbit-tree-bar {
+	display: block;
+	height: .6em;
+	border-radius: 0 100vmax 100vmax 0;
+	background: var(--status-data-color);
+}
+
+/* Altitude-vs-inclination dots. */
+.lcars-bubble {
+	fill-opacity: .8;
+	stroke: black;
+	stroke-width: .5;
+	cursor: help;
 }
 
 /* Stacked charts: legend under the title bar (swatch + sand label),

@@ -182,6 +182,29 @@ def test_unchanged_satcat_is_reloaded_while_the_decay_summary_is_empty(monkeypat
     assert forced['cat/psatcat.tsv'] is False
 
 
+def test_debris_parents_are_kept_even_when_the_parent_has_re_entered():
+    rows = ingestGcat.parentRows([
+        {'JCAT': 'S100', 'Type': 'R2', 'Name': 'CZ-6A Stage 2', 'LDate': '2024 Aug  6', 'DDate': '2025 Jan',
+         'Status': 'R', 'Owner': 'CALT', 'State': 'CN', 'Parent': '-'},
+        {'JCAT': 'S101', 'Type': 'D  R', 'Name': 'deb', 'Status': 'O', 'Parent': 'S100'},
+        {'JCAT': 'S102', 'Type': 'D  R', 'Name': 'deb', 'Status': 'R', 'Parent': 'S999'},   # re-entered: no
+    ])
+    assert rows == [('S100', 'CZ-6A Stage 2', 'R', '2024-08-06', '2025-01', 'CALT', 'CN')]
+
+
+def test_debris_history_by_break_up_year():
+    rows = ingestGcat.debrisYearRows([
+        {'Type': 'D  P', 'LDate': '2006 Jun 25', 'SDate': '2008 Mar 14 0429', 'DDate': '2008 Oct 19',
+         'Status': 'R', 'Owner': 'MOM'},
+        {'Type': 'D  P', 'LDate': '2006 Jun 25', 'SDate': '2008 Mar 14 0429', 'DDate': '-', 'Status': 'O',
+         'Owner': 'MOM'},
+        {'Type': 'D  R', 'LDate': '2020 Jan  7', 'SDate': '-', 'DDate': '2021 May', 'Status': 'R', 'Owner': 'SPX'},
+        {'Type': 'P', 'LDate': '2008', 'SDate': '2008', 'DDate': '-', 'Status': 'O', 'Owner': 'X'},  # not debris
+    ])
+    # created by break-up date (launch date when there's none); re-entered by decay date
+    assert rows == [(2008, 0, 2, 1), (2020, 1, 1, 0), (2021, 1, 0, 1)]
+
+
 def test_all_downloads_failing_raises(monkeypatch):
     def unreachable(db, path, force=False):
         raise urllib.error.URLError('connection refused')

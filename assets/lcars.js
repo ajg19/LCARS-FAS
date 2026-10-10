@@ -251,9 +251,19 @@ function renderControlAreaButtons(sectionId) {
             if (info.color) {
                 button.style.backgroundColor = info.color;
             }
+            // isSelected(): optional -- the button shows as selected (LCARS
+            // white) while it returns true, e.g. the chart group showing.
+            // disabled: optional -- greyed out and unclickable.
             const setLabel = () => {
                 button.textContent = info.getText ? info.getText() : info.label;
+                if (info.isSelected) {
+                    button.classList.toggle('is-selected', Boolean(info.isSelected()));
+                }
             };
+            if (info.disabled) {
+                button.disabled = true;
+                button.classList.add('is-disabled');
+            }
             setLabelFns.push(setLabel);
             setLabel();
             if (info.onClick) {
@@ -365,6 +375,9 @@ async function openOnOrbitSection() {
     // the right label.
     showOnOrbitCharts();
     showSection('on-orbit', 'ON ORBIT');
+    // Open at the top of the page (banner and control panel in view), not
+    // wherever the previous section had been scrolled to.
+    topFunction();
     renderOnOrbitCharts();
 }
 

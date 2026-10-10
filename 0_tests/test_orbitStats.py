@@ -18,25 +18,32 @@ def sources():
     db = sqlite3.connect(':memory:')
     db.execute("ATTACH DATABASE ':memory:' AS gcat")
     db.execute("ATTACH DATABASE ':memory:' AS orb")
-    db.execute('CREATE TABLE gcat.gcatObjects (jcat TEXT, noradID INTEGER, owners TEXT, stateCode TEXT)')
+    db.execute('CREATE TABLE gcat.gcatObjects (jcat TEXT, noradID INTEGER, owners TEXT, stateCode TEXT, '
+               'manufacturer TEXT, bus TEXT, launchTag TEXT, parent TEXT)')
+    db.execute('CREATE TABLE gcat.gcatLaunches (launchTag TEXT, launchVehicle TEXT)')
+    db.execute('CREATE TABLE gcat.gcatParents (jcat TEXT, name TEXT, coarseType TEXT, launchDate TEXT, '
+               'decayDate TEXT, owners TEXT, stateCode TEXT)')
     db.execute('CREATE TABLE gcat.gcatPayloads (jcat TEXT, category TEXT, payloadClass TEXT)')
     db.execute('CREATE TABLE gcat.gcatOrgs (code TEXT, shortName TEXT, name TEXT, orgClass TEXT, stateCode TEXT)')
     db.execute('CREATE TABLE orb.orbital_objects (noradID INTEGER, name TEXT, objectType TEXT, decayDate TEXT, '
-               'perigee REAL, apogee REAL, inclination REAL)')
+               'perigee REAL, apogee REAL, inclination REAL, launchDate TEXT, epoch TEXT, meanMotion REAL, '
+               'raOfAscNode REAL, argOfPericenter REAL, meanAnomaly REAL, downlinkBand TEXT)')
     db.execute('CREATE TABLE orb.orbital_object_groups (noradID INTEGER, groupName TEXT)')
     return db
 
 
 def add(db, norad, name='SAT', orbit=(500, 520), objectType='PAY', decayed=False, groups=(),
-        gcat=True, owners='X', state='US', category='COM', inclination=53.0, payloadClass='B'):
+        gcat=True, owners='X', state='US', category='COM', inclination=53.0, payloadClass='B', parent=None):
     """One catalogued object; gcat=False leaves it unmatched in GCAT."""
-    db.execute('INSERT INTO orb.orbital_objects VALUES (?, ?, ?, ?, ?, ?, ?)',
+    db.execute('INSERT INTO orb.orbital_objects (noradID, name, objectType, decayDate, perigee, apogee, '
+               'inclination, launchDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
                (norad, name, objectType, '2020-01-01' if decayed else None, *(orbit or (None, None)),
-                inclination))
+                inclination, '2019-05-24'))
     for group in groups:
         db.execute('INSERT INTO orb.orbital_object_groups VALUES (?, ?)', (norad, group))
     if gcat:
-        db.execute('INSERT INTO gcat.gcatObjects VALUES (?, ?, ?, ?)', (f'S{norad:05d}', norad, owners, state))
+        db.execute('INSERT INTO gcat.gcatObjects (jcat, noradID, owners, stateCode, manufacturer, bus, parent) '
+                   'VALUES (?, ?, ?, ?, ?, ?, ?)', (f'S{norad:05d}', norad, owners, state, 'MAKER', 'BUS-1', parent))
         db.execute('INSERT INTO gcat.gcatPayloads VALUES (?, ?, ?)', (f'S{norad:05d}', category, payloadClass))
 
 
@@ -249,6 +256,67 @@ def test_reentries_count_only_objects_that_came_back_down():
     assert rows == {'P': 960, 'R': 40, 'D': 300, 'other': 5}   # departures and dockings not counted
     without = {k: n for f, _, k, _, n in stored if f == 'without'}
     assert without == {'P': 160, 'R': 0, 'D': 300, 'other': 5}   # SpaceX-owned objects left out
+
+
+def test_mission_category_groups():
+    assert orbitStats.categoryGroup('COM') == 'COM'
+    assert orbitStats.categoryGroup('IMG-R') == 'IMG'          # radar imaging is imaging
+    assert orbitStats.categoryGroup('SIG?*') == 'SIG'          # uncertainty marks dropped
+    assert orbitStats.categoryGroup('EW') == 'SIG'
+    assert orbitStats.categoryGroup('COM/TECH') == 'COM'       # first category listed
+    assert orbitStats.categoryGroup('SS') == 'SS'
+    assert orbitStats.categoryGroup('CAL') == 'other'
+    assert orbitStats.categoryGroup(None) is None
+
+
+def test_geo_longitude_from_elements():
+    from datetime import datetime, timezone
+    epoch = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    # GMST at that epoch is about 100.6 deg; node + perigee + anomaly 110.6 -> about 10 E.
+    lon = orbitStats.geoLongitude('2026-01-01T00:00:00Z', orbitStats.SIDEREAL_REVS_PER_DAY,
+                                  50.0, 30.0, 30.6, now=epoch)
+    assert abs(lon - 10.0) < 0.5
+    # A satellite drifting 1 deg/day east has moved 10 deg after ten days.
+    drifting = orbitStats.SIDEREAL_REVS_PER_DAY + 1 / 360
+    later = orbitStats.geoLongitude('2026-01-01T00:00:00Z', drifting, 50.0, 30.0, 30.6,
+                                    now=datetime(2026, 1, 11, tzinfo=timezone.utc))
+    assert abs(later - lon - 10.0) < 0.01
+    assert orbitStats.geoLongitude(None, 1.0, 0, 0, 0) is None
+
+
+def test_object_table_has_a_row_per_object_in_orbit():
+    db = sample()
+    rows = orbitStats.storeObjectTable(db)
+    assert len(rows) == 10                                      # 11 objects, one decayed
+    starlink = next(r for r in rows if r[0] == 1)
+    assert starlink[1:5] == (1, 1, 1, 1)                        # active, payload, satellite, spacex
+    assert starlink[5] == 'LEO' and starlink[16] == 2019        # regime, launch year
+    rocket = next(r for r in rows if r[0] == 10)
+    assert rocket[2:4] == (0, 0)                                # not a payload, not a satellite
+
+
+def test_object_table_records_type_and_debris_parent():
+    db = sources()
+    add(db, 1, 'FENGYUN 1C DEB', objectType='DEB', parent='S25730', category=None)
+    add(db, 2, 'CZ-6A R/B', objectType='R/B')
+    add(db, 3, 'UNTYPED', objectType=None)
+    db.execute("INSERT INTO gcat.gcatParents VALUES ('S25730', 'Fengyun-1C', 'P', '1999-05-10', NULL, 'CMA', 'CN')")
+    rows = {r[0]: r for r in orbitStats.storeObjectTable(db)}
+    assert rows[1][18] == 'DEB' and rows[1][20:23] == ('S25730', 'Fengyun-1C', 1999)
+    assert rows[2][18] == 'R/B' and rows[3][18] == 'UNK'
+
+
+def test_debris_in_orbit_is_created_so_far_less_reentered_so_far():
+    db = sources()
+    db.execute('CREATE TABLE gcat.gcatDebrisYears (year INTEGER, spacex INTEGER, created INTEGER, reentered INTEGER)')
+    db.executemany('INSERT INTO gcat.gcatDebrisYears VALUES (?, ?, ?, ?)', [
+        (2000, 0, 100, 0), (2001, 0, 0, 30), (2001, 1, 50, 0), (2003, 1, 0, 20)])
+    rows = {(f, y): (c, r, n) for f, y, c, r, n in orbitStats.debrisByYear(db)}
+    assert rows[('with', 2000)] == (100, 0, 100)
+    assert rows[('with', 2001)] == (50, 30, 120)
+    assert rows[('with', 2002)] == (0, 0, 120)          # years with nothing still listed
+    assert rows[('with', 2003)] == (0, 20, 100)
+    assert rows[('without', 2003)] == (0, 0, 70)       # SpaceX-owned pieces left out
 
 
 def test_every_filter_combination_is_stored():

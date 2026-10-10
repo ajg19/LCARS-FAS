@@ -186,6 +186,25 @@ def test_launch_log_charts_take_the_outcome_filter(path):
         assert all(r['failures'] == 0 for r in success['rows'])
 
 
+@pytest.mark.parametrize('name', ['inclination-by-regime', 'altitude', 'altitude-vs-inclination', 'geo-belt',
+                                  'active-by-regime', 'age', 'mission', 'sector-by-country', 'manufacturers',
+                                  'buses', 'payloads-by-year', 'catalogue-by-type', 'debris-altitude',
+                                  'debris-inclination', 'rocket-bodies-country', 'rocket-bodies-vehicle',
+                                  'debris-origin', 'band', 'band-by-mission', 'band-by-regime', 'country-owner',
+                                  'debris-history'])
+def test_on_orbit_group_charts_answer(name):
+    status, headers, body = call_app('/api/on-orbit/chart', f'name={name}&status=all&kind=objects&spacex=without')
+    assert status == '200 OK'
+    data = json.loads(body)
+    assert (data['name'], data['kind'], data['spacex']) == (name, 'objects', 'without')
+    assert isinstance(data['rows'], list) and isinstance(data['total'], int)
+
+
+def test_on_orbit_unknown_chart_is_404():
+    status, headers, body = call_app('/api/on-orbit/chart', "name=x%27%3B+DROP+TABLE+onOrbitObjects%3B--")
+    assert status == '404 Not Found'
+
+
 def test_launches_by_country_groups_and_matches_the_yearly_total():
     status, headers, body = call_app('/api/launches/by-country')
     assert status == '200 OK'

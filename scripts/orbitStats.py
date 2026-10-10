@@ -59,7 +59,10 @@ SPACEX_ORG_CODES = {'SPX', 'SPXES', 'SPXS', 'SPXT', 'SPXTX'}
 
 POPULATION_SQL = '''
     SELECT o.noradID, o.name, o.objectType, o.perigee, o.apogee, o.inclination,
-           g.jcat, g.stateCode, g.owners, p.category, p.payloadClass,
+           o.launchDate, o.epoch, o.meanMotion, o.raOfAscNode, o.argOfPericenter, o.meanAnomaly,
+           o.downlinkBand, g.parent,
+           (SELECT l.launchVehicle FROM gcat.gcatLaunches l WHERE l.launchTag = g.launchTag LIMIT 1) AS launchVehicle,
+           g.jcat, g.stateCode, g.owners, g.manufacturer, g.bus, p.category, p.payloadClass,
            o.noradID IN (SELECT noradID FROM orb.orbital_object_groups WHERE groupName = 'active')   AS inActive,
            o.noradID IN (SELECT noradID FROM orb.orbital_object_groups WHERE groupName = 'stations') AS inStations,
            o.noradID IN (SELECT noradID FROM orb.orbital_object_groups WHERE groupName = 'starlink') AS inStarlink
@@ -102,7 +105,10 @@ def loadPopulation(db):
     GCAT records for that object."""
     orgClasses = dict(db.execute('SELECT code, orgClass FROM gcat.gcatOrgs'))
     population = []
-    for (norad, name, objectType, perigee, apogee, inclination, jcat, state, owners, category, payloadClass,
+    for (norad, name, objectType, perigee, apogee, inclination,
+         launchDate, epoch, meanMotion, raan, argPerigee, meanAnomaly,
+         downlinkBand, parent, launchVehicle,
+         jcat, state, owners, manufacturer, bus, category, payloadClass,
          inActive, inStations, inStarlink) in db.execute(POPULATION_SQL):
         payload = objectType == 'PAY'
         categories = set((category or '').replace('?', '').replace('*', '').split('/'))
@@ -119,8 +125,69 @@ def loadPopulation(db):
             # First-listed GCAT owner code; None if not in GCAT. A multi-owner
             # payload counts once, under its first owner.
             'owner': (owners or '').split('/')[0] or None if jcat is not None else None,
+            'norad': norad,
+            'category': categoryGroup(category) if payload else None,
+            'manufacturer': (manufacturer or '').split('/')[0].rstrip('?') or None,
+            'bus': (bus or '').strip() or None,
+            'launchYear': int(launchDate[:4]) if launchDate and launchDate[:4].isdigit() else None,
+            'elements': (epoch, meanMotion, raan, argPerigee, meanAnomaly),
+            # PAY / R/B / DEB / UNK; an untyped catalogue entry counts as unknown.
+            'objectType': objectType if objectType in ('PAY', 'R/B', 'DEB') else 'UNK',
+            'band': downlinkBand or None,
+            'parent': (parent or '').strip() or None,
+            'launchVehicle': (launchVehicle or '').strip() or None,
         })
     return population
+
+
+# GCAT mission categories (psatcat Category, e.g. COM, IMG-R, SIG?*, COM/TECH)
+# grouped for the mission-category pie: the first category listed, its
+# uncertainty marks (? *) dropped, mapped to a family.
+CATEGORY_GROUPS = [
+    ('COM', 'Communications'), ('IMG', 'Imaging'), ('NAV', 'Navigation'), ('SIG', 'Signals & EW'),
+    ('MET', 'Weather & Earth science'), ('SCI', 'Science & astronomy'), ('TECH', 'Technology demo'),
+    ('SS', 'Crewed & stations'), ('other', 'Other'),
+]
+CATEGORY_FAMILY = {
+    'COM': 'COM', 'IMG': 'IMG', 'IMG-R': 'IMG', 'NAV': 'NAV', 'SIG': 'SIG', 'EW': 'SIG',
+    'MET': 'MET', 'MET-RO': 'MET', 'EOSCI': 'MET', 'GEOD': 'MET', 'SCI': 'SCI', 'AST': 'SCI',
+    'TECH': 'TECH',
+}
+
+
+def categoryGroup(category):
+    first = (category or '').split('/')[0].replace('?', '').replace('*', '').strip()
+    if not first:
+        return None
+    if first.startswith(STATION_CATEGORY_PREFIX):
+        return 'SS'
+    return CATEGORY_FAMILY.get(first, 'other')
+
+
+# Sub-satellite longitude of a geostationary object, now, from its element
+# set: right ascension of the node + argument of perigee + mean anomaly,
+# less Greenwich sidereal time at the epoch (good for the near-circular,
+# near-equatorial orbits it's used for), then carried forward by its drift
+# against the Earth's rotation. Degrees east, -180 to 180; None without
+# elements.
+SIDEREAL_REVS_PER_DAY = 1.00273790935
+
+
+def geoLongitude(epoch, meanMotion, raan, argPerigee, meanAnomaly, now=None):
+    if None in (epoch, meanMotion, raan, argPerigee, meanAnomaly):
+        return None
+    try:
+        epochTime = datetime.fromisoformat(epoch.replace('Z', '+00:00'))
+    except ValueError:
+        return None
+    if epochTime.tzinfo is None:
+        epochTime = epochTime.replace(tzinfo=timezone.utc)
+    julianDay = epochTime.timestamp() / 86400 + 2440587.5
+    gmst = (280.46061837 + 360.98564736629 * (julianDay - 2451545.0)) % 360
+    longitude = raan + argPerigee + meanAnomaly - gmst
+    now = now or datetime.now(timezone.utc)
+    longitude += (meanMotion - SIDEREAL_REVS_PER_DAY) * 360 * (now - epochTime).total_seconds() / 86400
+    return (longitude + 180) % 360 - 180
 
 
 # GCAT's sector classes. A payload's own class first; when it has none, its
@@ -456,7 +523,128 @@ def storeLaunchHistory(db, population=None):
     return rows, reentries
 
 
-ALL_STATS = [storeNationality, storeRegimes, storeInclination, storeSector, storeOwners, storeLaunchHistory]
+# --- Per-object table (charts counted on request) ---------------------------------
+# One row per object in orbit, with every attribute the ON-ORBIT group
+# charts filter or count by. server.py counts those charts from it on
+# request (onOrbitChart), with the page's filters applied in SQL -- so a new
+# chart needs no new precomputed table.
+
+def storeObjectTable(db, population=None):
+    population = population if population is not None else loadPopulation(db)
+    names = {code: (short or name or code) for code, short, name in
+             db.execute('SELECT code, shortName, name FROM gcat.gcatOrgs')}
+    try:
+        parents = {jcat: (name, launchDate) for jcat, name, launchDate in
+                   db.execute('SELECT jcat, name, launchDate FROM gcat.gcatParents')}
+    except sqlite3.OperationalError:
+        parents = {}   # GCAT not yet re-ingested with debris parents
+    rows = []
+    for item in population:
+        regime = (orbitRegime(item['perigee'], item['apogee'])
+                  if item['perigee'] is not None and item['apogee'] is not None else None)
+        meanAltitude = ((item['perigee'] + item['apogee']) / 2
+                        if item['perigee'] is not None and item['apogee'] is not None else None)
+        longitude = geoLongitude(*item['elements']) if regime == 'GEO' else None
+        rows.append((
+            item['norad'], int(item['active']), int(item['payload']), int(item['satellite']), int(item['spacex']),
+            regime, meanAltitude, item['inclination'], item['sector'] or 'unknown', item['category'],
+            item['state'], item['owner'], names.get(item['owner'], item['owner']) if item['owner'] else None,
+            item['manufacturer'], names.get(item['manufacturer'], item['manufacturer']) if item['manufacturer'] else None,
+            item['bus'], item['launchYear'], longitude,
+            item['objectType'], item['band'], item['parent'],
+            parents.get(item['parent'], (None, None))[0] if item['parent'] else None,
+            int(parents[item['parent']][1][:4]) if item['parent'] in parents and parents[item['parent']][1] else None,
+            item['launchVehicle'],
+        ))
+    replaceRows(db, 'onOrbitObjects',
+                'noradID INTEGER, active INTEGER, payload INTEGER, satellite INTEGER, spacex INTEGER, '
+                'regime TEXT, meanAltitudeKm REAL, inclination REAL, sector TEXT, category TEXT, '
+                'stateCode TEXT, ownerCode TEXT, ownerName TEXT, manufacturerCode TEXT, manufacturerName TEXT, '
+                'bus TEXT, launchYear INTEGER, geoLongitude REAL, objectType TEXT, downlinkBand TEXT, '
+                'parentJcat TEXT, parentName TEXT, parentLaunchYear INTEGER, launchVehicle TEXT', rows)
+    return rows
+
+
+# Payloads in orbit at each year end (this year: today), by GCAT sector, with
+# and without SpaceX -- for the COMMERCIAL group. From GCAT's launch and
+# decay dates, so it covers every year since 1957; the status and kind
+# filters don't apply (GCAT has no history of operational status).
+def payloadsInOrbitByYear(db, today=None):
+    today = today or datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    orgClasses = dict(db.execute('SELECT code, orgClass FROM gcat.gcatOrgs'))
+    payloads = []
+    for jcat, launchDate, decayDate, owners, payloadClass in db.execute(
+            "SELECT g.jcat, g.launchDate, g.decayDate, g.owners, p.payloadClass "
+            "FROM gcat.gcatObjects g LEFT JOIN gcat.gcatPayloads p ON p.jcat = g.jcat "
+            "WHERE g.coarseType = 'P' AND g.launchDate IS NOT NULL AND COALESCE(g.status, '') <> 'N'"):
+        sector = payloadSector(jcat, payloadClass, owners, orgClasses) or 'unknown'
+        spacex = bool(SPACEX_ORG_CODES.intersection((owners or '').split('/')))
+        payloads.append((launchDate[:10], (decayDate or '')[:10] or None, sector, spacex))
+    rows = []
+    for year in range(1957, int(today[:4]) + 1):
+        cutoff = today if year == int(today[:4]) else f'{year}-12-31'
+        counts = {}
+        for launched, decayed, sector, spacex in payloads:
+            # Partial dates compare by prefix, right to their own precision.
+            if launched <= cutoff and (decayed is None or decayed > cutoff):
+                for spacexFilter in SPACEX_FILTERS:
+                    if spacexFilter == 'without' and spacex:
+                        continue
+                    counts[(spacexFilter, sector)] = counts.get((spacexFilter, sector), 0) + 1
+        rows += [(spacexFilter, year, key, order, counts.get((spacexFilter, key), 0))
+                 for spacexFilter in SPACEX_FILTERS
+                 for order, (key, _) in enumerate(PAYLOAD_SERIES, start=1)]
+    return rows
+
+
+# Debris history (DEBRIS group): pieces created each year (by break-up
+# date) and pieces in orbit at each year end -- every piece created so far,
+# less every piece re-entered so far -- from GCAT's catalogue of all debris
+# ever (gcatDebrisYears), with and without SpaceX-owned pieces.
+def debrisByYear(db):
+    try:
+        found = db.execute('SELECT year, spacex, created, reentered FROM gcat.gcatDebrisYears').fetchall()
+    except sqlite3.OperationalError:
+        return []   # GCAT not yet re-ingested with the debris history
+    if not found:
+        return []
+    rows = []
+    for spacexFilter in SPACEX_FILTERS:
+        created = {}
+        reentered = {}
+        for year, spacex, c, d in found:
+            if spacexFilter == 'without' and spacex:
+                continue
+            created[year] = created.get(year, 0) + c
+            reentered[year] = reentered.get(year, 0) + d
+        inOrbit = 0
+        # Every year from the first piece to the latest in either series (or
+        # this year), whatever this filter leaves -- so both run to the present.
+        lastYear = max(max(y for y, *_ in found), datetime.now(timezone.utc).year)
+        for year in range(min(y for y, *_ in found), lastYear + 1):
+            inOrbit += created.get(year, 0) - reentered.get(year, 0)
+            rows.append((spacexFilter, year, created.get(year, 0), reentered.get(year, 0), inOrbit))
+    return rows
+
+
+def storeDebrisByYear(db, population=None):
+    rows = debrisByYear(db)
+    replaceRows(db, 'onOrbitDebrisByYear',
+                'spacexFilter TEXT, year INTEGER, created INTEGER, reentered INTEGER, inOrbit INTEGER, '
+                'PRIMARY KEY (spacexFilter, year)', rows)
+    return rows
+
+
+def storePayloadsInOrbitByYear(db, population=None):
+    rows = payloadsInOrbitByYear(db)
+    replaceRows(db, 'onOrbitPayloadsByYear',
+                'spacexFilter TEXT, year INTEGER, sector TEXT, sortOrder INTEGER, payloads INTEGER, '
+                'PRIMARY KEY (spacexFilter, year, sector)', rows)
+    return rows
+
+
+ALL_STATS = [storeNationality, storeRegimes, storeInclination, storeSector, storeOwners, storeLaunchHistory,
+             storeObjectTable, storePayloadsInOrbitByYear, storeDebrisByYear]
 
 
 def refreshAll():

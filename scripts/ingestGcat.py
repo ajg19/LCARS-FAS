@@ -156,7 +156,7 @@ def objectRows(satcatRows):
             decayDate, int(decayUncertain), status, r.get('Owner'), nullable(owners[0]),
             r.get('State'), r.get('Manufacturer'), r.get('Bus'), toFloat(r.get('Mass')),
             toFloat(r.get('Perigee')), toFloat(r.get('Apogee')), toFloat(r.get('Inc')),
-            r.get('OpOrbit'),
+            r.get('OpOrbit'), nullable(r.get('Parent')),
         )
 
 
@@ -199,7 +199,7 @@ TABLES = [
         launchDate TEXT, launchDateRaw TEXT, decayDate TEXT, decayDateUncertain INTEGER,
         status TEXT, owners TEXT, ownerCode TEXT, stateCode TEXT, manufacturer TEXT,
         bus TEXT, massKg REAL, perigeeKm REAL, apogeeKm REAL, inclinationDeg REAL,
-        opOrbit TEXT''', objectRows,
+        opOrbit TEXT, parent TEXT''', objectRows,
      ['CREATE INDEX IF NOT EXISTS gcatObjectsByNorad ON gcatObjects (noradID)',
       'CREATE INDEX IF NOT EXISTS gcatObjectsByLaunch ON gcatObjects (launchTag)']),
     # TLast/TOp/TDate are stored as GCAT gives them; their exact meanings
@@ -239,6 +239,55 @@ DECAY_TABLE = ('gcatDecays', """
 SPACEX_ORG_CODES = {'SPX', 'SPXES', 'SPXS', 'SPXT', 'SPXTX'}
 
 
+# Every object that is the parent of a piece of debris still in orbit (GCAT
+# Parent -- the object it broke off), whether or not the parent itself is
+# still up: gcatObjects drops re-entered stages, so the parent's name, type
+# and dates are kept here for the DEBRIS group's origin chart.
+PARENT_TABLE = ('gcatParents', """
+    jcat TEXT PRIMARY KEY, name TEXT, coarseType TEXT, launchDate TEXT, decayDate TEXT, owners TEXT,
+    stateCode TEXT""")
+
+
+def parentRows(satcatRows):
+    byJcat = {r['JCAT']: r for r in satcatRows}
+    parents = {nullable(r.get('Parent')) for r in satcatRows
+               if (r.get('Type') or '')[:1] == 'D' and r.get('Status') in IN_ORBIT_STATUSES}
+    rows = []
+    for jcat in sorted(p for p in parents if p and p in byJcat):
+        r = byJcat[jcat]
+        rows.append((jcat, r.get('Name'), (r.get('Type') or '')[:1] or None, parseVagueDate(r.get('LDate'))[0],
+                     parseVagueDate(r.get('DDate'))[0], r.get('Owner'), r.get('State')))
+    return rows
+
+
+# Every catalogued piece of debris (coarse type D) ever, summarised by year:
+# how many were created -- by break-up date (SDate, when the piece separated;
+# its launch date if that's missing) -- and how many came back down (status R,
+# D or L, by decay date), with and without SpaceX-owned pieces. gcatObjects
+# drops re-entered debris, so this is where the debris history comes from.
+DEBRIS_TABLE = ('gcatDebrisYears', """
+    year INTEGER, spacex INTEGER, created INTEGER, reentered INTEGER,
+    PRIMARY KEY (year, spacex)""")
+DEBRIS_REENTRY_STATUSES = {'R', 'R?', 'D', 'L', 'L?'}
+
+
+def debrisYearRows(satcatRows):
+    counts = {}
+    for r in satcatRows:
+        if (r.get('Type') or '')[:1] != 'D':
+            continue
+        spacex = int(bool(SPACEX_ORG_CODES.intersection((r.get('Owner') or '').split('/'))))
+        created = parseVagueDate(r.get('SDate'))[0] or parseVagueDate(r.get('LDate'))[0]
+        if created:
+            key = (int(created[:4]), spacex)
+            counts.setdefault(key, [0, 0])[0] += 1
+        decayed = parseVagueDate(r.get('DDate'))[0]
+        if decayed and r.get('Status') in DEBRIS_REENTRY_STATUSES:
+            key = (int(decayed[:4]), spacex)
+            counts.setdefault(key, [0, 0])[1] += 1
+    return [(year, spacex, c, d) for (year, spacex), (c, d) in sorted(counts.items())]
+
+
 def decayRows(satcatRows):
     counts = {}
     for r in satcatRows:
@@ -265,6 +314,13 @@ def ensureSchema(db):
     if decayColumns and 'spacex' not in decayColumns:
         db.execute(f'DROP TABLE {DECAY_TABLE[0]}')
     db.execute(f'CREATE TABLE IF NOT EXISTS {DECAY_TABLE[0]} ({DECAY_TABLE[1]})')
+    db.execute(f'CREATE TABLE IF NOT EXISTS {PARENT_TABLE[0]} ({PARENT_TABLE[1]})')
+    db.execute(f'CREATE TABLE IF NOT EXISTS {DEBRIS_TABLE[0]} ({DEBRIS_TABLE[1]})')
+    # gcatObjects from before the parent column: add it (empty until the next
+    # satellite-catalogue load, which the empty gcatParents forces).
+    objectColumns = [row[1] for row in db.execute('PRAGMA table_info(gcatObjects)')]
+    if objectColumns and 'parent' not in objectColumns:
+        db.execute('ALTER TABLE gcatObjects ADD COLUMN parent TEXT')
     db.execute('''
         CREATE TABLE IF NOT EXISTS gcatFiles (
             path         TEXT PRIMARY KEY,
@@ -320,7 +376,8 @@ def runGcatIngestion(db):
 
     # A table derived from a file but still empty (e.g. gcatDecays, the first
     # run after it was added) means that file must be loaded even if unchanged.
-    decaysMissing = not db.execute(f'SELECT 1 FROM {DECAY_TABLE[0]} LIMIT 1').fetchone()
+    decaysMissing = any(not db.execute(f'SELECT 1 FROM {table} LIMIT 1').fetchone()
+                        for table in (DECAY_TABLE[0], PARENT_TABLE[0], DEBRIS_TABLE[0]))
 
     for path, table, _, buildRows, _ in TABLES:
         try:
@@ -341,6 +398,14 @@ def runGcatIngestion(db):
             if decays:
                 replaceTable(db, DECAY_TABLE[0], decays)
             print(f'  [{path}] {len(decays)} decay-summary rows -> {DECAY_TABLE[0]}')
+            parents = parentRows(parsed)
+            if parents:
+                replaceTable(db, PARENT_TABLE[0], parents)
+            print(f'  [{path}] {len(parents)} debris parents -> {PARENT_TABLE[0]}')
+            debrisYears = debrisYearRows(parsed)
+            if debrisYears:
+                replaceTable(db, DEBRIS_TABLE[0], debrisYears)
+            print(f'  [{path}] {len(debrisYears)} debris-history rows -> {DEBRIS_TABLE[0]}')
         db.execute(
             'INSERT OR REPLACE INTO gcatFiles (path, lastModified, fetchedAt, bytes, rows) '
             "VALUES (?, ?, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), ?, ?)",
