@@ -381,6 +381,69 @@ async function openOnOrbitSection() {
     renderOnOrbitCharts();
 }
 
+// ACKNOWLEDGMENTS section: four tabs in main (#ack-about, #ack-datasources,
+// #ack-acknowledgments, #ack-methodology), switched by the control area's
+// ABOUT / DATA SRCES / METHOD / CREDITS buttons. Opens on ABOUT from the left-menu button.
+const ACKNOWLEDGMENTS_TABS = ['about', 'datasources', 'acknowledgments', 'methodology'];
+let acknowledgmentsTab = 'about';
+
+function applyAcknowledgmentsTab() {
+    ACKNOWLEDGMENTS_TABS.forEach((tab) => {
+        const panel = document.getElementById(`ack-${tab}`);
+        if (panel) {
+            panel.style.display = tab === acknowledgmentsTab ? 'block' : 'none';
+        }
+    });
+}
+
+// A condensed "What is FAS?" for the control area, which has a fixed
+// height. The full text is in the ABOUT tab (#ack-about); keep the two in
+// step.
+function renderAcknowledgmentsAbout() {
+    const wrapper = document.getElementById('default');
+    if (!wrapper) {
+        return;
+    }
+    wrapper.innerHTML = `<div class="control-area-about">
+        <p>FAS (For All Species) combines open space data never designed to work together: the NORAD satellite catalogue, CelesTrak, GCAT, SatNOGS, Launch Library 2 and news feeds. The whole is greater than the sum of its parts: together they show who owns what is in orbit, where the debris is and what it broke off, what a ground station can hear, and how it is all changing.</p>
+        <p>A not-for-profit project, offered freely in the spirit of the World Wide Web and Linux, and intended to be useful in education.</p>
+    </div>`;
+}
+
+function acknowledgmentsTabButton(tab, label, color) {
+    return {
+        label,
+        color,
+        isSelected: () => acknowledgmentsTab === tab,
+        onClick: () => {
+            acknowledgmentsTab = tab;
+            applyAcknowledgmentsTab();
+        },
+    };
+}
+
+registerPanelControls('acknowledgments', {
+    defaultAreaMode: 'custom',
+    renderDefaultArea: renderAcknowledgmentsAbout,
+    buttons: [
+        // A 2 x 2 grid, filled row by row: ABOUT, DATA SRCES on top,
+        // METHOD, CREDITS below.
+        acknowledgmentsTabButton('about', 'ABOUT', 'var(--tng-amber)'),
+        acknowledgmentsTabButton('datasources', 'DATA SRCES', 'var(--tng-sand)'),
+        acknowledgmentsTabButton('methodology', 'METHOD', 'var(--tng-periwinkle)'),
+        acknowledgmentsTabButton('acknowledgments', 'CREDITS', 'var(--tng-pink)'),
+    ],
+});
+
+// tab: one of ACKNOWLEDGMENTS_TABS. Set before showSection() so the buttons
+// are drawn with the right one selected.
+function openAcknowledgmentsSection(tab) {
+    acknowledgmentsTab = tab;
+    applyAcknowledgmentsTab();
+    showSection('acknowledgments', 'ACKNOWLEDGMENTS');
+    topFunction();
+}
+
 // Wired to the LAUNCHES left-menu button: launch charts (assets/launchesPanel.js).
 async function openLaunchesSection() {
     await loadScriptOnce('assets/launchesPanel.js');
@@ -409,6 +472,22 @@ async function openEoSection() {
     await loadScriptOnce('assets/eoPanel.js');
     showSection('eo', 'EO');
     initEoMap();
+}
+
+// Wired to the GRD VIEW left-menu button: what is in the sky from the
+// user's location (assets/grdViewPanel.js). Loads the shared location form
+// and store first, as openEoSection() does, then Astronomy Engine.
+async function openGrdViewSection() {
+    await Promise.all([
+        loadScriptOnce('assets/mapCore.js'),
+        loadScriptOnce('assets/grdTrackPanel.js'),
+    ]);
+    await Promise.all([
+        loadScriptOnce('assets/astronomy/astronomy.browser.min.js'),
+        loadScriptOnce('assets/grdViewPanel.js'),
+    ]);
+    showSection('grd-view', 'GRD VIEW');
+    initGrdView();
 }
 
 // Wired to the GS OPS left-menu button. Identical shape to
@@ -641,8 +720,8 @@ const STATUS_REFETCH_MS = 5 * 60 * 1000;   // pick up new runs while the page st
 let statusTableData = null;
 let statusTableRefetchTimer = null;
 
-// 'YYYY-MM-DD HH:MM' -- UTC from the ISO string itself, local via the browser.
-function formatStatusTime(isoValue, local) {
+// 'YYYY-MM-DD HH:MM' in UTC.
+function formatStatusTime(isoValue) {
     if (!isoValue) {
         return '—';
     }
@@ -651,9 +730,7 @@ function formatStatusTime(isoValue, local) {
         return '—';
     }
     const pad = (n) => String(n).padStart(2, '0');
-    const parts = local
-        ? [date.getFullYear(), date.getMonth() + 1, date.getDate(), date.getHours(), date.getMinutes()]
-        : [date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate(), date.getUTCHours(), date.getUTCMinutes()];
+    const parts = [date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate(), date.getUTCHours(), date.getUTCMinutes()];
     return `${parts[0]}-${pad(parts[1])}-${pad(parts[2])} ${pad(parts[3])}:${pad(parts[4])}`;
 }
 
@@ -683,14 +760,13 @@ function renderStatusTable() {
     if (!wrapper || controlAreaSectionActive || !statusTableData) {
         return;
     }
-    const columns = ['DATA', 'SOURCE', 'LAST REFRESH (UTC)', 'LAST REFRESH (LOCAL)', '# CHANGES', 'TIME TO NEXT SYNC'];
+    const columns = ['DATA', 'SOURCE', 'LAST REFRESH (UTC)', '# CHANGES', 'TIME TO NEXT SYNC'];
     const nowMs = Date.now();
     const rows = statusTableData.sources.map((source, index) => {
         const cells = [
             source.data,
             source.source,
-            formatStatusTime(source.lastRefreshUtc, false),
-            formatStatusTime(source.lastRefreshUtc, true),
+            formatStatusTime(source.lastRefreshUtc),
             formatStatusChanges(source),
             formatTimeToNextSync(source, nowMs),
         ];
@@ -698,11 +774,11 @@ function renderStatusTable() {
         // short with an ellipsis (e.g. a long Source).
         const highlight = index === statusHighlightRow % statusTableData.sources.length;
         return `<tr${highlight ? ' class="status-row-highlight"' : ''}>${cells.map((text, column) => `<td title="${text}"${
-            column === 5 ? ` data-status-countdown="${index}"` : ''}>${text}</td>`).join('')}</tr>`;
+            column === 4 ? ` data-status-countdown="${index}"` : ''}>${text}</td>`).join('')}</tr>`;
     }).join('');
     // Column widths add to 100% -- with table-layout: fixed (classic.css)
     // the table then always fits the control area.
-    const columnWidths = ['17%', '25%', '15%', '15%', '12%', '16%'];
+    const columnWidths = ['20%', '30%', '18%', '14%', '18%'];
     wrapper.innerHTML = `<table class="status-table">
         <colgroup>${columnWidths.map((width) => `<col style="width:${width}">`).join('')}</colgroup>
         <thead><tr>${columns.map((title) => `<th>${title}</th>`).join('')}</tr></thead>
@@ -1096,161 +1172,19 @@ renderUtcClock();
 
 
 /* ==========================================================================
-   SECTION 5: HOME-PAGE LIVE FEED CYCLER (YouTube IFrame Player API)
-
-   Reads assets/youtubeFeeds.json and tries each candidate, in order, until
-   one actually starts playing. There is no free/keyless way to ask YouTube
-   "is this specific stream live right now" -- that requires the YouTube
-   Data API (an API key, quota management, a bigger decision than this
-   feature). What this does instead: use the real IFrame Player API (not a
-   plain iframe) and watch its actual player events -- if a candidate
-   starts playing, treat it as working; if it errors out or never starts
-   within LIVE_FEED_TIMEOUT_MS, move to the next one. That's a genuine
-   "first one that's actually running" check, just not a guaranteed
-   live-broadcast flag.
-
-   Some JSON entries point at a channel's /streams tab rather than a
-   specific video (e.g. NASA's and NASASpaceflight's general channels) --
-   those aren't embeddable at all, so they're filtered out up front rather
-   than left to fail the cycle one by one.
-   ========================================================================== */
-
-const LIVE_FEED_TIMEOUT_MS = 6000;
-
-function extractYouTubeVideoId(url) {
-    try {
-        const u = new URL(url);
-        if (u.hostname === 'youtu.be') {
-            return u.pathname.slice(1) || null;
-        }
-        if (u.hostname.endsWith('youtube.com')) {
-            if (u.pathname === '/watch') {
-                return u.searchParams.get('v');
-            }
-            if (u.pathname.startsWith('/embed/')) {
-                return u.pathname.split('/')[2] || null;
-            }
-        }
-    } catch (error) {
-        // Malformed URL -- fall through to null.
-    }
-    return null; // Channel pages, /streams tabs, etc. aren't a specific video.
-}
-
-let liveFeedPlayer = null;
-let liveFeedCandidates = [];
-let liveFeedIndex = 0;
-let liveFeedTimeoutHandle = null;
-
-function loadYouTubeIframeAPI() {
-    if (window.YT && window.YT.Player) {
-        onYouTubeIframeAPIReady();
-        return;
-    }
-    const tag = document.createElement('script');
-    tag.src = 'https://www.youtube.com/iframe_api';
-    document.head.appendChild(tag);
-}
-
-// Called automatically by the YouTube IFrame API once it has loaded --
-// must be a global function, that's the API's own contract.
-window.onYouTubeIframeAPIReady = function () {
-    if (liveFeedCandidates.length === 0) return;
-    liveFeedPlayer = new YT.Player('live-feed-player', {
-        width: '100%',
-        height: '100%',
-        videoId: liveFeedCandidates[0].videoId,
-        // origin/enablejsapi make YouTube's IFrame API and the player
-        // iframe agree on the expected postMessage target -- without them
-        // the console fills with "target origin ... does not match" warns
-        // whenever the API talks to the player (candidate swaps, or after
-        // showSection() hides #default-content).
-        playerVars: {
-            autoplay: 1,
-            rel: 0,
-            enablejsapi: 1,
-            origin: window.location.origin,
-        },
-        events: {
-            onReady: onLiveFeedPlayerReady,
-            onStateChange: onLiveFeedStateChange,
-            onError: onLiveFeedError,
-        },
-    });
-};
-
-function onLiveFeedPlayerReady(event) {
-    event.target.mute(); // Required for autoplay to be allowed at all.
-    event.target.playVideo();
-    armLiveFeedTimeout();
-}
-
-function armLiveFeedTimeout() {
-    clearTimeout(liveFeedTimeoutHandle);
-    liveFeedTimeoutHandle = setTimeout(tryNextLiveFeedCandidate, LIVE_FEED_TIMEOUT_MS);
-}
-
-function onLiveFeedStateChange(event) {
-    if (event.data === YT.PlayerState.PLAYING) {
-        clearTimeout(liveFeedTimeoutHandle);
-        showLiveFeedCredit(liveFeedCandidates[liveFeedIndex]);
-    }
-}
-
-function onLiveFeedError() {
-    tryNextLiveFeedCandidate();
-}
-
-function tryNextLiveFeedCandidate() {
-    clearTimeout(liveFeedTimeoutHandle);
-    liveFeedIndex++;
-    if (liveFeedIndex >= liveFeedCandidates.length) {
-        showLiveFeedUnavailable();
-        return;
-    }
-    liveFeedPlayer.loadVideoById(liveFeedCandidates[liveFeedIndex].videoId);
-    armLiveFeedTimeout();
-}
-
-function showLiveFeedCredit(entry) {
-    const titleEl = document.getElementById('live-feed-title');
-    const creditEl = document.getElementById('live-feed-credit');
-    if (titleEl) titleEl.textContent = entry.name;
-    if (creditEl) creditEl.textContent = entry.licensingNotes;
-}
-
-function showLiveFeedUnavailable() {
-    const titleEl = document.getElementById('live-feed-title');
-    const creditEl = document.getElementById('live-feed-credit');
-    if (titleEl) titleEl.textContent = 'NO LIVE FEED AVAILABLE';
-    if (creditEl) creditEl.textContent = '';
-}
-
-async function initLiveFeedCycler() {
-    try {
-        const response = await fetch('assets/youtubeFeeds.json');
-        if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-        const feeds = await response.json();
-        liveFeedCandidates = feeds
-            .map((entry) => ({ ...entry, videoId: extractYouTubeVideoId(entry.url) }))
-            .filter((entry) => entry.videoId);
-        if (liveFeedCandidates.length === 0) {
-            showLiveFeedUnavailable();
-            return;
-        }
-        loadYouTubeIframeAPI();
-    } catch (error) {
-        console.error('Error loading live feed candidates:', error);
-        showLiveFeedUnavailable();
-    }
-}
-
-/* ==========================================================================
    SECTION 6: SYSTEM EVENT LIFECYCLE LISTENERS
    ========================================================================== */
 
-// The landing page's control area holds only the data-freshness table -- no
-// buttons (the empty nav is hidden by nav:empty in classic.css). Opening
-// any section, NEWS included, renders that section's own buttons.
+// The landing page's control area: the data-freshness table, and ABOUT /
+// CREDITS buttons opening the ACKNOWLEDGMENTS section ('landing' is not a
+// section -- it only supplies the buttons). Opening any section, NEWS
+// included, replaces them with that section's own buttons.
+registerPanelControls('landing', {
+    buttons: [
+        { label: 'ABOUT', color: 'var(--tng-amber)', onClick: () => openAcknowledgmentsSection('about') },
+        { label: 'CREDITS', color: 'var(--tng-pink)', onClick: () => openAcknowledgmentsSection('acknowledgments') },
+    ],
+});
+window.addEventListener('DOMContentLoaded', () => renderControlAreaButtons('landing'));
+
 window.addEventListener('DOMContentLoaded', fetchAndRenderStatusTable);
-window.addEventListener('DOMContentLoaded', initLiveFeedCycler);

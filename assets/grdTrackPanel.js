@@ -322,7 +322,7 @@ function detectObserverLocation() {
     ensureObserverLocation().then(updateObserverLocationDisplay);
 }
 
-// Lazy-loaded once, same pattern as youtubeFeeds.json -- only fetched the
+// Lazy-loaded once -- only fetched the
 // first time the USR LOCN form is opened, not on page load. A small,
 // hand-curated set of major world cities/capitals (plus a few space-
 // programme sites -- Houston, Huntsville, Cape Canaveral, Baikonur,

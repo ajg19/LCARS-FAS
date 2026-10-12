@@ -62,7 +62,7 @@
 					<button class="panel-4 section-toggle" data-section="grd-track" onclick="openGrdTrackSection();">GRD-TRACK</button>
 					<button class="panel-4b section-toggle" data-section="on-orbit" onclick="openOnOrbitSection();">ON-<span class="hop"> ORBIT</span></button>
 					<button class="panel-5 section-toggle" data-section="gs-ops" onclick="openGsOpsSection();">GS OPS</button>
-					<button class="panel-6 section-toggle" data-section="deep-space" onclick="showSection('deep-space', 'DEEP SPACE')">DEEP<span class="hop">&nbsp;SPACE</span></button>
+					<button class="panel-6 section-toggle" data-section="grd-view" onclick="openGrdViewSection()">GRD<span class="hop">&nbsp;VIEW</span></button>
 					<button class="panel-7 section-toggle" data-section="launches" onclick="openLaunchesSection()">LAUNCHES</button>
 					<button class="panel-8 section-toggle" data-section="infrastructure" onclick="openInfrastructureSection();">GRND SGMNT</button>
 					<button class="panel-9 section-toggle" data-section="organisations" onclick="showSection('organisations', 'ORGANISATIONS')">ORG<span class="hop">ANISATIONS</span></button>
@@ -70,7 +70,7 @@
 					<button class="panel-11 section-toggle" data-section="eo" onclick="openEoSection()">EO</button>
 				</div>
 				<div class="bottom-fixed-group">
-					<button class="panel-ack section-toggle" data-section="acknowledgments" onclick="topFunction(); showSection('acknowledgments', 'ACKNOWLEDGMENTS')">ACK<span class="hop">NOWLEDGMENTS</span></button>
+					<button class="panel-ack section-toggle" data-section="acknowledgments" onclick="openAcknowledgmentsSection('about')">ACK<span class="hop">NOWLEDGMENTS</span></button>
 					<button onclick="topFunction(); playSoundAndRedirect('audio4', '#')" id="topBtn"><span class="hop">scrn</span> top</button>
 				</div>
 			</div>
@@ -93,12 +93,31 @@
 				
 				<main>
 
+					<!-- Landing page: the only content in main. The control area above
+					     holds the data-freshness table (fetchAndRenderStatusTable() in
+					     lcars.js). The fuller text is in ACKNOWLEDGMENTS > ABOUT.
+					     Fluid, CSS only: the laurel halves and the elliptical text box
+					     are all sized in units of #default-content's width (cqi), so
+					     they scale together. The two empty .ellipse-shape floats give
+					     each line its elliptical length. -->
 					<div id="default-content">
-						<h1 id="live-feed-title">LOADING LIVE FEED&hellip;</h1>
-						<div class="iss-live-wrapper">
-							<div id="live-feed-player"></div>
+						<div class="landing-group">
+							<div class="landing-wreath">
+								<img class="landing-half" src="assets/laurelHalfLeft.svg" alt="">
+								<div class="landing-ellipse">
+									<span class="ellipse-shape ellipse-shape-left"></span>
+									<span class="ellipse-shape ellipse-shape-right"></span>
+									<div class="about-text landing-ellipse-text">
+										<p>FAS joins sources never designed to work together (the NORAD catalogue, CelesTrak, GCAT, SatNOGS, Launch Library 2 and the space press) and reconciles them in one place.</p>
+										<p>Together they answer what none can alone. Who owns what on orbit? How are the launch and LEO markets trending? Where is everything? When can I see a given satellite?</p>
+										<p>Free and not-for-profit, in the spirit of Linux and the Web. For journalists, investors, students, educators and the industry.</p>
+										<p>Refreshed automatically. Designed for low bandwidth and high latency, from the ISS to Antarctica over Starlink.</p>
+									</div>
+								</div>
+								<img class="landing-half" src="assets/laurelHalfRight.svg" alt="">
+							</div>
+							<p class="about-byline landing-byline">FAS was conceived and built by <a href="https://www.linkedin.com/in/alasdairgill/">Dr Al Gill</a>, financier, physicist and co-founder of the Iceland Space Park (Geimgar&eth;ur).</p>
 						</div>
-						<p id="live-feed-credit" class="live-feed-credit"></p>
 					</div>
 
 					<div data-section="sw-drivers" style="display:none;">
@@ -191,7 +210,7 @@
 								<div class="orbit-defs-term">Country</div>
 								<div class="orbit-defs-text">GCAT's state for the object: the country (or intergovernmental organisation, such as ESA or the EU) responsible for it, in practice where its owner is based. Not where it was built or launched from. Satellites launched by the Soviet Union keep that code (SU), separate from Russia (RU).</div>
 								<div class="orbit-defs-term">NORAD number</div>
-								<div class="orbit-defs-text">The catalogue number the US Space Force gives every tracked object. It links the catalogue to GCAT.</div>
+								<div class="orbit-defs-text">The NORAD catalogue number given to every tracked object. It links the catalogue to GCAT.</div>
 								<div class="orbit-defs-term">Log scale</div>
 								<div class="orbit-defs-text">An axis on which each step is ten times the last (1, 10, 100, 1,000 …), so very large and very small counts fit on one chart. Read the printed counts for exact values.</div>
 								</div>
@@ -202,7 +221,7 @@
 								<div class="orbit-defs-term">Chart groups</div>
 								<div class="orbit-defs-text"><p>The charts are in groups, chosen with the second set of buttons: <b>LOCN</b> (what is where -- orbit type, inclination, altitude, the GEO belt, age) and <b>COMMERCIAL</b> (who owns it -- sector, mission, country, owner, manufacturer). <b>DEBRIS</b> (where the debris is, what broke up, rocket bodies) and <b>COMMS</b> (downlink bands). The group showing is lit white; ON-ORBIT opens on LOCN.</p></div>
 								<div class="orbit-defs-term">Data sources</div>
-								<div class="orbit-defs-text"><p><b>Orbits and status:</b> the NORAD satellite catalogue, published by the US Space Force, taken as OMM element sets from CelesTrak and Space-Track (a few from SatNOGS). It gives each object's current orbit, whether it is a payload, and whether it has re-entered. CelesTrak's lists supply which payloads are active, which are space stations and visitors, and which are Starlink. Refreshed every 12 hours.</p><p><b>Ownership, country and category:</b> GCAT, the General Catalog of Artificial Space Objects by Jonathan McDowell (planet4589.org), refreshed weekly. GCAT's own orbits are the orbit each object was first placed in (Starlinks at about 280 km before they raise to about 470 km), so they are never used.</p><p>The two are matched by NORAD number. All figures are recalculated after every refresh of either source.</p></div>
+								<div class="orbit-defs-text"><p><b>Orbits and status:</b> the NORAD satellite catalogue, taken as OMM element sets from CelesTrak and Space-Track (a few from SatNOGS). It gives each object's current orbit, whether it is a payload, and whether it has re-entered. CelesTrak's lists supply which payloads are active, which are space stations and visitors, and which are Starlink. Refreshed every 12 hours.</p><p><b>Ownership, country and category:</b> GCAT, the General Catalog of Artificial Space Objects by Jonathan McDowell (planet4589.org), refreshed weekly. GCAT's own orbits are the orbit each object was first placed in (Starlinks at about 280 km before they raise to about 470 km), so they are never used.</p><p>The two are matched by NORAD number. All figures are recalculated after every refresh of either source.</p></div>
 								<div class="orbit-defs-term">Population</div>
 								<div class="orbit-defs-text"><p>Every object in the catalogue that has not re-entered; payloads only, unless ALL-OBJ is selected. The ACT-ONLY / ACT +DEAD and SAT ONLY / ALL S-CRFT / ALL-OBJ buttons then narrow or widen it (the second cycles through its three settings), and apply to the table and every chart alike. INC SPACEX / EX SPACEX applies to every chart; the table needs no such button, as it shows ALL and EXCL SPACEX side by side.</p></div>
 								<div class="orbit-defs-term">Pie charts</div>
@@ -265,9 +284,14 @@
 						</div>
 					</div>
 
-					<div data-section="deep-space" style="display:none;">
-						<h2>Deep Space Network &amp; Interplanetary Missions</h2>
-						<p class="go-big">Deep space tracking placeholder.</p>
+					<div data-section="grd-view" style="display:none;">
+						<!-- Sky view and Sun / Moon / planets table, drawn by assets/grdViewPanel.js. -->
+						<div class="grd-view-sky-wrap">
+							<canvas id="grd-view-canvas" class="grd-view-canvas"></canvas>
+							<!-- Satellites only, redrawn every frame over the star chart (clicks pass through to it). -->
+							<canvas id="grd-view-sat-canvas" class="grd-view-sat-canvas"></canvas>
+						</div>
+						<table id="grd-view-bodies" class="ack-table grd-view-bodies"></table>
 					</div>
 
 					<div data-section="launches" style="display:none;">
@@ -349,7 +373,39 @@
 					<div id="news-detail-wrapper" style="display:none;"></div>
 					</div>
 
+					<!-- Four tabs, switched by the ABOUT / DATA SRCES / METHOD / CREDITS control-area buttons
+					     (openAcknowledgmentsSection() in lcars.js). -->
 					<div data-section="acknowledgments" style="display:none;">
+						<div id="ack-about" class="orbit-defs-panel">
+							<section class="orbit-chart">
+								<header class="orbit-chart-header"><span>What is FAS?</span></header>
+								<div class="about-text">
+									<p>FAS (For All Species) brings together open data about space from sources that were never designed to work together: the NORAD satellite catalogue (via Space-Track), CelesTrak, Jonathan McDowell's General Catalog of Artificial Space Objects (GCAT), SatNOGS, Launch Library 2 and space news feeds.</p>
+									<p>Each source answers part of a question. Combined, the whole is greater than the sum of its parts: matched object by object, reconciled and charted in one place, they answer questions none of them can answer alone. Who owns what is in orbit? Where is the debris, and what did it break off? Which satellites can a ground station hear? How is all of it changing?</p>
+									<p>FAS is a not-for-profit project, offered freely in the same spirit in which Tim Berners-Lee gave the World Wide Web away and Linus Torvalds released Linux. We hope it will be useful in education: for students, teachers and anyone curious about what is up there, who put it there and what it is doing.</p>
+									<p>The data refreshes automatically; the table on the landing page shows when each source last updated. The site is built to stay usable at 20&nbsp;Mbps with multi-second latency, so it works from anywhere, from a classroom on a slow connection to the ISS.</p>
+								</div>
+							</section>
+							<section class="orbit-chart">
+								<header class="orbit-chart-header"><span>What it covers</span></header>
+								<ul class="about-list">
+									<li><b>On orbit:</b> every catalogued object (payloads, rocket bodies and debris) by orbit, owner, country, sector, mission, manufacturer and radio band, with debris history and origins.</li>
+									<li><b>Ground tracks:</b> live positions, ground tracks and footprints for any catalogued object, computed in the browser.</li>
+									<li><b>Ground station operations:</b> the satellites in view from any location, with link-budget estimates in both directions.</li>
+									<li><b>Launches:</b> orbital launches since 1957 by year, country and outcome, and the payloads they carried.</li>
+									<li><b>Ground segment and news:</b> a map of ground infrastructure (deep-space networks, teleports, SSA sites, launch sites) and a categorised space-news feed.</li>
+								</ul>
+							</section>
+							<section class="orbit-chart">
+								<header class="orbit-chart-header"><span>Built by</span></header>
+								<div class="about-text">
+									<p><b>Dr Al Gill</b>: Natural Sciences at Cambridge (Churchill College), then a PhD in theoretical physics at Imperial College. Postdoctoral research at Los Alamos National Laboratory and in Geneva, including setting up a 13-nation research network. Then the commercial world: through the dot-com boom and 25 years in finance, across private equity, venture capital and investment banking.</p>
+									<p>Co-founder of Geimgar&eth;ur, the Iceland Space Park; runs GAPS (gaps2024.com), long-term monitoring of microplastics. <a href="https://www.linkedin.com/in/alasdairgill/">linkedin.com/in/alasdairgill</a></p>
+								</div>
+							</section>
+						</div>
+
+						<div id="ack-acknowledgments" style="display:none;">
 						<p class="go-big">This project draws on the work, data and tools of a number of individuals and organisations. Their contributions are gratefully acknowledged here.</p>
 						<table class="ack-table">
 							<thead>
@@ -361,14 +417,39 @@
 							</thead>
 							<tbody>
 								<tr>
+									<td>CelesTrak (Dr T.S. Kelso)</td>
+									<td>Orbital elements and satellite catalogue data, and the active, station and Starlink satellite lists</td>
+									<td><a href="https://celestrak.org">celestrak.org</a></td>
+								</tr>
+								<tr>
 									<td>Claude (Anthropic)</td>
 									<td>LLM development partner &mdash; system design, implementation, testing and debugging</td>
 									<td><a href="https://claude.ai">claude.ai</a></td>
 								</tr>
 								<tr>
+									<td>Don Cross</td>
+									<td>Astronomy Engine, used to calculate the positions of the Sun, Moon and planets (MIT licence)</td>
+									<td><a href="https://github.com/cosinekitty/astronomy">github.com/cosinekitty/astronomy</a></td>
+								</tr>
+								<tr>
+									<td>E. Anderson &amp; C. Francis</td>
+									<td>XHIP: An Extended Hipparcos Compilation (2012), the source of the star positions, magnitudes and colours</td>
+									<td><a href="https://cdsarc.cds.unistra.fr/viz-bin/cat/V/137D">VizieR V/137D</a></td>
+								</tr>
+								<tr>
+									<td>FCC and ITU</td>
+									<td>Public filings used for satellite transmit-power (EIRP) estimates</td>
+									<td><a href="https://www.fcc.gov">fcc.gov</a></td>
+								</tr>
+								<tr>
 									<td>Gemini</td>
 									<td>Advice on datasources, libraries and APIs</td>
 									<td><a href="https://gemini.google.com">gemini.google.com</a></td>
+								</tr>
+								<tr>
+									<td>geojs.io</td>
+									<td>Approximate location from the visitor's internet address</td>
+									<td><a href="https://www.geojs.io">geojs.io</a></td>
 								</tr>
 								<tr>
 									<td>Jim Robertus</td>
@@ -377,8 +458,38 @@
 								</tr>
 								<tr>
 									<td>Jonathan C. McDowell</td>
-									<td>Decades of work building and maintaining the General Catalog of Artificial Space Objects (GCAT), used under CC&#8209;BY&#8209;4.0. </td>
+									<td>Decades of work building and maintaining the General Catalog of Artificial Space Objects (GCAT), used under CC&#8209;BY&#8209;4.0.</td>
 									<td><a href="https://planet4589.org/space/gcat">planet4589.org/space/gcat</a></td>
+								</tr>
+								<tr>
+									<td>J&ouml;rg Dietrich</td>
+									<td>Leaflet.Terminator, the day/night shading on the maps (MIT licence)</td>
+									<td><a href="https://github.com/joergdietrich/Leaflet.Terminator">github.com/joergdietrich/Leaflet.Terminator</a></td>
+								</tr>
+								<tr>
+									<td>Libre Space Foundation</td>
+									<td>The SatNOGS database of satellite radio frequencies, used under CC&#8209;BY&#8209;SA&#8209;4.0</td>
+									<td><a href="https://db.satnogs.org">db.satnogs.org</a></td>
+								</tr>
+								<tr>
+									<td>Mike Bostock</td>
+									<td>TopoJSON client, used to load the map outlines (ISC licence)</td>
+									<td><a href="https://github.com/topojson/topojson-client">github.com/topojson/topojson-client</a></td>
+								</tr>
+								<tr>
+									<td>NASA</td>
+									<td>DONKI space-weather event data</td>
+									<td><a href="https://api.nasa.gov">api.nasa.gov</a></td>
+								</tr>
+								<tr>
+									<td>Natural Earth</td>
+									<td>Country outlines for the maps, via the datasets/geo-countries project (public domain)</td>
+									<td><a href="https://www.naturalearthdata.com">naturalearthdata.com</a></td>
+								</tr>
+								<tr>
+									<td>Olaf Frohn</td>
+									<td>d3-celestial: the star, star-name, constellation, Milky Way and deep-sky object data used for the sky view, compiled from XHIP, the IAU constellation definitions, the Milky Way Outline Catalog and the Saguaro Astronomy Club database (BSD licence)</td>
+									<td><a href="https://github.com/ofrohn/d3-celestial">github.com/ofrohn/d3-celestial</a></td>
 								</tr>
 								<tr>
 									<td>Qwen</td>
@@ -391,9 +502,29 @@
 									<td><a href="https://github.com/shashwatak/satellite-js">github.com/shashwatak/satellite-js</a></td>
 								</tr>
 								<tr>
+									<td>Space news publishers</td>
+									<td>Headlines from 18 feeds, including NASA, ESA, SpaceNews, Space.com, Ars Technica, Spaceflight Now and Universe Today; each links to its source</td>
+									<td>&mdash;</td>
+								</tr>
+								<tr>
+									<td>Space-Track.org</td>
+									<td>The official orbital data and satellite catalogue</td>
+									<td><a href="https://www.space-track.org">space-track.org</a></td>
+								</tr>
+								<tr>
 									<td>The Space Devs</td>
 									<td>The LL2 database covering launches, launch vehicles and agencies</td>
 									<td><a href="https://thespacedevs.com">thespacedevs.com</a></td>
+								</tr>
+								<tr>
+									<td>Vernon Adams</td>
+									<td>The Antonio typeface used throughout (SIL Open Font Licence)</td>
+									<td><a href="https://fonts.google.com/specimen/Antonio">fonts.google.com/specimen/Antonio</a></td>
+								</tr>
+								<tr>
+									<td>Volodymyr Agafonkin</td>
+									<td>Leaflet, the mapping library behind every map (BSD licence)</td>
+									<td><a href="https://leafletjs.com">leafletjs.com</a></td>
 								</tr>
 								<tr>
 									<td>Dr Al Gill</td>
@@ -402,6 +533,114 @@
 								</tr>
 							</tbody>
 						</table>
+						</div>
+
+						<div id="ack-datasources" style="display:none;">
+						<p class="go-big">FAS combines these open data sources. Each section's DEFS page explains how its figures are built from them.</p>
+						<table class="ack-table ack-sources-table">
+							<thead>
+								<tr>
+									<th>Source</th>
+									<th>What it provides</th>
+									<th>Licence type</th>
+									<th>Refreshed</th>
+									<th>URL</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td>NORAD catalogue</td>
+									<td>Orbital elements (OMM) for every tracked object, from which positions, ground tracks and passes are computed; each object's type and launch and decay dates. Taken from CelesTrak, with Space-Track.org filling gaps.</td>
+									<td>Space-Track User Agreement (CelesTrak states no licence)</td>
+									<td>Every 12 hours (catalogue details daily)</td>
+									<td><a href="https://celestrak.org">celestrak.org</a></td>
+								</tr>
+								<tr>
+									<td>CelesTrak lists</td>
+									<td>The groupings used to classify objects: active satellites (operational status), space stations and their visiting vehicles, and Starlink.</td>
+									<td>No licence stated; free public service</td>
+									<td>Every 12 hours</td>
+									<td><a href="https://celestrak.org">celestrak.org</a></td>
+								</tr>
+								<tr>
+									<td>GCAT</td>
+									<td>Ownership, country and sector (academic, commercial, civil, defence); mission category; manufacturer and satellite bus; the launch log; the parent object of each debris fragment, and the debris history.</td>
+									<td>CC BY 4.0</td>
+									<td>Weekly</td>
+									<td><a href="https://planet4589.org/space/gcat">planet4589.org/space/gcat</a></td>
+								</tr>
+								<tr>
+									<td>SatNOGS DB</td>
+									<td>Downlink and uplink frequencies, modes and data rates reported by the SatNOGS network of amateur ground stations, for about 1,000 satellites.</td>
+									<td>CC BY-SA 4.0</td>
+									<td>Every 12 hours</td>
+									<td><a href="https://db.satnogs.org">db.satnogs.org</a></td>
+								</tr>
+								<tr>
+									<td>FCC / ITU filings</td>
+									<td>Published transmit power (EIRP) for the large constellations; class-typical estimates by band and orbit for other satellites. Used in the GS OPS link budgets.</td>
+									<td>Public records</td>
+									<td>Static</td>
+									<td><a href="https://www.fcc.gov">fcc.gov</a></td>
+								</tr>
+								<tr>
+									<td>News feeds</td>
+									<td>Headlines and summaries from 18 RSS feeds (NASA, ESA, SpaceNews, Space.com, Ars Technica, Spaceflight Now, Universe Today and others), tagged by topic; each links to the full article.</td>
+									<td>Publishers' copyright (headlines and links only)</td>
+									<td>Every 30 minutes</td>
+									<td>&mdash;</td>
+								</tr>
+								<tr>
+									<td>d3-celestial</td>
+									<td>5,044 stars to magnitude 6 with their colours (B&minus;V), star names, the names and lines of the 88 constellations, the Milky Way outline and 31 bright deep-sky objects; compiled from XHIP, the IAU, the Milky Way Outline Catalog and the Saguaro Astronomy Club database.</td>
+									<td>BSD 3-Clause</td>
+									<td>Static</td>
+									<td><a href="https://github.com/ofrohn/d3-celestial">github.com/ofrohn/d3-celestial</a></td>
+								</tr>
+								<tr>
+									<td>Natural Earth</td>
+									<td>Country outlines for the maps, via the datasets/geo-countries project.</td>
+									<td>Public domain</td>
+									<td>Static</td>
+									<td><a href="https://www.naturalearthdata.com">naturalearthdata.com</a></td>
+								</tr>
+								<tr>
+									<td>NASA DONKI</td>
+									<td>Geomagnetic storm events from NASA's Space Weather Database Of Notifications, Knowledge, Information, for the WEATHER section.</td>
+									<td>US Government work (public domain)</td>
+									<td>On request</td>
+									<td><a href="https://api.nasa.gov">api.nasa.gov</a></td>
+								</tr>
+								<tr>
+									<td>geojs.io</td>
+									<td>Approximate latitude and longitude from the visitor's internet address, used only when no location has been set.</td>
+									<td>Free service (geojs.io terms of service; data from MaxMind GeoLite)</td>
+									<td>On request</td>
+									<td><a href="https://www.geojs.io">geojs.io</a></td>
+								</tr>
+							</tbody>
+						</table>
+						</div>
+
+						<div id="ack-methodology" class="orbit-defs-panel" style="display:none;">
+							<section class="orbit-chart">
+								<header class="orbit-chart-header"><span>How FAS was built</span></header>
+								<div class="orbit-defs">
+									<div class="orbit-defs-term">Data pipeline</div>
+									<div class="orbit-defs-text">Scheduled scripts on the server fetch each source and store it in its own SQLite database. Orbital elements for the NORAD catalogue (from Space-Track and CelesTrak, OMM JSON) are fetched twice a day, the NORAD satellite catalogue (SATCAT) daily, GCAT weekly and news every 30 minutes. Radio-frequency data from SatNOGS and estimated transmit power are added after each orbital refresh. Derived statistics are recomputed after every refresh, so charts are counted on request from current data.</div>
+									<div class="orbit-defs-term">Combining sources</div>
+									<div class="orbit-defs-text">Objects are matched across sources by NORAD catalogue number. GCAT supplies ownership, sector, mission and manufacturer; CelesTrak's active list supplies operational status. Where a value is estimated rather than published (transmit power, and most satellites' downlink band), it is marked as an estimate. Each section's DEFS page gives its definitions and how its numbers are counted.</div>
+									<div class="orbit-defs-term">Low-bandwidth design</div>
+									<div class="orbit-defs-text">Required to stay usable at 20&nbsp;Mbps with multi-second latency (for example, from the ISS via NASA's optical links). Plain JavaScript with no framework; one module per section, loaded only when opened; self-hosted libraries, no third-party CDNs; an initial load under 5&nbsp;MB. Orbits are propagated (SGP4) in the browser, not on the server.</div>
+									<div class="orbit-defs-term">Server</div>
+									<div class="orbit-defs-text">A single small Python web application serving the page and its data API, on ordinary shared hosting. It serves only the page and its assets, never the databases or scripts.</div>
+									<div class="orbit-defs-term">Process</div>
+									<div class="orbit-defs-text">A hybrid method. Traditional engineering where the requirements are clear: functional and software requirements, a design and architecture document, and a test plan. Agile iteration where they are not, with exploratory prototypes, and a working system at all times. An automated test suite, a bug log, and version control throughout.</div>
+									<div class="orbit-defs-term">Built with AI</div>
+									<div class="orbit-defs-text">Developed by Al Gill with Claude (Anthropic) as development partner. Al set the direction and requirements and tested the results; Claude co-wrote the design documents and implemented and tested the code.</div>
+								</div>
+							</section>
+						</div>
 					</div>
 
 					</main>

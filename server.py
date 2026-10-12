@@ -18,7 +18,9 @@ process's working directory -- same reasoning as the __dirname fix on the
 Node side: must not matter where this is launched from.
 """
 
+import gzip
 import json
+import math
 import mimetypes
 import os
 import sqlite3
@@ -258,6 +260,185 @@ def handle_status(start_response):
         return json_response(start_response, '200 OK', payload)
     except Exception as e:
         return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
+
+
+# GRD VIEW sky view: the fixed sky from ingestionDBs/skyCatalogue.db (built
+# once by scripts/buildSkyCatalogue.py), read once and the JSON kept until
+# the file changes; browser-cached (cached_json_response()). Compact
+# arrays, positions in J2000 degrees:
+#   stars           [raDeg, decDeg, mag, bv, name] -- bv/name null if absent
+#   lines           one [[raDeg, decDeg], ...] polyline per constellation line
+#   constellations  [name, labelRaDeg, labelDecDeg, rank]
+#   milkyWay        [level, [[raDeg, decDeg], ...]] -- per level, ring 0 the
+#                   outline and the rest holes; level 1 faintest, 5 brightest
+#   deepSky         [name, type, raDeg, decDeg, mag, dimArcmin]
+_sky_catalogue_cache = {}
+
+
+def sky_catalogue_payload():
+    conn = open_db('skyCatalogue.db', read_only=True)
+    try:
+        stars = [[r['raDeg'], r['decDeg'], r['mag'], r['bv'], r['name']]
+                 for r in conn.execute('SELECT raDeg, decDeg, mag, bv, name FROM skyStars ORDER BY mag')]
+        lines = [json.loads(r['pointsJson'])
+                 for r in conn.execute('SELECT pointsJson FROM skyConstellationLines ORDER BY desig, lineIndex')]
+        constellations = [[r['name'], r['labelRaDeg'], r['labelDecDeg'], r['rank']]
+                          for r in conn.execute('SELECT name, labelRaDeg, labelDecDeg, rank FROM skyConstellations')]
+        milky_way = [[r['level'], json.loads(r['pointsJson'])]
+                     for r in conn.execute('SELECT level, pointsJson FROM skyMilkyWay ORDER BY level, ringIndex')]
+        deep_sky = [[r['name'] or r['id'], r['type'], r['raDeg'], r['decDeg'], r['mag'], r['dimArcmin']]
+                    for r in conn.execute('SELECT id, name, type, raDeg, decDeg, mag, dimArcmin FROM skyDeepSky ORDER BY mag')]
+    finally:
+        conn.close()
+    return {'stars': stars, 'lines': lines, 'constellations': constellations,
+            'milkyWay': milky_way, 'deepSky': deep_sky}
+
+
+def handle_sky_catalogue(environ, start_response):
+    return cached_json_response(
+        environ, start_response, _sky_catalogue_cache, sky_catalogue_payload,
+        ('skyCatalogue.db',), SKY_CATALOGUE_MAX_AGE_SEC,
+        'Sky catalogue unavailable ({}); run scripts/buildSkyCatalogue.py')
+
+
+# Browser caching for the GRD VIEW data (cached_json_response()): the
+# browser reuses its copy for max-age seconds without asking at all (on a
+# high-latency link even asking costs seconds), then asks whether it has
+# changed, quoting the version (ETag) it holds; if not, the reply is a
+# body-less 304. The version is the database files' modification times, so
+# it changes exactly when a pipeline or GCAT run rewrites them.
+SKY_CATALOGUE_MAX_AGE_SEC = 24 * 3600   # the fixed sky: rebuilt by hand, rarely
+SKY_SATELLITES_MAX_AGE_SEC = 30 * 60    # orbital elements: refreshed every 12 hours
+
+
+def cached_json_response(environ, start_response, cache, build, db_files, max_age, error_text):
+    """Serves build()'s JSON from `cache`, rebuilt when any of db_files
+    changes; gzipped when the browser accepts it; with ETag / Cache-Control,
+    answering a matching If-None-Match with 304 Not Modified."""
+    try:
+        key = tuple(os.path.getmtime(os.path.join(DB_DIR, f)) for f in db_files)
+        if cache.get('key') != key:
+            body = json.dumps(build(), separators=(',', ':')).encode('utf-8')
+            cache.update(key=key, json=body, gzip=gzip.compress(body, compresslevel=6),
+                         etag='"' + '-'.join(str(int(t)) for t in key) + '"')
+    except (OSError, sqlite3.Error) as e:
+        return json_response(start_response, '503 Service Unavailable', {'error': error_text.format(e)})
+    use_gzip = 'gzip' in environ.get('HTTP_ACCEPT_ENCODING', '')
+    # The two encodings are different bodies, so different versions.
+    etag = cache['etag'][:-1] + ('-gz"' if use_gzip else '"')
+    headers = [('Content-Type', 'application/json'), ('Vary', 'Accept-Encoding'),
+               ('ETag', etag), ('Cache-Control', f'max-age={max_age}, must-revalidate')]
+    if etag in [tag.strip() for tag in environ.get('HTTP_IF_NONE_MATCH', '').split(',')]:
+        start_response('304 Not Modified', headers)
+        return [b'']
+    body = cache['gzip'] if use_gzip else cache['json']
+    if use_gzip:
+        headers.append(('Content-Encoding', 'gzip'))
+    headers.append(('Content-Length', str(len(body))))
+    start_response('200 OK', headers)
+    return [body]
+
+
+# GRD VIEW satellites: every payload and rocket body that could ever reach
+# naked-eye brightness, with its orbital elements, for the browser's
+# background calculation (assets/grdViewSatWorker.js). An object is kept
+# if its best possible apparent magnitude -- at its perigee height, straight
+# overhead, fully lit (1.24 brighter than the half-lit standard magnitude) --
+# is VISIBLE_LIMIT_MAG or brighter: standard + 5 log10(perigee / 1000 km)
+# - 1.24. That drops debris and unknown objects (no brightness estimate,
+# by design) and almost everything in high orbits, before anything is sent.
+# Brightness from gcat.db gcatBrightness (scripts/estimateBrightness.py).
+# Rebuilt when either database file changes (every pipeline / GCAT run).
+# Compact rows, with no names or other details -- those are fetched one
+# object at a time when needed (api/sky/object):
+#   [noradID, kind ('P' payload / 'R' rocket body), stdMag, active (0/1),
+#    spacex (0/1), epoch, meanMotion, eccentricity, inclination,
+#    raOfAscNode, argOfPericenter, meanAnomaly, bstar, meanMotionDot,
+#    meanMotionDdot, station (0/1: a station or visiting vehicle, in
+#    CelesTrak's stations list -- excluded by GRD VIEW's SAT ONLY filter)]
+# Numbers are rounded to what SGP4 needs (epoch to the second, angles to
+# 1e-4 degree, mean motion to 1e-8 rev/day, drag terms to 4-5 figures).
+VISIBLE_LIMIT_MAG = 5.0   # realistic naked-eye limit for a moving point under a good dark sky
+_sky_satellites_cache = {}
+
+
+def sky_satellites_payload():
+    gcat = open_db('gcat.db', read_only=True)
+    try:
+        brightness = {r['noradID']: r['stdMag'] for r in gcat.execute(
+            'SELECT noradID, stdMag FROM gcatBrightness WHERE stdMag IS NOT NULL')}
+        spacex = {r['noradID'] for r in gcat.execute(
+            f"SELECT noradID FROM gcatObjects WHERE noradID IS NOT NULL "
+            f"AND ownerCode IN ({','.join('?' * len(SPACEX_ORG_CODES))})", SPACEX_ORG_CODES)}
+    finally:
+        gcat.close()
+    active = {r['noradID'] for r in orbital_objects_db.execute(
+        "SELECT noradID FROM orbital_object_groups WHERE groupName = 'active'")}
+    stations = {r['noradID'] for r in orbital_objects_db.execute(
+        "SELECT noradID FROM orbital_object_groups WHERE groupName = 'stations'")}
+    rows = []
+    for r in orbital_objects_db.execute(
+            "SELECT noradID, name, objectType, perigee, epoch, meanMotion, eccentricity, inclination, "
+            "raOfAscNode, argOfPericenter, meanAnomaly, bstar, meanMotionDot, meanMotionDdot "
+            "FROM orbital_objects WHERE objectType IN ('PAY', 'R/B') "
+            "AND (decayDate IS NULL OR decayDate = '') "
+            "AND meanMotion IS NOT NULL AND epoch IS NOT NULL AND perigee > 0"):
+        std = brightness.get(r['noradID'])
+        if std is None or std + 5 * math.log10(r['perigee'] / 1000) - 1.24 > VISIBLE_LIMIT_MAG:
+            continue
+        name = r['name'] or ''
+        rows.append([r['noradID'], 'P' if r['objectType'] == 'PAY' else 'R', round(std, 1),
+                     int(r['noradID'] in active),
+                     int(r['noradID'] in spacex or name.upper().startswith('STARLINK')),
+                     r['epoch'][:19], round(r['meanMotion'], 8), round(r['eccentricity'], 7),
+                     round(r['inclination'], 4), round(r['raOfAscNode'], 4),
+                     round(r['argOfPericenter'], 4), round(r['meanAnomaly'], 4),
+                     significant(r['bstar'], 5), significant(r['meanMotionDot'], 5),
+                     significant(r['meanMotionDdot'], 4), int(r['noradID'] in stations)])
+    return rows
+
+
+def significant(value, figures):
+    return float(f'{value:.{figures - 1}e}') if value else 0
+
+
+# One object's details for GRD VIEW (a clicked satellite, or a label's
+# name): catalogue facts from orbitalObjects.db, ownership, maker and size
+# from GCAT, and the brightness estimate with its source.
+def handle_sky_object(query_params, start_response):
+    try:
+        norad_id = int(get_param(query_params, 'noradID') or '')
+    except ValueError:
+        return json_response(start_response, '400 Bad Request', {'error': 'noradID must be a number'})
+    try:
+        row = orbital_objects_db.execute(
+            "SELECT noradID, name, objectType, owner, launchDate, launchSite, perigee, apogee, "
+            "inclination, period, rcsSize, downlinkBand FROM orbital_objects WHERE noradID = ?",
+            (norad_id,)).fetchone()
+        if row is None:
+            return json_response(start_response, '404 Not Found', {'error': f'No object {norad_id}'})
+        details = dict(row)
+        gcat = open_db('gcat.db', read_only=True)
+        try:
+            extra = gcat.execute(
+                "SELECT o.name AS gcatName, o.owners, o.stateCode, o.manufacturer, o.bus, o.massKg, "
+                "o.lengthM, o.diameterM, o.spanM, b.stdMag, b.source AS brightnessSource "
+                "FROM gcatObjects o LEFT JOIN gcatBrightness b ON b.noradID = o.noradID "
+                "WHERE o.noradID = ?", (norad_id,)).fetchone()
+        finally:
+            gcat.close()
+        if extra:
+            details.update(dict(extra))
+        return json_response(start_response, '200 OK', details)
+    except sqlite3.Error as e:
+        return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
+
+
+def handle_sky_satellites(environ, start_response):
+    return cached_json_response(
+        environ, start_response, _sky_satellites_cache, sky_satellites_payload,
+        ('orbitalObjects.db', 'gcat.db'), SKY_SATELLITES_MAX_AGE_SEC,
+        'Satellite data unavailable ({})')
 
 
 # ON-ORBIT figures are stored for every combination of these two filters
@@ -904,6 +1085,9 @@ def handle_static(path_info, start_response):
         content_type = 'text/css'
     elif ext == '.json':
         content_type = 'application/json'
+    elif ext == '.svg':
+        # Browsers won't render an SVG image (e.g. a CSS background) served as text/html.
+        content_type = 'image/svg+xml'
     else:
         content_type = 'text/html'
 
@@ -925,6 +1109,12 @@ def application(environ, start_response):
 
     if method == 'GET' and path_info == '/api/news':
         return handle_news(query_params, start_response)
+    if method == 'GET' and path_info == '/api/sky/object':
+        return handle_sky_object(query_params, start_response)
+    if method == 'GET' and path_info == '/api/sky/satellites':
+        return handle_sky_satellites(environ, start_response)
+    if method == 'GET' and path_info == '/api/sky/catalogue':
+        return handle_sky_catalogue(environ, start_response)
     if method == 'GET' and path_info == '/api/status':
         return handle_status(start_response)
     if method == 'GET' and path_info == '/api/on-orbit/nationality':
@@ -966,8 +1156,16 @@ def application(environ, start_response):
 
 
 if __name__ == '__main__':
-    from wsgiref.simple_server import make_server
+    from socketserver import ThreadingMixIn
+    from wsgiref.simple_server import WSGIServer, make_server
 
-    with make_server('', PORT, application) as httpd:
+    # One thread per connection. The plain WSGIServer serves one connection
+    # at a time, so a browser holding an idle connection open (they open
+    # spare ones in advance) left every other browser's page loading
+    # forever. Local development only -- the live site runs under Passenger.
+    class ThreadingWSGIServer(ThreadingMixIn, WSGIServer):
+        daemon_threads = True
+
+    with make_server('', PORT, application, server_class=ThreadingWSGIServer) as httpd:
         print(f'LCARS-FAS system online at http://localhost:{PORT}')
         httpd.serve_forever()

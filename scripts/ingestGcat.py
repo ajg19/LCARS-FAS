@@ -157,6 +157,11 @@ def objectRows(satcatRows):
             r.get('State'), r.get('Manufacturer'), r.get('Bus'), toFloat(r.get('Mass')),
             toFloat(r.get('Perigee')), toFloat(r.get('Apogee')), toFloat(r.get('Inc')),
             r.get('OpOrbit'), nullable(r.get('Parent')),
+            # Physical size in metres (GCAT Length, Diameter, Span -- span
+            # being the largest dimension across, e.g. solar arrays out) and
+            # Shape (e.g. 'Cyl', 'Box', 'Sphere'): for estimating brightness.
+            toFloat(r.get('Length')), toFloat(r.get('Diameter')), toFloat(r.get('Span')),
+            nullable(r.get('Shape')),
         )
 
 
@@ -199,7 +204,7 @@ TABLES = [
         launchDate TEXT, launchDateRaw TEXT, decayDate TEXT, decayDateUncertain INTEGER,
         status TEXT, owners TEXT, ownerCode TEXT, stateCode TEXT, manufacturer TEXT,
         bus TEXT, massKg REAL, perigeeKm REAL, apogeeKm REAL, inclinationDeg REAL,
-        opOrbit TEXT, parent TEXT''', objectRows,
+        opOrbit TEXT, parent TEXT, lengthM REAL, diameterM REAL, spanM REAL, shape TEXT''', objectRows,
      ['CREATE INDEX IF NOT EXISTS gcatObjectsByNorad ON gcatObjects (noradID)',
       'CREATE INDEX IF NOT EXISTS gcatObjectsByLaunch ON gcatObjects (launchTag)']),
     # TLast/TOp/TDate are stored as GCAT gives them; their exact meanings
@@ -321,6 +326,10 @@ def ensureSchema(db):
     objectColumns = [row[1] for row in db.execute('PRAGMA table_info(gcatObjects)')]
     if objectColumns and 'parent' not in objectColumns:
         db.execute('ALTER TABLE gcatObjects ADD COLUMN parent TEXT')
+    # ... and from before the size columns (filled by the next forced load).
+    for column, kind in (('lengthM', 'REAL'), ('diameterM', 'REAL'), ('spanM', 'REAL'), ('shape', 'TEXT')):
+        if objectColumns and column not in objectColumns:
+            db.execute(f'ALTER TABLE gcatObjects ADD COLUMN {column} {kind}')
     db.execute('''
         CREATE TABLE IF NOT EXISTS gcatFiles (
             path         TEXT PRIMARY KEY,
@@ -378,6 +387,10 @@ def runGcatIngestion(db):
     # run after it was added) means that file must be loaded even if unchanged.
     decaysMissing = any(not db.execute(f'SELECT 1 FROM {table} LIMIT 1').fetchone()
                         for table in (DECAY_TABLE[0], PARENT_TABLE[0], DEBRIS_TABLE[0]))
+    # Likewise a column added to gcatObjects that no row has filled yet (the
+    # size columns, the first run after they were added).
+    decaysMissing = decaysMissing or not db.execute(
+        'SELECT 1 FROM gcatObjects WHERE lengthM IS NOT NULL OR spanM IS NOT NULL LIMIT 1').fetchone()
 
     for path, table, _, buildRows, _ in TABLES:
         try:
@@ -433,6 +446,12 @@ if __name__ == '__main__':
     db.commit()
     db.execute('VACUUM')
     db.close()
+    # GRD VIEW's satellite brightness estimates come from GCAT's object
+    # list and sizes, so they are rebuilt after every run too.
+    from estimateBrightness import refreshBrightness
+    brightnessDb = sqlite3.connect(DB_PATH, uri=True)
+    refreshBrightness(brightnessDb)
+    brightnessDb.close()
     # The ON-ORBIT overview's figures draw on GCAT, so refresh them after
     # every run -- even when GCAT's files were unchanged, as that's cheap and
     # keeps them right after a change to a chart's rules.

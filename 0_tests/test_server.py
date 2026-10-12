@@ -331,6 +331,50 @@ def test_css_asset_has_correct_content_type():
     assert headers['Content-Type'] == 'text/css'
 
 
+def test_svg_asset_has_correct_content_type():
+    status, headers, body = call_app('/assets/laurelAmberNoStalk.svg')
+    assert status == '200 OK'
+    assert headers['Content-Type'] == 'image/svg+xml'
+
+
+def test_sky_catalogue_returns_stars_lines_and_constellations():
+    if not os.path.exists(os.path.join(server.DB_DIR, 'skyCatalogue.db')):
+        pytest.skip('skyCatalogue.db not built (scripts/buildSkyCatalogue.py)')
+    status, headers, body = call_app('/api/sky/catalogue')
+    assert status == '200 OK'
+    data = json.loads(body)
+    assert len(data['stars']) > 5000
+    ra, dec, mag, bv, name = data['stars'][0]   # brightest first: Sirius
+    assert name == 'Sirius' and mag < -1.4
+    assert data['lines'] and data['constellations']
+
+
+def test_sky_object_rejects_a_non_numeric_norad_id():
+    status, headers, body = call_app('/api/sky/object', 'noradID=abc')
+    assert status == '400 Bad Request'
+
+
+def test_sky_object_returns_404_for_an_unknown_object():
+    status, headers, body = call_app('/api/sky/object', 'noradID=999999999')
+    assert status == '404 Not Found'
+
+
+def test_sky_catalogue_is_browser_cacheable_and_revalidates_with_304():
+    if not os.path.exists(os.path.join(server.DB_DIR, 'skyCatalogue.db')):
+        pytest.skip('skyCatalogue.db not built (scripts/buildSkyCatalogue.py)')
+    environ = {'REQUEST_METHOD': 'GET', 'PATH_INFO': '/api/sky/catalogue', 'QUERY_STRING': '',
+               'HTTP_ACCEPT_ENCODING': 'gzip'}
+    captured = {}
+    body = b''.join(server.application(environ, lambda s, h: captured.update(status=s, headers=dict(h))))
+    assert captured['status'] == '200 OK'
+    assert captured['headers']['Content-Encoding'] == 'gzip' and body
+    assert 'max-age=' in captured['headers']['Cache-Control']
+    etag = captured['headers']['ETag']
+    again = dict(environ, HTTP_IF_NONE_MATCH=etag)
+    body = b''.join(server.application(again, lambda s, h: captured.update(status=s)))
+    assert captured['status'] == '304 Not Modified' and body == b''
+
+
 def test_missing_file_returns_404():
     status, headers, body = call_app('/assets/does-not-exist-at-all.js')
     assert status == '404 Not Found'

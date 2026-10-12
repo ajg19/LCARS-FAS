@@ -8,7 +8,7 @@ This page explains where the numbers in the ON-ORBIT section come from, what is 
 
 ## 1. In one paragraph
 
-We start from the official satellite catalogue — every catalogued object in orbit, as published by the US Space Force and distributed by CelesTrak and Space-Track — and keep the **payloads** (spacecraft, as opposed to rocket bodies and debris) that **have not re-entered**. For each one we take its **current orbit** from that catalogue, and its **owner and country** from Jonathan McDowell's General Catalog of Artificial Space Objects (GCAT), matching the two by **NORAD catalogue number**. Two filters then narrow the set: **active only or all**, and **satellites only or all spacecraft**.
+We start from the NORAD satellite catalogue — every catalogued object in orbit, as distributed by CelesTrak and Space-Track — and keep the **payloads** (spacecraft, as opposed to rocket bodies and debris) that **have not re-entered**. For each one we take its **current orbit** from that catalogue, and its **owner and country** from Jonathan McDowell's General Catalog of Artificial Space Objects (GCAT), matching the two by **NORAD catalogue number**. Two filters then narrow the set: **active only or all**, and **satellites only or all spacecraft**.
 
 ---
 
@@ -16,7 +16,7 @@ We start from the official satellite catalogue — every catalogued object in or
 
 | Source | What we take from it | How often it is refreshed here |
 |---|---|---|
-| **The NORAD satellite catalogue**, via **CelesTrak** (primary) and **Space-Track** (official US Space Force distribution, used to fill gaps) | The list of objects, their type (payload, rocket body, debris), whether they have decayed, and their **current orbit** (perigee and apogee). Also CelesTrak's *active* and *stations* lists. | Every 12 hours (catalogue details daily) |
+| **The NORAD satellite catalogue**, via **CelesTrak** (primary) and **Space-Track** (official distribution, used to fill gaps) | The list of objects, their type (payload, rocket body, debris), whether they have decayed, and their **current orbit** (perigee and apogee). Also CelesTrak's *active* and *stations* lists. | Every 12 hours (catalogue details daily) |
 | **GCAT** — General Catalog of Artificial Space Objects, by Jonathan McDowell | Each object's **owner organisations**, **country (state)**, and **payload category** (e.g. communications, imaging, space station, calibration sphere) | Weekly |
 
 The two are joined by the **NORAD catalogue number**, the unique number every tracked object receives. About 97% of payloads in the catalogue have a GCAT entry; the rest are usually very recent launches GCAT has not yet added.
@@ -105,6 +105,6 @@ A handful of payloads in the catalogue have no current orbit on file. They are *
 
 ## 8. Sources and credits
 
-- **NORAD satellite catalogue** — US Space Force, distributed by **CelesTrak** (celestrak.org, Dr T.S. Kelso) and **Space-Track** (space-track.org).
+- **NORAD satellite catalogue** — distributed by **CelesTrak** (celestrak.org, Dr T.S. Kelso) and **Space-Track** (space-track.org).
 - **GCAT** — General Catalog of Artificial Space Objects. *Data from GCAT (J. McDowell, planet4589.org/space/gcat)*, used under the CC-BY-4.0 licence.
 - VLEO definition: European Space Agency and DARPA (mean altitude below 450 km).

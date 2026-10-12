@@ -97,7 +97,7 @@
 	--panel-4-color: var(--tng-amber);       /* GRD-TRACK (section id grd-track) */
 	--panel-4b-color: var(--tng-lavender);   /* ON-ORBIT overview -- cool between two warm neighbours */
 	--panel-5-color: var(--tng-sand);        /* GS OPS */
-	--panel-6-color: var(--tng-periwinkle);  /* DEEP SPACE */
+	--panel-6-color: var(--tng-periwinkle);  /* GRD VIEW (was DEEP SPACE) */
 	--panel-7-color: var(--tng-tan);         /* LAUNCHES */
 	--panel-8-color: var(--tng-mauve);       /* GRND SGMNT */
 	--panel-9-color: var(--tng-sand);        /* ORGANISATIONS */
@@ -1126,6 +1126,21 @@ button:active {
 	text-align: right;
 }
 
+/* ACKNOWLEDGMENTS control area: a condensed "What is FAS?"
+   (renderAcknowledgmentsAbout() in lcars.js). */
+.control-area-about {
+	width: 100%;
+	align-self: flex-start;
+	text-align: left;
+	font-size: .95rem;
+	line-height: 1.3;
+	color: var(--status-data-color);
+}
+
+.control-area-about p {
+	margin: 0 0 .4rem;
+}
+
 /* Asset-type key shown in the control area for sections registered with
    defaultAreaMode: 'key' (see registerPanelControls() in lcars.js and its
    use in assets/groundSegmentPanel.js), in place of the plain
@@ -1291,6 +1306,212 @@ button:active {
 
 .loc-label {
 	color: var(--gold);
+}
+
+/* GRD VIEW sky view (drawGrdViewSky() in grdViewPanel.js): a 2:1 canvas
+   filling main's width, the Sun / Moon / planets table below it. */
+.grd-view-canvas {
+	display: block;
+	width: 100%;
+	aspect-ratio: 2 / 1;
+	border: 1px solid #222;
+}
+
+/* GRD VIEW: details of a clicked satellite (showGrdViewPopup() in
+   grdViewPanel.js), over the chart near the click. */
+[data-section="grd-view"] {
+	position: relative;
+}
+
+.grd-view-popup {
+	position: absolute;
+	z-index: 5;
+	width: 300px;
+	padding: .6rem .8rem;
+	background: black;
+	border: 2px solid var(--tng-amber);
+	border-radius: 12px;
+	font-family: var(--status-font);
+	font-size: .9rem;
+}
+
+.grd-view-popup-title {
+	color: var(--tng-amber);
+	font-size: 1.05rem;
+	margin: 0 1.5rem .4rem 0;
+}
+
+.grd-view-popup-grid {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	column-gap: .7rem;
+	row-gap: .2rem;
+}
+
+.grd-view-popup-grid .loc-value {
+	min-width: 0;
+	text-align: left;
+}
+
+.grd-view-popup-close {
+	position: absolute;
+	top: .3rem;
+	right: .5rem;
+	background: none;
+	border: none;
+	color: var(--tng-amber);
+	font-size: 1.2rem;
+	cursor: pointer;
+}
+
+/* The satellite canvas lies exactly over the star chart. */
+.grd-view-sky-wrap {
+	position: relative;
+}
+
+.grd-view-sat-canvas {
+	position: absolute;
+	inset: 1px;   /* inside the star chart's 1px border, so both share one drawing area */
+	width: calc(100% - 2px);
+	height: calc(100% - 2px);
+	pointer-events: none;   /* clicks reach the star chart's handler */
+}
+
+.grd-view-bodies tr.below-horizon td {
+	opacity: .45;
+}
+
+/* GRD VIEW's resting control area: a two-column table of the observer's
+   position and the direction of view (see renderGrdViewDefaultArea() in
+   grdViewPanel.js). Left-aligned, unlike #default's usual right alignment. */
+.grd-view-table {
+	display: grid;
+	grid-template-columns: auto auto;
+	align-items: center;
+	align-self: center;
+	margin-right: auto;
+	column-gap: .8rem;
+	row-gap: .35rem;
+	font-size: var(--status-font-size);
+	text-align: left;
+}
+
+.grd-view-table .loc-label {
+	text-transform: uppercase;
+}
+
+/* AZM / ALT: editable, but drawn exactly like the LAT/LON values beside
+   them (.loc-value: right-aligned, 8ch, data colour) -- no box. A bad entry
+   turns the value red. */
+/* GRD VIEW: the amber rule between the control area and its buttons, as on
+   ON-ORBIT -- on the left edge of the button area that comes first (the
+   satellite group, in #control-area-groups). */
+#default[data-control-section="grd-view"] ~ .control-area-groups {
+	padding-left: 1.5rem;
+	border-left: 3px solid var(--tng-amber);
+}
+
+/* GRD VIEW's circular direction control (renderGrdViewDial() in
+   grdViewPanel.js): a pale LCARS ice disc with two crossing sliders, each a
+   solid amber bar whose position marker is a dark line across it -- the
+   azimuth bar horizontal, below centre, and the altitude bar standing on it
+   in a T, so neither bar can hide the other's marker (crossed, the
+   vertical bar would cover azimuth 0, due north). */
+.grd-view-dial {
+	position: relative;
+	flex: none;
+	align-self: center;
+	height: 92%;   /* of the control area, whose height steps with screen size */
+	aspect-ratio: 1;
+	margin-right: 1.5rem;
+	border-radius: 50%;
+	background: var(--tng-ice);
+	box-sizing: border-box;
+}
+
+.grd-view-dial input[type="range"] {
+	position: absolute;
+	margin: 0;
+	appearance: none;
+	-webkit-appearance: none;
+	background: transparent;
+	cursor: pointer;
+}
+
+/* The bars, about a sixth of the dial thick. */
+.grd-view-dial-azm {
+	left: 10%;
+	top: 58%;
+	width: 80%;
+	height: 17%;
+}
+
+.grd-view-dial-alt {
+	top: 10%;
+	left: 41.5%;
+	width: 17%;
+	height: 44%;
+	writing-mode: vertical-lr;
+	direction: rtl;   /* 90 at the top */
+}
+
+.grd-view-dial input[type="range"]::-webkit-slider-runnable-track {
+	width: 100%;
+	height: 100%;
+	background: var(--tng-amber);
+	border-radius: 2px;
+}
+
+.grd-view-dial input[type="range"]::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	background: black;
+	border: none;
+	border-radius: 0;
+}
+
+.grd-view-dial-azm::-webkit-slider-thumb { width: 4px; height: 100%; }
+.grd-view-dial-alt::-webkit-slider-thumb { width: 100%; height: 4px; }
+
+.grd-view-dial input[type="range"]::-moz-range-track {
+	width: 100%;
+	height: 100%;
+	background: var(--tng-amber);
+	border-radius: 2px;
+}
+
+.grd-view-dial input[type="range"]::-moz-range-thumb {
+	background: black;
+	border: none;
+	border-radius: 0;
+}
+
+.grd-view-dial-azm::-moz-range-thumb { width: 4px; height: 100%; }
+.grd-view-dial-alt::-moz-range-thumb { width: 100%; height: 4px; }
+
+.grd-view-dial-mark {
+	position: absolute;
+	font-size: .75rem;
+	line-height: 1;
+	color: black;   /* on the pale disc */
+	pointer-events: none;
+}
+
+.grd-view-dial-w { left: 14%; top: 78%; }
+.grd-view-dial-e { right: 14%; top: 78%; }
+.grd-view-dial-up { top: 10%; left: 62%; }
+.grd-view-dial-down { top: 49%; left: 62%; }
+
+.grd-view-input {
+	width: 8ch;
+	padding: 0;
+	border: none;
+	outline: none;
+	background: transparent;
+	font: inherit;
+}
+
+.grd-view-input.invalid {
+	color: var(--red);
 }
 
 .loc-value {
@@ -2162,8 +2383,7 @@ button:active {
   user-select: none;
 }
 
-/* No buttons (the landing page): take no space at all, so the
-   data-freshness table gets the control area's full width. */
+/* A section with no buttons: take no space at all. */
 nav:empty {
 	display: none !important;
 }
@@ -2747,8 +2967,8 @@ nav button:nth-child(4n) {
 }
 
 /*
-  panel-3 through panel-11 are the main section nav buttons (News, On
-  Orbit, GS Ops, Deep Space, Launches, Infrastructure, Organisations,
+  panel-3 through panel-11 are the main section nav buttons (News, Grd
+  Track, On Orbit, GS Ops, Grd View, Launches, Grnd Sgmnt, Organisations,
   Weather, EO) -- all converted from plain <div> to <button> so they're clickable.
   The base `button` reset (border:none, outline:none) already strips
   browser chrome; the rules below restore the exact width/alignment/
@@ -3127,31 +3347,6 @@ iframe {
 
 .go-big {
 	font-size: clamp(1.2rem, 1rem + 1vw, 1.275rem);
-}
-
-/*
-  Temporary ISS live-stream embed on the default payload (see
-  #default-content). aspect-ratio keeps the iframe at 16:9 and fully
-  responsive without the old padding-bottom-percentage hack.
-*/
-.iss-live-wrapper {
-	width: 100%;
-	aspect-ratio: 16 / 9;
-	margin-top: 1rem;
-	border: var(--panel-border);
-}
-
-.iss-live-wrapper iframe {
-	width: 100%;
-	height: 100%;
-	display: block;
-}
-
-.live-feed-credit {
-	text-align: right;
-	color: var(--status-text-color);   /* credit line: text */
-	font-size: .9rem;
-	margin-top: .5rem;
 }
 
 .uppercase	{
@@ -4272,6 +4467,183 @@ footer:has(.footer-frame) {
 	font-weight: normal;
 }
 
+/* Landing page (#default-content) and the ACKNOWLEDGMENTS > ABOUT tab.
+   Same label/data colours as the DEFS pages. */
+.about-text,
+.about-list {
+	color: var(--status-data-color);
+	line-height: 1.45;
+}
+
+.about-text p {
+	margin: 0 0 .7rem;
+}
+
+.about-list {
+	margin: 0;
+	padding-left: 1.5rem;
+}
+
+.about-list li {
+	margin-bottom: .5rem;
+}
+
+.about-text b,
+.about-list b {
+	color: var(--status-label-color);
+	font-weight: normal;
+}
+
+.about-text a {
+	color: var(--bluey);
+	text-decoration: none;
+}
+
+/* Landing page, CSS only. Every size in the group is in em of one font
+   size, set here: 1.2 x the control-panel buttons' size
+   (--status-font-size: 1rem, or .875rem at <=1300px), i.e. 21.1px or
+   18.5px. So the wreath, the leaves, the elliptical text box, the type and
+   the spacing keep exact proportions -- text that fits and is centred once
+   is centred everywhere. The group is about 54.35em wide (1150px at the
+   full size), so on a panel too narrow for that the size is capped at
+   1.656cqi -- the group then fills 90% of the panel's width -- and
+   everything shrinks with it. Below 780px the ellipse gives way to plain
+   text (see below). */
+#default-content {
+	container-type: inline-size;   /* for the cap's cqi */
+}
+
+.landing-group {
+	font-family: var(--status-font);
+	font-size: min(calc(1.2 * var(--status-font-size)), 1.656cqi);
+	line-height: 1.3;
+	/* Top: puts the leaves about 110px below the top of main. */
+	padding-block: 4.1em 3em;
+}
+
+.landing-wreath {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+/* The halves' boxes overlap the ellipse's box (negative inner margins).
+   The leaves curve away from the box edge -- at mid-height their inner
+   edge is only about half way across the half's width -- so the ellipse
+   ends up close to the leaves at its widest, and further elsewhere.
+   Checked against the leaves' measured inner edge at every height. */
+.landing-half:first-child {
+	margin-right: -2.34em;
+}
+
+.landing-half:last-child {
+	margin-left: -2.34em;
+}
+
+.landing-half {
+	display: block;
+	height: 20.37em;   /* 430px at a 21.1px font */
+	width: auto;
+}
+
+/* The ellipse (not drawn): the two floats below make the lines follow it. */
+.landing-ellipse {
+	/* 43.61em at 1.48:1 holds the text with the text centred (it was
+	   measured as 56cqi of a 1600px panel at a 20.5px font). */
+	width: 43.61em;
+	aspect-ratio: 1.48 / 1;
+	/* The ellipse (43.61 / 1.48 = 29.47em tall) is taller than the leaves
+	   (20.37em). Negative margins let it overhang them invisibly without
+	   adding height, so the wreath group is exactly as tall as the leaves
+	   and the by-line can sit one line below them. */
+	margin-block: calc((20.37em - 29.47em) / 2);
+	/* Without this the box grows to fit any overflowing text, while the
+	   floats' ellipse keeps the unstretched height -- lines then narrow to
+	   one word part-way down and run full width below it. */
+	min-height: 0;
+	flex: none;
+	text-align: center;
+}
+
+/* Two empty floats, each half the box wide and its full height, whose shape
+   is everything outside the ellipse filling the box -- so every line of
+   text is cut to the ellipse's width at that height. shape-margin keeps the
+   text clear of the drawn edge. */
+.ellipse-shape {
+	width: 50%;
+	height: 100%;
+	shape-margin: 1em;
+}
+
+.ellipse-shape-left {
+	float: left;
+	shape-outside: radial-gradient(farthest-side at 100% 50%, transparent 100%, black 0);
+}
+
+.ellipse-shape-right {
+	float: right;
+	shape-outside: radial-gradient(farthest-side at 0 50%, transparent 100%, black 0);
+}
+
+/* Space above the first line, chosen so the text is vertically centred in
+   the ellipse (measured: 113px clear above and below at a 1920px screen).
+   It is in em, like the ellipse, so it stays centred at either font size.
+   Change the text or
+   its spacing and this needs re-measuring. On the text, not the box:
+   padding on the box would shrink the floats' ellipse too. */
+.landing-ellipse-text {
+	padding-top: 5.5em;
+	text-transform: uppercase;
+}
+
+/* The by-line: one blank line below the leaves, centred, in the same type
+   as the ellipse text (inherited from .landing-group). */
+.landing-byline {
+	margin: 1.3em 0 0;   /* one line at line-height 1.3 */
+	text-align: center;
+	text-transform: uppercase;
+	text-box: normal;
+}
+
+.landing-byline a {
+	color: var(--bluey);
+	text-decoration: none;
+}
+
+.landing-ellipse-text p {
+	margin: 0 0 1.8em;
+	/* The site-wide p rule trims each paragraph's first and last line box to
+	   cap height; beside shape-outside floats that squeezed a paragraph's
+	   opening line to one word ("FAS / WAS / CONCEIVED"). */
+	text-box: normal;
+}
+
+@media (max-width: 780px) {
+	.landing-half,
+	.ellipse-shape {
+		display: none;
+	}
+
+	.landing-ellipse {
+		width: 100%;
+		aspect-ratio: auto;
+		margin-block: 0;
+	}
+
+	.landing-ellipse-text {
+		padding-top: 0;
+	}
+
+	.landing-group {
+		font-size: calc(1.2 * var(--status-font-size));   /* no cap: plain text wraps */
+	}
+}
+
+/* Landing page's closing line: who built FAS. */
+.about-byline {
+	color: var(--status-label-color);
+}
+
 /* Reconciliation section's live figures: amber labels, blue numbers,
    right-aligned; the totals (rows marking a chart or table total) ruled
    off above. */
@@ -4987,10 +5359,10 @@ footer:has(.footer-frame) {
 }
 
 /* Counts and the countdown read better right-aligned. */
+.status-table th:nth-child(4),
+.status-table td:nth-child(4),
 .status-table th:nth-child(5),
-.status-table td:nth-child(5),
-.status-table th:nth-child(6),
-.status-table td:nth-child(6) {
+.status-table td:nth-child(5) {
 	text-align: right;
 }
 
@@ -5052,6 +5424,22 @@ footer:has(.footer-frame) {
 
 .ack-table tr:hover td {
 	background-color: rgba(255, 170, 0, 0.08);
+}
+
+/* DATA SRCES table: short source names, the description gets the room.
+   Fixed layout so the column widths below hold. */
+.ack-sources-table {
+	table-layout: fixed;
+}
+
+.ack-sources-table th:nth-child(1) { width: 12%; }
+.ack-sources-table th:nth-child(2) { width: 44%; }
+.ack-sources-table th:nth-child(3) { width: 16%; }
+.ack-sources-table th:nth-child(4) { width: 11%; }
+.ack-sources-table th:nth-child(5) { width: 17%; }
+
+.ack-sources-table td {
+	overflow-wrap: anywhere;
 }
 
 .ack-table td a {
