@@ -426,3 +426,89 @@ def test_get_param_returns_first_value():
 
 def test_get_param_returns_none_when_absent():
     assert server.get_param({}, 'missing') is None
+
+
+# --- Bug report endpoint (POST /api/bug-report) ------------------------
+# Runs against a throwaway bugReports.db in pytest's tmp_path, never the
+# real one.
+
+@pytest.fixture
+def bug_db(tmp_path, monkeypatch):
+    monkeypatch.setattr(server, 'DB_DIR', str(tmp_path))
+    monkeypatch.setattr(server, '_bug_db', None)
+    yield tmp_path
+    if server._bug_db is not None:
+        server._bug_db.close()
+    monkeypatch.setattr(server, '_bug_db', None)
+
+
+def post_bug(payload, remote='203.0.113.7', raw=None):
+    body = raw if raw is not None else json.dumps(payload).encode('utf-8')
+    environ = {
+        'REQUEST_METHOD': 'POST', 'PATH_INFO': '/api/bug-report', 'QUERY_STRING': '',
+        'CONTENT_LENGTH': str(len(body)), 'CONTENT_TYPE': 'application/json',
+        'REMOTE_ADDR': remote, 'HTTP_HOST': 'gaps2024.com',
+        'wsgi.input': io.BytesIO(body), 'wsgi.errors': sys.stderr,
+    }
+    captured = {}
+
+    def start_response(status, headers):
+        captured['status'] = status
+
+    result = json.loads(b''.join(server.application(environ, start_response)))
+    return captured['status'], result
+
+
+GOOD_BUG = {
+    'title': 'Map will not zoom', 'bugOrFeature': 'Bug', 'severity': 'Medium',
+    'component': 'GRD-TRACK', 'description': 'Pressing + does nothing on the map.',
+    'stepsToReproduce': '1. Open GRD-TRACK\n2. Press +', 'foundBy': 'Tester',
+    'userAgent': 'pytest', 'viewport': '1280x800',
+}
+
+
+def test_bug_report_is_stored_without_the_ip(bug_db):
+    status, result = post_bug(GOOD_BUG)
+    assert status == '201 Created' and result['ok'] and result['id'] == 1
+    row = server.get_bug_db().execute('SELECT * FROM bugReports WHERE id = 1').fetchone()
+    assert row['title'] == 'Map will not zoom' and row['server'] == 'LIVE' and row['phase'] == 'Alpha'
+    assert '203.0.113.7' not in ' '.join(str(v) for v in tuple(row))
+
+
+def test_bug_report_rejects_missing_and_invalid_fields(bug_db):
+    status, result = post_bug({**GOOD_BUG, 'title': 'abc', 'severity': 'Critical', 'description': ''})
+    assert status == '400 Bad Request'
+    assert set(result['errors']) == {'title', 'severity', 'description'}
+    assert server.get_bug_db().execute('SELECT COUNT(*) FROM bugReports').fetchone()[0] == 0
+
+
+def test_bug_report_rejects_overlong_and_unreadable_bodies(bug_db):
+    assert post_bug({**GOOD_BUG, 'description': 'x' * 2001})[0] == '400 Bad Request'
+    assert post_bug(None, raw=b'{not json')[0] == '400 Bad Request'
+    assert post_bug(None, raw=b'x' * (server.BUG_REPORT_MAX_BODY + 1))[0] == '413 Payload Too Large'
+
+
+def test_bug_report_honeypot_is_silently_dropped(bug_db):
+    status, result = post_bug({**GOOD_BUG, 'website': 'http://spam.example'})
+    assert status == '201 Created' and result['ok']
+    assert server.get_bug_db().execute('SELECT COUNT(*) FROM bugReports').fetchone()[0] == 0
+
+
+def test_bug_report_rate_limit_is_per_visitor(bug_db):
+    for _ in range(server.BUG_REPORT_PER_VISITOR_PER_HOUR):
+        assert post_bug(GOOD_BUG)[0] == '201 Created'
+    assert post_bug(GOOD_BUG)[0] == '429 Too Many Requests'
+    assert post_bug(GOOD_BUG, remote='198.51.100.9')[0] == '201 Created'
+
+
+def test_bug_report_get_is_not_an_endpoint(bug_db):
+    status, _, _ = call_app('/api/bug-report')
+    assert status.startswith('404')
+
+
+def test_bug_report_records_the_server_role(bug_db, monkeypatch):
+    monkeypatch.setattr(server, 'SERVER_ROLE', 'DEV')
+    post_bug(GOOD_BUG)
+    row = server.get_bug_db().execute('SELECT server, dateFound FROM bugReports').fetchone()
+    assert row['server'] == 'DEV'
+    assert row['dateFound'].endswith('+00:00') and 'T' in row['dateFound']  # full UTC DTG

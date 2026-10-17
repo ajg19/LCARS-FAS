@@ -4,6 +4,7 @@ bugsDB.xlsx, never the real one.
 Run with:  pytest 0_tests/ -v
 """
 
+import datetime
 import os
 import shutil
 import sys
@@ -122,3 +123,62 @@ def test_validations_and_other_sheets_survive_a_save(workbook):
     after = openpyxl.load_workbook(workbook)
     assert after.sheetnames == before.sheetnames
     assert len(after['bugsDB'].data_validations.dataValidation) == validations
+
+
+# --- import-reports ------------------------------------------------------
+
+def fakeReport(server, reportID, title, dateFound='2026-10-17T15:09:38+00:00'):
+    return {'id': reportID, 'dateFound': dateFound, 'title': title, 'bugOrFeature': 'Feature-Request',
+            'severity': 'medium', 'component': 'GRD-TRACK', 'description': 'Something odd happened.',
+            'stepsToReproduce': '1. Open GRD-TRACK', 'expectedBehaviour': None, 'actualBehaviour': None,
+            'foundBy': '', 'server': server, 'phase': 'Alpha', 'userAgent': 'pytest',
+            'viewport': '375x812', 'visitorHash': 'x', 'copiedToBugsDb': 0}
+
+
+@pytest.fixture
+def reports(monkeypatch):
+    """Fake sources: {'LIVE': [...], 'DEV': [...]}; records what gets marked."""
+    sources = {'LIVE': [], 'DEV': []}
+    marked = {'LIVE': [], 'DEV': []}
+    monkeypatch.setattr(bugs, 'fetchReports', lambda source: [r for r in sources[source] if r['id'] not in marked[source]])
+    monkeypatch.setattr(bugs, 'markReportsCopied', lambda source, ids: marked[source].extend(ids))
+    return sources, marked
+
+
+def test_import_reports_copies_both_sources_oldest_first(workbook, reports):
+    sources, marked = reports
+    sources['LIVE'] = [fakeReport('LIVE', 4, 'Live one', '2026-10-17T16:00:00+00:00')]
+    sources['DEV'] = [fakeReport('DEV', 1, 'Dev one', '2026-10-17T09:30:05+00:00')]
+    firstID = bugs.BugLog(workbook).nextID()
+
+    run(workbook, 'import-reports')
+
+    log = bugs.BugLog(workbook)
+    devRow, liveRow = log.dataRows()[-2:]
+    assert [log.get(devRow, 'ID'), log.get(liveRow, 'ID')] == [firstID, firstID + 1]
+    assert log.get(devRow, 'Title') == 'Dev one' and log.get(devRow, 'Server') == 'DEV'
+    assert log.get(liveRow, 'Server') == 'LIVE'
+    assert log.get(devRow, 'Date Found') == datetime.datetime(2026, 10, 17, 9, 30, 5)
+    assert '[report DEV#1]' in log.get(devRow, 'Notes') and 'DTG 2026-10-17 09:30:05Z' in log.get(devRow, 'Notes')
+    assert log.get(devRow, 'Severity') == 'Medium' and log.get(devRow, 'Phase') == 'Alpha'
+    assert log.get(devRow, 'Status') == 'Open' and log.get(devRow, 'Found By') == 'Anonymous tester'
+    assert marked == {'LIVE': [4], 'DEV': [1]}
+
+
+def test_import_reports_never_imports_twice(workbook, reports, monkeypatch):
+    sources, marked = reports
+    sources['LIVE'] = [fakeReport('LIVE', 7, 'Once only')]
+    monkeypatch.setattr(bugs, 'markReportsCopied', lambda source, ids: None)  # marking fails silently
+    run(workbook, 'import-reports')
+    count = len(bugs.BugLog(workbook).dataRows())
+    run(workbook, 'import-reports')
+    assert len(bugs.BugLog(workbook).dataRows()) == count
+
+
+def test_import_reports_dry_run_saves_and_marks_nothing(workbook, reports):
+    sources, marked = reports
+    sources['DEV'] = [fakeReport('DEV', 2, 'Dry')]
+    count = len(bugs.BugLog(workbook).dataRows())
+    run(workbook, 'import-reports', '--dry-run')
+    assert len(bugs.BugLog(workbook).dataRows()) == count
+    assert marked == {'LIVE': [], 'DEV': []}

@@ -17,6 +17,7 @@ Examples (from the project root):
     python 0_tools/bugs.py set 3 --fixed            # Status=Fixed, Date Fixed=today
     python 0_tools/bugs.py set 3 --reopen           # Status=Open, Date Fixed cleared
     python 0_tools/bugs.py set 3 --root-cause "..." --severity High
+    python 0_tools/bugs.py import-reports --dry-run # tester reports, live + dev
 
 Add --dry-run to add/set to see the result without saving. Every save first
 copies the workbook to bugsDB.xlsx.bak. Close the workbook in Excel before
@@ -27,8 +28,12 @@ Needs openpyxl (see requirements-dev.txt): python -m pip install openpyxl
 
 import argparse
 import datetime
+import json
 import os
+import re
 import shutil
+import sqlite3
+import subprocess
 import sys
 
 try:
@@ -296,6 +301,158 @@ def commandSet(log, args):
     print(f'\nUpdated bug {args.id} in {log.path}')
 
 
+# --- Tester reports -----------------------------------------------------------
+# The BUG REPORT form (assets/bugReport.js -> /api/bug-report in server.py)
+# appends to ingestionDBs/bugReports.db on whichever server it was used on:
+# the live site's (server LIVE) or a local dev server's (server DEV).
+# import-reports copies every report not yet copied from both into the
+# workbook, oldest first. Each imported row's Notes carries the key
+# "[report LIVE#12]" (server + report id), so a report can never be
+# imported twice even if marking it copied at the source fails; marking
+# (copiedToBugsDb = 1) just keeps the next fetch small. The live database
+# is read over SSH; nothing is downloaded or stored locally.
+
+DEV_REPORTS_DB = os.path.join(PROJECT_ROOT, 'ingestionDBs', 'bugReports.db')
+LIVE_SSH = ['ssh', '-i', os.path.expanduser('~/.ssh/godaddy_lcars_fas'), '-o', 'BatchMode=yes',
+            '-o', 'ConnectTimeout=30', 'sip9rb1lekyg@gaps2024.com']
+LIVE_PYTHON = '/home/sip9rb1lekyg/virtualenv/public_html/LCARS-FAS/3.9/bin/python'
+LIVE_REPORTS_DB = '/home/sip9rb1lekyg/public_html/LCARS-FAS/ingestionDBs/bugReports.db'
+REPORT_KEY = re.compile(r'\[report (LIVE|DEV)#(\d+)\]')
+
+FETCH_SQL = 'SELECT * FROM bugReports WHERE copiedToBugsDb = 0 ORDER BY id'
+MARK_SQL = 'UPDATE bugReports SET copiedToBugsDb = 1 WHERE id IN ({})'
+
+# Run by the live server's Python, fed in over SSH's stdin.
+REMOTE_FETCH = '''
+import json, os, sqlite3
+path = {path!r}
+if not os.path.exists(path):
+    print('[]')
+else:
+    db = sqlite3.connect('file:' + path + '?mode=ro', uri=True)
+    db.row_factory = sqlite3.Row
+    print(json.dumps([dict(row) for row in db.execute({sql!r})]))
+'''
+REMOTE_MARK = '''
+import sqlite3
+db = sqlite3.connect({path!r})
+db.execute({sql!r}, {ids!r})
+db.commit()
+print('marked', db.total_changes)
+'''
+
+
+def runOnLive(script):
+    result = subprocess.run(LIVE_SSH + [LIVE_PYTHON, '-'], input=script, capture_output=True,
+                            text=True, timeout=120)
+    if result.returncode != 0:
+        raise RuntimeError(f'live server: {result.stderr.strip()[-300:]}')
+    return result.stdout
+
+
+def fetchReports(source):
+    """Uncopied reports from 'DEV' (this machine) or 'LIVE' (over SSH)."""
+    if source == 'DEV':
+        if not os.path.exists(DEV_REPORTS_DB):
+            return []
+        db = sqlite3.connect(f'file:{DEV_REPORTS_DB}?mode=ro', uri=True)
+        db.row_factory = sqlite3.Row
+        try:
+            return [dict(row) for row in db.execute(FETCH_SQL)]
+        finally:
+            db.close()
+    return json.loads(runOnLive(REMOTE_FETCH.format(path=LIVE_REPORTS_DB, sql=FETCH_SQL)))
+
+
+def markReportsCopied(source, ids):
+    if not ids:
+        return
+    sql = MARK_SQL.format(','.join('?' * len(ids)))
+    if source == 'DEV':
+        db = sqlite3.connect(DEV_REPORTS_DB)
+        try:
+            db.execute(sql, ids)
+            db.commit()
+        finally:
+            db.close()
+    else:
+        runOnLive(REMOTE_MARK.format(path=LIVE_REPORTS_DB, sql=sql, ids=list(ids)))
+
+
+def reportToBug(log, report, bugID):
+    """One bugReports row -> one bugsDB row ({header: value}). The source
+    server comes from the database the report was read from, and the DTG
+    (UTC, as recorded by the server on receipt) goes into Date Found and,
+    in full, into Notes."""
+    found = datetime.datetime.fromisoformat(report['dateFound']).astimezone(datetime.timezone.utc)
+    notes = [f'[report {report["server"]}#{report["id"]}]',
+             f'Tester report, DTG {found.strftime("%Y-%m-%d %H:%M:%SZ")}, {report["server"]} server']
+    if report.get('viewport'):
+        notes.append(f'viewport {report["viewport"]}')
+    if report.get('userAgent'):
+        notes.append(f'browser: {report["userAgent"]}')
+    return {
+        'ID': bugID,
+        'Title': report['title'],
+        'Status': checkChoice(log, 'Status', 'Open'),
+        'Severity': checkChoice(log, 'Severity', report['severity']),
+        'Component': report['component'],
+        'Description': report['description'],
+        'Steps to Reproduce': report.get('stepsToReproduce'),
+        'Expected Behaviour': report.get('expectedBehaviour'),
+        'Actual Behaviour': report.get('actualBehaviour'),
+        'Date Found': found.replace(tzinfo=None),
+        'Server': checkChoice(log, 'Server', report['server']),
+        'Found By': report.get('foundBy') or 'Anonymous tester',
+        'Phase': checkChoice(log, 'Phase', report.get('phase') or 'Alpha'),
+        'Bug / Feature Request': checkChoice(log, 'Bug / Feature Request', report['bugOrFeature']),
+        'Notes': '; '.join(notes),
+    }
+
+
+def commandImportReports(log, args):
+    sources = ['LIVE', 'DEV'] if args.source == 'both' else [args.source.upper()]
+    already = {match.groups() for row in log.dataRows()
+               for match in [REPORT_KEY.search(str(log.get(row, 'Notes') or ''))] if match}
+
+    pending = []  # (source, report)
+    for source in sources:
+        try:
+            reports = fetchReports(source)
+        except Exception as error:
+            print(f'{source}: could not read reports ({error}) -- skipped')
+            continue
+        fresh = [r for r in reports if (r['server'], str(r['id'])) not in already]
+        print(f'{source}: {len(reports)} uncopied report(s), {len(fresh)} new to the workbook')
+        pending += [(source, r) for r in fresh]
+        # Reports already in the workbook but not yet marked: mark them now.
+        stale = [r['id'] for r in reports if (r['server'], str(r['id'])) in already]
+        if stale and not args.dry_run:
+            markReportsCopied(source, stale)
+
+    if not pending:
+        print('Nothing to import.')
+        return
+    pending.sort(key=lambda item: item[1]['dateFound'])
+    nextID = log.nextID()
+    for source, report in pending:
+        row = log.appendRow(reportToBug(log, report, nextID))
+        print(f'  bug {nextID}: {report["server"]}#{report["id"]} {report["dateFound"]} {report["title"]}')
+        nextID += 1
+    if args.dry_run:
+        print(f'\nDRY RUN -- {len(pending)} report(s) not saved or marked.')
+        return
+    log.save()
+    print(f'\nImported {len(pending)} report(s) into {log.path}')
+    for source in sources:
+        ids = [r['id'] for s, r in pending if s == source]
+        try:
+            markReportsCopied(source, ids)
+        except Exception as error:
+            print(f'{source}: imported, but could not mark them copied ({error}); '
+                  'the next run will recognise them and skip them.')
+
+
 # --- Command line -----------------------------------------------------------
 
 def addFieldOptions(parser, forAdd):
@@ -354,6 +511,17 @@ def buildParser():
     shortcuts.add_argument('--reopen', action='store_true', help='Status=Open and clear Date Fixed')
     setParser.add_argument('--dry-run', action='store_true', help='show the changes without saving')
     setParser.set_defaults(handler=commandSet)
+
+    importParser = commands.add_parser(
+        'import-reports', help='copy tester bug reports (BUG REPORT form) from the live and dev servers',
+        description='Copy every tester report not yet copied from the live server (over SSH) and this '
+                    "machine's dev server into the workbook, oldest first, as new Open bugs. Each one keeps "
+                    'its source server and DTG; its Notes carry a [report LIVE#n] key so it is never '
+                    'imported twice.')
+    importParser.add_argument('--source', choices=['both', 'live', 'dev'], default='both',
+                              help='which server(s) to read (default both)')
+    importParser.add_argument('--dry-run', action='store_true', help='show what would be imported without saving')
+    importParser.set_defaults(handler=commandImportReports)
     return parser
 
 

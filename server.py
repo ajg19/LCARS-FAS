@@ -19,11 +19,13 @@ Node side: must not matter where this is launched from.
 """
 
 import gzip
+import hashlib
 import json
 import math
 import mimetypes
 import os
 import sqlite3
+import threading
 from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs
 
@@ -1102,10 +1104,165 @@ def handle_static(path_info, start_response):
     return [content]
 
 
+# Tester bug reports: the BUG REPORT spine button's form (assets/bugReport.js)
+# POSTs here, and each accepted report is appended to ingestionDBs/
+# bugReports.db -- a folder deploys never touch, so reports survive them.
+# Columns mirror the user-entered columns of bugsDB.xlsx, so triage is a
+# copy into the workbook (0_tools/bugs.py add); the rest (Status, Root Cause,
+# Date Fixed) stay the developers'. This is the only endpoint that writes,
+# and it is public, so: a body size cap, every field validated here (the
+# browser's checks are only a convenience), a hidden honeypot field bots
+# fill in, and a rate limit per visitor (a salted hash of the IP -- the
+# address itself is never stored) plus a global daily cap.
+BUG_REPORT_DB = 'bugReports.db'
+# Which server a report came from. LIVE when Passenger imports this module;
+# set to DEV below when it is run directly (python server.py). Decided by
+# how the server was started, not guessed from the request's hostname.
+SERVER_ROLE = 'LIVE'
+BUG_REPORT_MAX_BODY = 16 * 1024
+BUG_REPORT_PER_VISITOR_PER_HOUR = 5
+BUG_REPORT_GLOBAL_PER_DAY = 200
+BUG_REPORT_TYPES = ('Bug', 'Feature-Request')
+BUG_REPORT_SEVERITIES = ('Low', 'Medium', 'High')
+BUG_REPORT_COMPONENTS = (
+    'Home page', 'NEWS', 'GRD-TRACK', 'ON-ORBIT', 'GS OPS', 'GRD VIEW', 'LAUNCHES',
+    'GRND SGMNT', 'ORGANISATIONS', 'WEATHER', 'EO', 'ACKNOWLEDGMENTS', 'Whole site / other',
+)
+# field: (required, min length, max length). Choice fields are checked separately.
+BUG_REPORT_TEXT_FIELDS = {
+    'title': (True, 5, 120),
+    'description': (True, 10, 2000),
+    'stepsToReproduce': (False, 0, 2000),
+    'expectedBehaviour': (False, 0, 1000),
+    'actualBehaviour': (False, 0, 1000),
+    'foundBy': (False, 0, 60),
+}
+
+_bug_db = None
+_bug_db_lock = threading.Lock()  # one shared connection; the local dev server is threaded
+
+
+def get_bug_db():
+    global _bug_db
+    if _bug_db is None:
+        os.makedirs(DB_DIR, exist_ok=True)
+        _bug_db = open_db(BUG_REPORT_DB)
+        _bug_db.executescript('''
+            CREATE TABLE IF NOT EXISTS bugReports (
+                id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+                dateFound          TEXT NOT NULL,
+                title              TEXT NOT NULL,
+                bugOrFeature       TEXT NOT NULL,
+                severity           TEXT NOT NULL,
+                component          TEXT NOT NULL,
+                description        TEXT NOT NULL,
+                stepsToReproduce   TEXT,
+                expectedBehaviour  TEXT,
+                actualBehaviour    TEXT,
+                foundBy            TEXT,
+                server             TEXT NOT NULL,
+                phase              TEXT NOT NULL,
+                userAgent          TEXT,
+                viewport           TEXT,
+                visitorHash        TEXT NOT NULL,
+                copiedToBugsDb     INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS idx_bugReports_visitor ON bugReports(visitorHash, dateFound);
+            CREATE TABLE IF NOT EXISTS bugReportMeta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+        ''')
+        if not _bug_db.execute("SELECT 1 FROM bugReportMeta WHERE key = 'salt'").fetchone():
+            _bug_db.execute("INSERT INTO bugReportMeta (key, value) VALUES ('salt', ?)", (os.urandom(16).hex(),))
+        _bug_db.commit()
+    return _bug_db
+
+
+def validate_bug_report(data):
+    """Returns (clean_fields, errors). errors maps field name -> message."""
+    errors = {}
+    clean = {}
+    if not isinstance(data, dict):
+        return clean, {'form': 'The report could not be read.'}
+    for field, (required, min_len, max_len) in BUG_REPORT_TEXT_FIELDS.items():
+        value = data.get(field, '')
+        value = value.strip() if isinstance(value, str) else ''
+        if required and not value:
+            errors[field] = 'Required.'
+        elif value and len(value) < min_len:
+            errors[field] = f'At least {min_len} characters, please.'
+        elif len(value) > max_len:
+            errors[field] = f'At most {max_len} characters.'
+        clean[field] = value or None
+    for field, choices in (('bugOrFeature', BUG_REPORT_TYPES), ('severity', BUG_REPORT_SEVERITIES),
+                           ('component', BUG_REPORT_COMPONENTS)):
+        value = data.get(field)
+        if value not in choices:
+            errors[field] = 'Please choose one of the options.'
+        clean[field] = value
+    for field, max_len in (('userAgent', 300), ('viewport', 20)):
+        value = data.get(field)
+        clean[field] = value[:max_len] if isinstance(value, str) else None
+    return clean, errors
+
+
+def handle_bug_report(environ, start_response):
+    try:
+        length = int(environ.get('CONTENT_LENGTH') or 0)
+    except ValueError:
+        length = 0
+    if length <= 0:
+        return json_response(start_response, '400 Bad Request', {'ok': False, 'errors': {'form': 'Empty report.'}})
+    if length > BUG_REPORT_MAX_BODY:
+        return json_response(start_response, '413 Payload Too Large', {'ok': False, 'errors': {'form': 'Report too long.'}})
+    try:
+        data = json.loads(environ['wsgi.input'].read(length).decode('utf-8'))
+    except (ValueError, UnicodeDecodeError):
+        return json_response(start_response, '400 Bad Request', {'ok': False, 'errors': {'form': 'The report could not be read.'}})
+
+    # Honeypot: a field hidden from people. Anything in it means a bot; it
+    # gets the normal success reply so it learns nothing, and is not stored.
+    if isinstance(data, dict) and data.get('website'):
+        return json_response(start_response, '201 Created', {'ok': True})
+
+    clean, errors = validate_bug_report(data)
+    if errors:
+        return json_response(start_response, '400 Bad Request', {'ok': False, 'errors': errors})
+
+    with _bug_db_lock:
+        return _store_bug_report(environ, start_response, clean)
+
+
+def _store_bug_report(environ, start_response, clean):
+    db = get_bug_db()
+    salt = db.execute("SELECT value FROM bugReportMeta WHERE key = 'salt'").fetchone()[0]
+    visitor = hashlib.sha256((salt + environ.get('REMOTE_ADDR', '')).encode('utf-8')).hexdigest()[:16]
+    now = datetime.now(timezone.utc)
+    hour_ago = (now - timedelta(hours=1)).isoformat(timespec='seconds')
+    day_ago = (now - timedelta(days=1)).isoformat(timespec='seconds')
+    recent = db.execute('SELECT COUNT(*) FROM bugReports WHERE visitorHash = ? AND dateFound > ?', (visitor, hour_ago)).fetchone()[0]
+    today = db.execute('SELECT COUNT(*) FROM bugReports WHERE dateFound > ?', (day_ago,)).fetchone()[0]
+    if recent >= BUG_REPORT_PER_VISITOR_PER_HOUR or today >= BUG_REPORT_GLOBAL_PER_DAY:
+        return json_response(start_response, '429 Too Many Requests', {
+            'ok': False, 'errors': {'form': 'Thank you -- that is a lot of reports. Please try again in an hour.'}})
+
+    cursor = db.execute('''
+        INSERT INTO bugReports (dateFound, title, bugOrFeature, severity, component, description,
+            stepsToReproduce, expectedBehaviour, actualBehaviour, foundBy, server, phase,
+            userAgent, viewport, visitorHash)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Alpha', ?, ?, ?)
+    ''', (now.isoformat(timespec='seconds'), clean['title'], clean['bugOrFeature'], clean['severity'],
+          clean['component'], clean['description'], clean['stepsToReproduce'], clean['expectedBehaviour'],
+          clean['actualBehaviour'], clean['foundBy'], SERVER_ROLE, clean['userAgent'], clean['viewport'], visitor))
+    db.commit()
+    return json_response(start_response, '201 Created', {'ok': True, 'id': cursor.lastrowid})
+
+
 def application(environ, start_response):
     path_info = environ.get('PATH_INFO', '/')
     method = environ.get('REQUEST_METHOD', 'GET')
     query_params = parse_qs(environ.get('QUERY_STRING', ''))
+
+    if method == 'POST' and path_info == '/api/bug-report':
+        return handle_bug_report(environ, start_response)
 
     if method == 'GET' and path_info == '/api/news':
         return handle_news(query_params, start_response)
@@ -1156,6 +1313,7 @@ def application(environ, start_response):
 
 
 if __name__ == '__main__':
+    SERVER_ROLE = 'DEV'
     from socketserver import ThreadingMixIn
     from wsgiref.simple_server import WSGIServer, make_server
 

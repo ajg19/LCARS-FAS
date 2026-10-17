@@ -444,6 +444,13 @@ function openAcknowledgmentsSection(tab) {
     topFunction();
 }
 
+// Wired to the BUG REPORT spine button: a pop-up form (assets/bugReport.js)
+// over whatever section is open, which it doesn't change.
+async function openBugReport() {
+    await loadScriptOnce('assets/bugReport.js');
+    showBugReportForm();
+}
+
 // Wired to the LAUNCHES left-menu button: launch charts (assets/launchesPanel.js).
 async function openLaunchesSection() {
     await loadScriptOnce('assets/launchesPanel.js');

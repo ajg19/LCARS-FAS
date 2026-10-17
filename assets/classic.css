@@ -104,6 +104,7 @@
 	--panel-10-color: var(--tng-ice);        /* WEATHER */
 	--panel-11-color: var(--tng-amber);      /* EO */
 	--panel-ack-color: var(--tng-pink);      /* ACKNOWLEDGMENTS */
+	--panel-bug-color: var(--tng-periwinkle); /* BUG REPORT -- cool between the two pinks */
 	--panel-top-button-color: var(--tng-pink);
 	--bar-height: 15px;
 	--bar-1-6-width: 40%;
@@ -3020,6 +3021,230 @@ nav button:nth-child(4n) {
 
 .panel-ack.section-active {
 	filter: brightness(130%);
+}
+
+/*
+  panel-bug: the BUG REPORT button, between ACKNOWLEDGMENTS and scrn top.
+  It opens a pop-up (assets/bugReport.js) rather than a section, so it has
+  no section-active state. ACK's border-bottom gives the gap above it.
+*/
+.panel-bug {
+	width: 100%;
+	height: 3em;
+	font: inherit;
+	text-align: right;
+	line-height: 1;
+	color: black;
+	background-color: var(--panel-bug-color);
+	padding: 0 var(--left-frame-padding);
+	border-bottom: var(--panel-border);
+}
+
+/*
+  BUG REPORT pop-up (assets/bugReport.js): a native <dialog>, styled as an
+  LCARS panel. Tooltips are CSS, shown on hover and on focus, so a tap on
+  a field name (which is focusable) opens one on touch screens too.
+*/
+.bug-dialog {
+	inset: 0;
+	margin: auto;  /* the page's global margin reset would pin it top-left */
+	width: min(40rem, calc(100vw - 2rem));
+	max-height: calc(100vh - 2rem);
+	padding: 0;
+	border: .25rem solid var(--panel-bug-color);
+	border-radius: 1.5rem;
+	background: black;
+	color: var(--space-white);
+	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
+	overflow-y: auto;
+}
+
+.bug-dialog::backdrop {
+	background: rgba(0, 0, 0, .7);
+}
+
+.bug-dialog form,
+.bug-done {
+	padding: 0 1.25rem 1.25rem;
+}
+
+.bug-done[hidden],
+.bug-dialog form[hidden] {
+	display: none;
+}
+
+.bug-dialog-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin: 0 -1.25rem 1rem;
+	padding: .5rem 1.25rem;
+	background: var(--panel-bug-color);
+	color: black;
+}
+
+.bug-dialog-head h2 {
+	margin: 0;
+	color: black;
+	font-size: 1.5rem;
+	letter-spacing: .05em;
+}
+
+.bug-close {
+	font-size: 2rem;
+	line-height: 1;
+	color: black;
+	cursor: pointer;
+}
+
+.bug-intro,
+.bug-privacy,
+.bug-done-text {
+	margin: 0 0 1rem;
+	color: var(--tng-ice);
+}
+
+.bug-privacy {
+	font-size: .85rem;
+}
+
+.bug-field {
+	margin-bottom: .75rem;
+}
+
+.bug-field label {
+	display: block;
+	margin-bottom: .25rem;
+}
+
+.bug-tip {
+	position: relative;
+	color: var(--tng-amber);
+	letter-spacing: .05em;
+	cursor: help;
+	border-bottom: 1px dotted var(--tng-amber);
+	outline: none;
+}
+
+.bug-tip:focus-visible {
+	outline: 2px solid var(--tng-amber);
+}
+
+.bug-tip[data-tip]:hover::after,
+.bug-tip[data-tip]:focus::after {
+	content: attr(data-tip);
+	position: absolute;
+	left: 0;
+	top: 100%;
+	z-index: 10;
+	width: min(22rem, 70vw);
+	margin-top: .25rem;
+	padding: .5rem .75rem;
+	border-radius: .75rem;
+	background: var(--tng-sand);
+	color: black;
+	font-size: .9rem;
+	letter-spacing: normal;
+	line-height: 1.3;
+	white-space: normal;
+}
+
+.bug-field input,
+.bug-field select,
+.bug-field textarea {
+	width: 100%;
+	box-sizing: border-box;
+	padding: .4rem .6rem;
+	border: 2px solid var(--tng-tan);
+	border-radius: .5rem;
+	background: #111;
+	color: var(--space-white);
+	font: inherit;
+	font-family: Arial, sans-serif;
+	font-size: .95rem;
+}
+
+.bug-field textarea {
+	resize: vertical;
+}
+
+.bug-field input:focus,
+.bug-field select:focus,
+.bug-field textarea:focus {
+	outline: none;
+	border-color: var(--tng-amber);
+}
+
+.bug-field .bug-invalid {
+	border-color: var(--tng-alert);
+}
+
+.bug-field-foot {
+	display: flex;
+	justify-content: space-between;
+	min-height: 1.1rem;
+	font-size: .8rem;
+}
+
+.bug-error,
+.bug-form-error {
+	color: var(--tng-alert);
+	filter: brightness(140%);
+}
+
+.bug-count {
+	margin-left: auto;
+	color: var(--gray);
+	filter: brightness(160%);
+}
+
+.bug-sr {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+.bug-hp {
+	position: absolute;
+	left: -10000px;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+}
+
+.bug-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: .75rem;
+}
+
+.bug-actions button {
+	min-width: 7rem;
+	padding: .5rem 1.25rem;
+	border-radius: 1.5rem;
+	font: inherit;
+	font-weight: bold;
+	letter-spacing: .05em;
+	color: black;
+	cursor: pointer;
+}
+
+.bug-cancel,
+.bug-finish {
+	background: var(--tng-tan);
+}
+
+.bug-submit,
+.bug-another {
+	background: var(--tng-amber);
+}
+
+.bug-submit:disabled {
+	filter: brightness(60%);
+	cursor: wait;
 }
 
 .panel-2,
