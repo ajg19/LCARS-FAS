@@ -41,6 +41,9 @@ def load_dotenv(path):
 
 
 load_dotenv(os.path.join(BASE_DIR, '.env'))
+# Space-Track credentials live in spacetrack.env (chmod 600, never deployed
+# or committed), read here rather than passed on the cron line.
+load_dotenv(os.path.join(BASE_DIR, 'spacetrack.env'))
 
 # 1. Connect to the SAME database ingestOrbitalData.py writes to -- this
 # job enriches existing rows, it doesn't own a database of its own.

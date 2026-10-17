@@ -22,7 +22,7 @@
 #   PYTHON      interpreter path                     [python3]
 #   LOG_DIR     dir for pipeline_cron.log            [$HOME/logs]
 #   RUN_SATCAT  set to 1 to force step 2 off-hour    [auto: only at 00:xx]
-#   SPACETRACK_USER / SPACETRACK_PASS               passed through to steps 1-2
+#   Space-Track credentials: read by steps 1-2 from spacetrack.env, not here
 #   CelesTrak etiquette settings live in the app's .env, not here
 #   (see ingestOrbitalData.py)
 

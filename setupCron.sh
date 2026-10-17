@@ -12,7 +12,9 @@
 # script, NOT committed to git -- see spacetrack.env.example for the
 # format) rather than being embedded in this script's own source, so
 # this file itself never becomes something that has to be treated as
-# sensitive.
+# sensitive. This installer only checks the file is present and filled
+# in; the ingest scripts read it themselves at run time, so the
+# credentials never appear in the crontab.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CREDS_FILE="$SCRIPT_DIR/spacetrack.env"
@@ -62,7 +64,7 @@ crontab -l 2>/dev/null | grep -v "$MARKER" > "$TMPFILE"
 # variable set on the cron line would override .env.
 cat >> "$TMPFILE" << EOF
 */30 * * * * $PYTHON $APP_ROOT/scripts/readNews.py >> $LOG_DIR/readNews_cron.log 2>&1 $MARKER
-0 */12 * * * SPACETRACK_USER="$SPACETRACK_USER" SPACETRACK_PASS="$SPACETRACK_PASS" PYTHON="$PYTHON" LOG_DIR="$LOG_DIR" /usr/bin/flock -n $LOG_DIR/lcarsPipeline.lock /bin/bash $APP_ROOT/scripts/runPipeline.sh >> $LOG_DIR/pipeline_cron.log 2>&1 $MARKER
+0 */12 * * * PYTHON="$PYTHON" LOG_DIR="$LOG_DIR" /usr/bin/flock -n $LOG_DIR/lcarsPipeline.lock /bin/bash $APP_ROOT/scripts/runPipeline.sh >> $LOG_DIR/pipeline_cron.log 2>&1 $MARKER
 0 3 * * 0 $PYTHON $APP_ROOT/scripts/ingestGcat.py >> $LOG_DIR/gcat_cron.log 2>&1 $MARKER
 EOF
 

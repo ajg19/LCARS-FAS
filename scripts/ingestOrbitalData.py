@@ -52,6 +52,9 @@ def load_dotenv(path):
 
 
 load_dotenv(os.path.join(BASE_DIR, '.env'))
+# Space-Track credentials live in spacetrack.env (chmod 600, never deployed
+# or committed), read here rather than passed on the cron line.
+load_dotenv(os.path.join(BASE_DIR, 'spacetrack.env'))
 
 # 1. Initialize local SQLite database. isolation_level=None puts the
 # connection in autocommit mode, matching node:sqlite's DatabaseSync (every
@@ -308,7 +311,8 @@ def fetch_celestrak_group(group):
 
 
 # 8. Space-Track -- fallback + verification pass. Only runs when
-# credentials are configured via SPACETRACK_USER / SPACETRACK_PASS in .env;
+# credentials are configured via SPACETRACK_USER / SPACETRACK_PASS in
+# spacetrack.env (or .env);
 # skipped otherwise so the CelesTrak-only path keeps working without an
 # account.
 SPACETRACK_USER = os.environ.get('SPACETRACK_USER')
