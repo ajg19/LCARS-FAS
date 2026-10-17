@@ -330,6 +330,31 @@ def fetch_space_track_satcat():
     return {'rows': rows, 'skipped': False}
 
 
+# 5b. Etiquette controls -- same env vars and meaning as ingestOrbitalData.py
+# (see its comment; set in .env, default 72 h). This script's attempts are logged in
+# the shared celestrak_fetch_log table under their own key, so its interval
+# runs independently of the orbital pass.
+CELESTRAK_ENABLED = os.environ.get('CELESTRAK_ENABLED', '1') != '0'
+CELESTRAK_INTERVAL_SEC = float(os.environ.get('CELESTRAK_INTERVAL_HOURS', '72')) * 3600
+CELESTRAK_INTERVAL_SLACK_SEC = 60 * 60
+SATCAT_FETCH_KEY = 'satcat.csv'
+
+db.execute('CREATE TABLE IF NOT EXISTS celestrak_fetch_log (groupName TEXT PRIMARY KEY, lastAttempt REAL NOT NULL)')
+
+
+def celestrak_satcat_due():
+    """(due, reason)."""
+    if not CELESTRAK_ENABLED:
+        return False, 'disabled (CELESTRAK_ENABLED=0)'
+    if CELESTRAK_INTERVAL_SEC <= 0:
+        return True, ''
+    row = db.execute('SELECT lastAttempt FROM celestrak_fetch_log WHERE groupName = ?', (SATCAT_FETCH_KEY,)).fetchone()
+    if row is not None and time.time() - row[0] < CELESTRAK_INTERVAL_SEC - CELESTRAK_INTERVAL_SLACK_SEC:
+        last = time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime(row[0]))
+        return False, f'last attempt {last}, interval {CELESTRAK_INTERVAL_SEC / 3600:g}h'
+    return True, ''
+
+
 # 6. Main enrichment run
 def run_satcat_ingestion():
     """Returns the number of objects enriched, from both sources."""
@@ -337,21 +362,26 @@ def run_satcat_ingestion():
     seen_ids = set()
     totalEnriched = 0
 
-    try:
-        rows = fetch_celestrak_satcat()
-        updated = 0
-        for row in rows:
-            cursor = db.execute(UPDATE_FROM_CELESTRAK_SQL, (
-                row['objectType'], row['owner'], row['launchDate'], row['launchSite'], row['decayDate'], row['rcsSize'],
-                row['period'], row['apogee'], row['perigee'], row['noradID'],
-            ))
-            if cursor.rowcount > 0:
-                updated += 1
-            seen_ids.add(row['noradID'])
-        print(f'  [celestrak] {len(rows)} catalogue rows read, {updated} existing objects enriched')
-        totalEnriched += updated
-    except Exception as err:
-        print(f'  [celestrak] ERROR {err}')
+    due, reason = celestrak_satcat_due()
+    if not due:
+        print(f'  [celestrak] skipped -- {reason}')
+    else:
+        try:
+            db.execute('INSERT OR REPLACE INTO celestrak_fetch_log (groupName, lastAttempt) VALUES (?, ?)', (SATCAT_FETCH_KEY, time.time()))
+            rows = fetch_celestrak_satcat()
+            updated = 0
+            for row in rows:
+                cursor = db.execute(UPDATE_FROM_CELESTRAK_SQL, (
+                    row['objectType'], row['owner'], row['launchDate'], row['launchSite'], row['decayDate'], row['rcsSize'],
+                    row['period'], row['apogee'], row['perigee'], row['noradID'],
+                ))
+                if cursor.rowcount > 0:
+                    updated += 1
+                seen_ids.add(row['noradID'])
+            print(f'  [celestrak] {len(rows)} catalogue rows read, {updated} existing objects enriched')
+            totalEnriched += updated
+        except Exception as err:
+            print(f'  [celestrak] ERROR {err}')
 
     try:
         result = fetch_space_track_satcat()

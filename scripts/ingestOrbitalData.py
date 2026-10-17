@@ -410,6 +410,34 @@ GROUP_DELAY_SEC = 3  # stay well clear of CelesTrak's rate limit
 # still cost CelesTrak a connection.
 MIN_REFETCH_SEC = 2 * 60 * 60
 
+# CelesTrak etiquette. Its firewall has dropped the live server since
+# 2026-08-27 (after our 47-group sweeps); an unanswered connection is still
+# a knock on their door. The code is identical everywhere; each machine's
+# own .env (never deployed or committed) holds any local override:
+#   CELESTRAK_ENABLED=0         no CelesTrak request at all (live server's
+#                               .env, from 2026-10-17, until unblocked)
+#   CELESTRAK_INTERVAL_HOURS=N  at most one CelesTrak pass per N hours,
+#                               counted from the last attempt (success or
+#                               not). Default 72 = once every 3 days.
+# The slack lets a pass started a few minutes early by cron still count.
+CELESTRAK_ENABLED = os.environ.get('CELESTRAK_ENABLED', '1') != '0'
+CELESTRAK_INTERVAL_SEC = float(os.environ.get('CELESTRAK_INTERVAL_HOURS', '72')) * 3600
+CELESTRAK_INTERVAL_SLACK_SEC = 60 * 60
+SATCAT_FETCH_KEY = 'satcat.csv'  # ingestSatcat.py's row in celestrak_fetch_log
+
+
+def celestrak_pass_due():
+    """(due, reason). Gates the whole CelesTrak pass, not single groups."""
+    if not CELESTRAK_ENABLED:
+        return False, 'disabled (CELESTRAK_ENABLED=0)'
+    if CELESTRAK_INTERVAL_SEC <= 0:
+        return True, ''
+    row = db.execute('SELECT MAX(lastAttempt) FROM celestrak_fetch_log WHERE groupName != ?', (SATCAT_FETCH_KEY,)).fetchone()
+    if row[0] is not None and time.time() - row[0] < CELESTRAK_INTERVAL_SEC - CELESTRAK_INTERVAL_SLACK_SEC:
+        last = datetime.fromtimestamp(row[0], timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
+        return False, f'last attempt {last}, interval {CELESTRAK_INTERVAL_SEC / 3600:g}h'
+    return True, ''
+
 
 def celestrak_recently_attempted(group):
     row = db.execute('SELECT lastAttempt FROM celestrak_fetch_log WHERE groupName = ?', (group,)).fetchone()
@@ -430,7 +458,10 @@ def run_ingestion():
     # fail the same way -- so stop at the first one rather than hammering
     # all ~47 groups. HTTP errors (a response came back) don't trip this.
     celestrak_total = 0
-    for group in CELESTRAK_GROUPS:
+    due, reason = celestrak_pass_due()
+    if not due:
+        print(f'  [celestrak] skipped -- {reason}')
+    for group in (CELESTRAK_GROUPS if due else []):
         if celestrak_recently_attempted(group):
             print(f'  [celestrak] {group}: skipped (attempted < {MIN_REFETCH_SEC // 3600}h ago)')
             continue
