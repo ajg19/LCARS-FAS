@@ -1182,7 +1182,9 @@ function visibleSatPopupHtml(sat) {
 // open; only write the VIS NOW status into it when GS OPS is actually the
 // visible section and the GRND STN form isn't sitting there.
 function gsOpsDefaultAvailable() {
-    const section = document.querySelector('[data-section="gs-ops"]');
+    // 'main ' matters: without it this matches the GS OPS spine button,
+    // which is never display:none, so the guard always passed (bug #8).
+    const section = document.querySelector('main [data-section="gs-ops"]');
     return section
         && section.style.display !== 'none'
         && !document.getElementById('ground-station-form');
@@ -1335,6 +1337,11 @@ async function toggleVisibleSats() {
     }
     try {
         await loadActiveSatCatalogue();
+        // The user may have left GS OPS (leave hook -> VIS NOW off) while
+        // the catalogue was loading; don't start the timer behind them.
+        if (!visibleSatsShown) {
+            return;
+        }
         // Non-blocking: the "objects in view" total fills in once the R/B +
         // debris catalogue arrives; a failure just leaves it at the sat count.
         loadNonPayloadCatalogue()
@@ -1373,6 +1380,16 @@ const gsOpsLocationPanel = registerLocationMapPanel({
             onClick: toggleVisibleSats,
         },
     ],
+});
+
+// Leaving GS OPS turns VIS NOW off: stop the refresh timer and clear the
+// map layer + status panel, so nothing keeps running or drawing into
+// #default under another section. VIS NOW reads OFF on return.
+onSectionLeave('gs-ops', () => {
+    visibleSatsShown = false;
+    clearInterval(visibleSatRefreshTimer);
+    visibleSatRefreshTimer = null;
+    renderVisibleSats();
 });
 
 // Global alias so openGsOpsSection() (lcars.js) can call it the same way

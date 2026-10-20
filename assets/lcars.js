@@ -124,9 +124,30 @@ function renderKeyShape(shape, color) {
     return `<span class="key-shape key-shape-${shape}" style="background-color:${color}"></span>`;
 }
 
+// Per-section cleanup run by showSection() when the user switches away
+// from a section -- e.g. GS OPS stops its VIS NOW refresh timer so it
+// can't keep drawing into #default under another section. One hook per
+// section; registering again replaces it, so hooks never accumulate.
+const sectionLeaveHooks = {};
+function onSectionLeave(sectionId, fn) {
+    sectionLeaveHooks[sectionId] = fn;
+}
+
 // Major navigation section toggle (SW-DRIVERS, SW-FCST, etc.)
 function showSection(sectionId, label) {
     const sections = document.querySelectorAll('main [data-section]');
+    // Run the leave hook of whichever section is visible now, unless it's
+    // the one being re-opened. A failing hook must not break navigation.
+    sections.forEach(function (section) {
+        const id = section.dataset.section;
+        if (id !== sectionId && section.style.display !== 'none' && sectionLeaveHooks[id]) {
+            try {
+                sectionLeaveHooks[id]();
+            } catch (error) {
+                console.error(`leave hook for ${id} failed:`, error);
+            }
+        }
+    });
     sections.forEach(function (section) {
         section.style.display = (section.dataset.section === sectionId) ? 'block' : 'none';
     });
