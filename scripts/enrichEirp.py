@@ -47,24 +47,34 @@ import time
 
 from dbPaths import ORBITAL_DB, dbPath
 
-# 1. Same database ingestOrbitalData.py / ingestSatcat.py write to -- this
-# job enriches existing rows, it never owns a database of its own.
-# isolation_level=None (autocommit) + WAL, matching the sibling scripts.
-db_path = dbPath(ORBITAL_DB)
-db = sqlite3.connect(db_path, isolation_level=None)
-db.execute('PRAGMA journal_mode = WAL;')
+# 1. Run on its own (cron), this enriches the same database
+# ingestOrbitalData.py / ingestSatcat.py write to. The publish step
+# (publishSite.py) imports it instead and runs it on the orbital table it
+# is building -- so nothing here touches a database at import time.
+EIRP_COLUMNS = ('downlinkBand TEXT', 'eirpDbw REAL', 'eirpSource TEXT',
+                'satRxGainDbi REAL', 'satNoiseTempK REAL',
+                'satGtDbk REAL', 'satGtSource TEXT')
+
+
+def openDb():
+    """orbitalObjects.db, autocommit + WAL like the sibling scripts, with
+    the EIRP columns added if missing."""
+    db = sqlite3.connect(dbPath(ORBITAL_DB), isolation_level=None)
+    db.execute('PRAGMA journal_mode = WAL;')
+    addColumns(db)
+    return db
+
 
 # 2. Migration -- add our columns if they aren't there yet. Same
 # try/except-on-duplicate pattern the sibling scripts use for their own
 # additive columns.
-for column in ('downlinkBand TEXT', 'eirpDbw REAL', 'eirpSource TEXT',
-               'satRxGainDbi REAL', 'satNoiseTempK REAL',
-               'satGtDbk REAL', 'satGtSource TEXT'):
-    try:
-        db.execute(f'ALTER TABLE orbital_objects ADD COLUMN {column};')
-    except sqlite3.OperationalError as err:
-        if 'duplicate column name' not in str(err).lower():
-            raise
+def addColumns(db):
+    for column in EIRP_COLUMNS:
+        try:
+            db.execute(f'ALTER TABLE orbital_objects ADD COLUMN {column};')
+        except sqlite3.OperationalError as err:
+            if 'duplicate column name' not in str(err).lower():
+                raise
 
 
 # ---------------------------------------------------------------------------
@@ -262,7 +272,7 @@ UPDATE_SQL = (
 
 
 # 5. Main enrichment run
-def run_eirp_enrichment():
+def run_eirp_enrichment(db):
     print(f'\n=== [{time.strftime("%H:%M:%S")}] Starting EIRP Enrichment ===')
 
     # noradID -> set of its CelesTrak group names.
@@ -313,5 +323,6 @@ def run_eirp_enrichment():
 # for the landing page's data-freshness table ("changes" = rows tagged).
 if __name__ == '__main__':
     from ingestionLog import trackRun
+    db = openDb()
     with trackRun(db, 'eirp') as run:
-        run.changes = run_eirp_enrichment()
+        run.changes = run_eirp_enrichment(db)

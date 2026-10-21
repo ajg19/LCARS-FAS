@@ -648,19 +648,22 @@ ALL_STATS = [storeNationality, storeRegimes, storeInclination, storeSector, stor
              storeObjectTable, storePayloadsInOrbitByYear, storeDebrisByYear]
 
 
-def refreshAll():
-    """Recomputes every ON-ORBIT figure. Skipped (returns False) until both
-    source databases exist -- e.g. before GCAT's first run on a new server."""
-    missing = [path for path in (GCAT_DB, ORBITAL_DB) if not os.path.exists(path)]
+def refreshAll(statsPath=None, gcatPath=None, orbitalPath=None):
+    """Recomputes every ON-ORBIT figure into statsPath (default the stats
+    DB; the publish step passes the siteOrbital.db it is building, and the
+    orbital table it built). Skipped (returns False) until both source
+    databases exist -- e.g. before GCAT's first run on a new server."""
+    statsPath, gcatPath, orbitalPath = statsPath or STATS_DB, gcatPath or GCAT_DB, orbitalPath or ORBITAL_DB
+    missing = [path for path in (gcatPath, orbitalPath) if not os.path.exists(path)]
     if missing:
         print(f'  [orbitStats] skipped -- missing {", ".join(os.path.basename(p) for p in missing)}')
         return False
-    db = openSources()
+    db = openSources(statsPath, gcatPath, orbitalPath)
     try:
         population = loadPopulation(db)
         for stat in ALL_STATS:
             stat(db, population)
-        print(f'  [orbitStats] {len(ALL_STATS)} tables refreshed in {os.path.basename(STATS_DB)} '
+        print(f'  [orbitStats] {len(ALL_STATS)} tables refreshed in {os.path.basename(statsPath)} '
               f'({len(population)} objects in orbit, {sum(1 for i in population if i["payload"])} payloads)')
     finally:
         db.close()

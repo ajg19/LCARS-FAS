@@ -43,6 +43,13 @@ NEWS_DB = 'ingestionNews.db'
 GROUND_SEGMENT_DB = 'ingestionGroundSegment.db'
 SKY_DB = 'ingestionSkyCatalogue.db'
 
+# Site databases: what the website reads, one per type of data, each
+# built and swapped in whole by scripts/publishSite.py (step 9).
+SITE_ORBITAL_DB = 'siteOrbital.db'
+SITE_NEWS_DB = 'siteNews.db'
+SITE_SKY_DB = 'siteSky.db'
+SITE_GROUND_SEGMENT_DB = 'siteGroundSegment.db'
+
 # Pre-refactor databases the website still reads until the publish step
 # (step 9) replaces them with site<Type>.db files.
 ORBITAL_DB = 'orbitalObjects.db'

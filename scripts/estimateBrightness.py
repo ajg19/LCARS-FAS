@@ -107,8 +107,11 @@ def sizeMagnitude(lengthM, diameterM, spanM):
     return round(SUN_MAGNITUDE - 2.5 * math.log10(flux), 2)
 
 
-def brightnessRows(db):
-    db.execute(f"ATTACH DATABASE 'file:{ORBITAL_DB_PATH}?mode=ro' AS orbital")
+def brightnessRows(db, orbitalPath=ORBITAL_DB_PATH):
+    """(noradID, stdMag, source) rows. `db` must see the GCAT tables
+    unqualified (gcatObjects); the orbital table is attached from
+    orbitalPath -- the publish step passes the one it is building."""
+    db.execute(f"ATTACH DATABASE 'file:{orbitalPath}?mode=ro' AS orbital")
     try:
         found = db.execute(
             'SELECT o.noradID, o.objectType, COALESCE(g.name, o.name), g.bus, COALESCE(g.launchDate, o.launchDate), '
@@ -134,12 +137,14 @@ def brightnessRows(db):
     return rows
 
 
-def refreshBrightness(db):
-    rows = brightnessRows(db)
+def refreshBrightness(db, orbitalPath=ORBITAL_DB_PATH):
+    rows = brightnessRows(db, orbitalPath)
     with db:
-        db.execute('DROP TABLE IF EXISTS gcatBrightness')
-        db.execute('CREATE TABLE gcatBrightness (noradID INTEGER PRIMARY KEY, stdMag REAL, source TEXT)')
-        db.executemany('INSERT OR REPLACE INTO gcatBrightness VALUES (?, ?, ?)', rows)
+        # main. -- the publish step runs this with GCAT attached, and GCAT
+        # may still hold its own gcatBrightness from before the refactor.
+        db.execute('DROP TABLE IF EXISTS main.gcatBrightness')
+        db.execute('CREATE TABLE main.gcatBrightness (noradID INTEGER PRIMARY KEY, stdMag REAL, source TEXT)')
+        db.executemany('INSERT OR REPLACE INTO main.gcatBrightness VALUES (?, ?, ?)', rows)
     counts = {}
     for _, _, source in rows:
         counts[source] = counts.get(source, 0) + 1

@@ -1,6 +1,6 @@
 # Database and source refactor plan
 
-Agreed 2026-10-21 (Al + Claude). Status: steps 1-8 done on DEV (2026-10-21); step 9 next. Decisions A-D are settled. LIVE still uses `ingestionDBs/` with the old file names, so `dbPaths.py` falls back to that folder and maps each new name to its old one until step 12.
+Agreed 2026-10-21 (Al + Claude). Status: steps 1-9 done on DEV (2026-10-21); step 10 next, with the open questions under step 9 to settle. Decisions A-D are settled. LIVE still uses `ingestionDBs/` with the old file names, so `dbPaths.py` falls back to that folder and maps each new name to its old one until step 12.
 
 ## Conventions
 
@@ -179,6 +179,62 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-8 done on DEV (2026-10-21); ste
      - Run a sanity check that refuses to publish if key row counts fall by more than an agreed percentage.
      - Keep `site<Type>.db.prev`, then `os.replace` the new file into place.
    - Time the full orbital rebuild on GoDaddy.
+
+   **DONE 2026-10-21 on DEV.** `scripts/publishSite.py orbital|news|sky|groundSegment|all`. Tests: `0_tests/test_publishSite.py` and `0_tests/test_groupRules.py`.
+   - **Group rules:** `scripts/groupRules.py` (decision A, extended).
+   - **Radio selection:** moved to `scripts/rfSelection.py`, shared with `ingestSatnogsRf.py` until step 11.
+   - **Refactored to be importable:**
+     - `enrichEirp.py` no longer touches a database on import.
+     - `estimateBrightness.py` takes the orbital path as a parameter.
+     - `orbitStats.refreshAll()` takes file paths.
+
+     All three still run as before on their own, as LIVE's cron needs.
+   - **How the orbital file is built.** The objects are first built in a staging file, because the stats and brightness code attach the orbital table as a separate database. The tables are then copied into the site file with their indexes.
+   - **Options:**
+     - `--no-celestrak` builds groups from our rules only, as LIVE would while blocked.
+     - `--force` overrides the sanity check.
+   - **Parameters chosen, for Al to confirm:**
+     - `MAX_ELEMENT_AGE_DAYS` = 30, matching Space-Track's own catalogue query.
+     - Recently decayed objects are kept for 30 days, with their decay date.
+     - `CELESTRAK_MAX_AGE_DAYS` = 14.
+     - `MAX_DROP` = 10%.
+   - **First DEV publish:**
+
+     | File | Size | Time |
+     |---|---|---|
+     | `siteOrbital.db` | 25.3 MB | 21 s |
+     | `siteNews.db` | 1.7 MB | under 0.1 s |
+     | `siteSky.db` | 0.4 MB | under 0.1 s |
+     | `siteGroundSegment.db` | 0.1 MB | under 0.1 s |
+
+   - **Compared with LIVE's current pipeline output** (copied this morning):
+     - **Objects:** 32,884 against 33,516.
+       - **Not carried over:** 532 SatNOGS-only rows (mostly 9xxxx duplicates), 134 stale CelesTrak rows, and 105 objects outside Space-Track's current catalogue.
+       - **New:** 139 objects, 49 of them with 6-digit numbers.
+     - **Epochs:** never older. 211 appeared older, but every one is the same element set rounded under 1 s differently.
+     - **Groups:** active 16,765 against 16,103, and starlink 11,121 against 10,989. LIVE's lists are frozen in August.
+     - **EIRP tiers, payloads in orbit:** filing 12,928, estimated 1,874, unknown 4,102. LIVE has 12,924, 1,815 and 4,197.
+     - **SatNOGS frequencies:** 1,433 satellites against 1,677. None now sit on 9xxxx duplicates; LIVE has 384.
+     - **Stats:** `onOrbitObjects` 32,776 and brightness 21,115, against 33,186 and 21,144.
+   - **The website doesn't read these files yet;** that is step 10. The API still matches the step 2 baseline apart from time-dependent endpoints.
+   - **Rule agreement with CelesTrak** (our rules alone against CelesTrak's lists of 2026-10-21):
+
+     | Agreement | Groups |
+     |---|---|
+     | 95% or more | starlink 98.7, oneweb 98.9, kuiper 99.7, iridium-NEXT 100, beidou 100 |
+     | 85–95% | active 92.3, globalstar 86.5, gps-ops 86.1, galileo 90.6, planet 92.0, qianfan 88.3, hulianwang 87.5, eutelsat 86.2, argos 87.1, glo-ops 83.9 |
+     | **Weak, listed as decision A requires** | ses 83.1, intelsat 64.3, telesat 61.1, sar 67.0, spire 65.2, sarsat 55.5, gnss 54.5, stations 50.0, orbcomm 48.3, sbas 34.2 |
+
+     The weak ones mostly come from GCAT's broader definitions:
+     - gnss counts every NAV payload;
+     - sbas, sarsat and sar are function groups;
+     - stations misses cubesats released from the ISS;
+     - orbcomm includes satellites GCAT hasn't marked as ended.
+   - **OPEN QUESTIONS FOR AL:**
+     1. **Weak rules.** Refine them, accept them, or leave those groups CelesTrak-only, so they are absent while LIVE is blocked?
+     2. **Classification groups.** `enrichEirp.py`'s class tier uses CelesTrak groups (weather, radar, resource, science, amateur, cubesat, military, geo, other-comm and others) that have no rules. In a rules-only publish, 1,132 more payloads drop from estimated to unknown. Give these rules too (GCAT category, plus the orbit for geo)?
+     3. **EST. SIZE.** Space-Track gives radar cross-section only as SMALL, MEDIUM or LARGE, so `rcsSize` (shown as "EST. SIZE" in m²) is empty and `rcsCategory` carries the category. Options: show the category, estimate the size from GCAT's dimensions, or use CelesTrak's figure when available.
+     4. **Parameters.** Confirm the four values above.
 
 ### Website
 

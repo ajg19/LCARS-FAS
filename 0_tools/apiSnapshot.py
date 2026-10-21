@@ -35,8 +35,9 @@ ON_ORBIT_CHARTS = (
 # ISS, Hubble, a Starlink, a GEO comsat, a rocket body.
 SAMPLE_NORAD_IDS = (25544, 20580, 44713, 41866, 27386)
 
-# Output depends on the time of the request, not only on the data.
-VOLATILE = ('api_status', 'api_sky_satellites')
+# Output depends on the time of the request -- or, for the GEO belt, on
+# when the stats were built (longitudes are propagated to that moment).
+VOLATILE = ('api_status', 'api_sky_satellites', 'api_on-orbit_chart_geo-belt')
 
 
 def requests():
@@ -133,7 +134,7 @@ def compare(old_label, new_label):
         if o['status'] != n['status']:
             print(f'  STATUS {o["status"]} -> {n["status"]:14s} {name}')
         elif o['sha1'] != n['sha1']:
-            note = ' (time-dependent, expected)' if name in VOLATILE else ''
+            note = ' (time-dependent, expected)' if name.startswith(VOLATILE) else ''
             print(f'  CHANGED {o["bytes"]:>9,} -> {n["bytes"]:>9,} bytes  {name}{note}')
         else:
             same += 1
