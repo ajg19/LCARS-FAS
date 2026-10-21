@@ -42,17 +42,15 @@ operations.
 """
 
 import math
-import os
 import sqlite3
 import time
 
-# The DB and .env live in the repo root; this script sits in scripts/, one level down.
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from dbPaths import ORBITAL_DB, dbPath
 
 # 1. Same database ingestOrbitalData.py / ingestSatcat.py write to -- this
 # job enriches existing rows, it never owns a database of its own.
 # isolation_level=None (autocommit) + WAL, matching the sibling scripts.
-db_path = os.path.join(BASE_DIR, 'ingestionDBs', 'orbitalObjects.db')
+db_path = dbPath(ORBITAL_DB)
 db = sqlite3.connect(db_path, isolation_level=None)
 db.execute('PRAGMA journal_mode = WAL;')
 

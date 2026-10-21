@@ -10,15 +10,13 @@ database for the first time:
     python scripts/tagNews.py
 """
 
-import os
 import sqlite3
 import sys
 
 from topicRules import classifyTopics
 
-# The DB lives in the repo root's ingestionDBs/; this script sits in scripts/, one level down.
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, 'ingestionDBs', 'space_news.db')
+from dbPaths import NEWS_DB, dbPath
+DB_PATH = dbPath(NEWS_DB)
 
 
 def ensureTopicsTable(db):

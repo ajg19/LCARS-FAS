@@ -13,5 +13,12 @@ bugsDB.xlsx.bak
 # ingestion job (news, orbital pipeline, GCAT, orbitStats), the live server
 # keeps its own, and committed copies would republish Space-Track data.
 # The one exception is groundSegmentAssets.db, which can't easily be rebuilt.
+# ingestionDBs/ is the folder's old name (scripts/dbPaths.py); kept here
+# until every working copy has been renamed to databases/.
+databases/*
+!databases/groundSegmentAssets.db
 ingestionDBs/*
 !ingestionDBs/groundSegmentAssets.db
+
+# API snapshots from 0_tools/apiSnapshot.py -- large, regenerated on demand
+0_testReports/apiSnapshots/

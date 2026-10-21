@@ -10,14 +10,12 @@ GoDaddy after uploading -- these are two separate databases, this script
 doesn't touch both at once.
 """
 
-import os
 import sqlite3
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 
-# The DB and .env live in the repo root; this script sits in scripts/, one level down.
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-db_path = os.path.join(BASE_DIR, 'ingestionDBs', 'space_news.db')
+from dbPaths import NEWS_DB, dbPath
+db_path = dbPath(NEWS_DB)
 
 db = sqlite3.connect(db_path)
 rows = db.execute('SELECT id, published_date FROM articles').fetchall()

@@ -4,7 +4,7 @@ Pytest-based. Requires pytest (see requirements-dev.txt) -- the only
 dev-only dependency in this repo; server.py itself remains stdlib-only
 for the constrained GoDaddy host. Calls the WSGI `application` callable
 directly (no socket, no running server needed) against the REAL local
-databases in ingestionDBs/ (no mocks).
+databases in databases/ (no mocks).
 
 Run with:  pytest 0_tests/ -v
 """
@@ -401,6 +401,7 @@ def test_nested_asset_is_served():
     '/deployToGoDaddy.sh',
     '/spacetrack.env.example',
     '/scripts/readNews.py',
+    '/databases/groundSegmentAssets.db',
     '/ingestionDBs/groundSegmentAssets.db',
     '/.gitignore',
     '/bugsDB.xlsx',
@@ -408,6 +409,7 @@ def test_nested_asset_is_served():
     '/assets/../../server.py',
     '/assets/leaflet/../../server.py',
     r'/assets/..\server.py',   # Windows separator
+    '/assets/../databases/groundSegmentAssets.db',
     '/assets/../ingestionDBs/groundSegmentAssets.db',
     '/assets\x00.js',
 ])

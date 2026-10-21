@@ -6,7 +6,6 @@ RSS parsing (no XML library dependency, matching the original's own
 same 1-second delay between feeds, same 30-minute poll loop.
 """
 
-import os
 import re
 import sqlite3
 import time
@@ -19,11 +18,10 @@ from ingestionLog import trackRun
 from pruneNews import pruneNews, vacuumDatabase
 from tagNews import retagAllArticles
 
-# The DB and .env live in the repo root; this script sits in scripts/, one level down.
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from dbPaths import NEWS_DB, dbPath
 
 # 1. Initialize local SQLite database
-db_path = os.path.join(BASE_DIR, 'ingestionDBs', 'space_news.db')
+db_path = dbPath(NEWS_DB)
 db = sqlite3.connect(db_path)
 
 # 2. Set up schema

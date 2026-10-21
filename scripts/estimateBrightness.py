@@ -1,6 +1,6 @@
 """Estimates the standard magnitude of every payload in orbit -- satellites,
 operational or defunct, and space stations -- and every rocket body (spent
-stages, among the brighter objects in the sky) into ingestionDBs/gcat.db
+stages, among the brighter objects in the sky) into databases/gcat.db
 table gcatBrightness, for GRD VIEW. Debris and unknown objects are
 deliberately not estimated: they get no row.
 
@@ -48,13 +48,12 @@ in one transaction on each run.
 """
 
 import math
-import os
 import sqlite3
 import sys
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, 'ingestionDBs', 'gcat.db')
-ORBITAL_DB_PATH = os.path.join(BASE_DIR, 'ingestionDBs', 'orbitalObjects.db')
+from dbPaths import GCAT_DB, ORBITAL_DB, dbPath
+DB_PATH = dbPath(GCAT_DB)
+ORBITAL_DB_PATH = dbPath(ORBITAL_DB)
 
 SUN_MAGNITUDE = -26.74
 ALBEDO = 0.25

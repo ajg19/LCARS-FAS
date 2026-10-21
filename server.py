@@ -25,6 +25,7 @@ import math
 import mimetypes
 import os
 import sqlite3
+import sys
 import threading
 from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs
@@ -32,7 +33,13 @@ from urllib.parse import parse_qs
 PORT = 3000
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_DIR = os.path.join(BASE_DIR, 'ingestionDBs')
+# scripts/ holds dbPaths.py, the one place database paths and names live.
+sys.path.append(os.path.join(BASE_DIR, 'scripts'))
+import dbPaths  # noqa: E402
+from dbPaths import (BUG_REPORTS_DB, GCAT_DB, GROUND_SEGMENT_DB, NEWS_DB,  # noqa: E402
+                     ORBITAL_DB, SKY_DB, STATS_DB)
+
+DB_DIR = dbPaths.DB_DIR
 
 
 def open_db(filename, read_only=False):
@@ -46,17 +53,17 @@ def open_db(filename, read_only=False):
 
 
 # Connect to the local space news SQLite database.
-db = open_db('space_news.db')
+db = open_db(NEWS_DB)
 
 # Ground segment assets DB (built by rschGrdSgmt/build_ground_segment_db.py)
 # -- a separate file/connection, unrelated to the news database above.
-ground_segment_db = open_db('groundSegmentAssets.db')
+ground_segment_db = open_db(GROUND_SEGMENT_DB)
 
 # Orbital objects (OMM elements) DB, populated/refreshed by the scripts/
 # ingestion jobs (ingestOrbitalData.py, ingestSatcat.py, enrichEirp.py,
 # ingestSatnogsRf.py -- separate processes) -- read-only here since this
 # endpoint only ever reads it.
-orbital_objects_db = open_db('orbitalObjects.db', read_only=True)
+orbital_objects_db = open_db(ORBITAL_DB, read_only=True)
 
 
 # Altitude-regime buckets for the ADD OBJ search form, keyed on mean
@@ -179,8 +186,8 @@ def gcat_db():
     not at import like the other databases, so a missing file can't stop
     the whole server starting."""
     global _gcat_db
-    if _gcat_db is None and os.path.exists(os.path.join(DB_DIR, 'gcat.db')):
-        _gcat_db = open_db('gcat.db', read_only=True)
+    if _gcat_db is None and os.path.exists(os.path.join(DB_DIR, GCAT_DB)):
+        _gcat_db = open_db(GCAT_DB, read_only=True)
     return _gcat_db
 
 
@@ -192,8 +199,8 @@ def stats_db():
     opened read-only on first use -- or None until it exists. Lazy for the
     same reason as gcat_db()."""
     global _stats_db
-    if _stats_db is None and os.path.exists(os.path.join(DB_DIR, 'onOrbitStats.db')):
-        _stats_db = open_db('onOrbitStats.db', read_only=True)
+    if _stats_db is None and os.path.exists(os.path.join(DB_DIR, STATS_DB)):
+        _stats_db = open_db(STATS_DB, read_only=True)
     return _stats_db
 
 
@@ -264,7 +271,7 @@ def handle_status(start_response):
         return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
 
 
-# GRD VIEW sky view: the fixed sky from ingestionDBs/skyCatalogue.db (built
+# GRD VIEW sky view: the fixed sky from databases/skyCatalogue.db (built
 # once by scripts/buildSkyCatalogue.py), read once and the JSON kept until
 # the file changes; browser-cached (cached_json_response()). Compact
 # arrays, positions in J2000 degrees:
@@ -278,7 +285,7 @@ _sky_catalogue_cache = {}
 
 
 def sky_catalogue_payload():
-    conn = open_db('skyCatalogue.db', read_only=True)
+    conn = open_db(SKY_DB, read_only=True)
     try:
         stars = [[r['raDeg'], r['decDeg'], r['mag'], r['bv'], r['name']]
                  for r in conn.execute('SELECT raDeg, decDeg, mag, bv, name FROM skyStars ORDER BY mag')]
@@ -299,7 +306,7 @@ def sky_catalogue_payload():
 def handle_sky_catalogue(environ, start_response):
     return cached_json_response(
         environ, start_response, _sky_catalogue_cache, sky_catalogue_payload,
-        ('skyCatalogue.db',), SKY_CATALOGUE_MAX_AGE_SEC,
+        (SKY_DB,), SKY_CATALOGUE_MAX_AGE_SEC,
         'Sky catalogue unavailable ({}); run scripts/buildSkyCatalogue.py')
 
 
@@ -365,7 +372,7 @@ _sky_satellites_cache = {}
 
 
 def sky_satellites_payload():
-    gcat = open_db('gcat.db', read_only=True)
+    gcat = open_db(GCAT_DB, read_only=True)
     try:
         brightness = {r['noradID']: r['stdMag'] for r in gcat.execute(
             'SELECT noradID, stdMag FROM gcatBrightness WHERE stdMag IS NOT NULL')}
@@ -420,7 +427,7 @@ def handle_sky_object(query_params, start_response):
         if row is None:
             return json_response(start_response, '404 Not Found', {'error': f'No object {norad_id}'})
         details = dict(row)
-        gcat = open_db('gcat.db', read_only=True)
+        gcat = open_db(GCAT_DB, read_only=True)
         try:
             extra = gcat.execute(
                 "SELECT o.name AS gcatName, o.owners, o.stateCode, o.manufacturer, o.bus, o.massKg, "
@@ -439,7 +446,7 @@ def handle_sky_object(query_params, start_response):
 def handle_sky_satellites(environ, start_response):
     return cached_json_response(
         environ, start_response, _sky_satellites_cache, sky_satellites_payload,
-        ('orbitalObjects.db', 'gcat.db'), SKY_SATELLITES_MAX_AGE_SEC,
+        (ORBITAL_DB, GCAT_DB), SKY_SATELLITES_MAX_AGE_SEC,
         'Satellite data unavailable ({})')
 
 
@@ -1042,7 +1049,7 @@ def handle_orbital_objects_search(query_params, start_response):
 
 
 # Only these are ever served as files: the page itself and everything under
-# assets/. Anything else -- server.py, scripts/, ingestionDBs/, setupCron.sh,
+# assets/. Anything else -- server.py, scripts/, databases/, setupCron.sh,
 # spacetrack.env, tmp/ ... -- is a 404, as is any path that resolves outside
 # assets/ (e.g. /assets/../server.py). An allowlist rather than a blocklist,
 # so a new file type can't slip through (bug 7). On the live site the
@@ -1105,7 +1112,7 @@ def handle_static(path_info, start_response):
 
 
 # Tester bug reports: the BUG REPORT spine button's form (assets/bugReport.js)
-# POSTs here, and each accepted report is appended to ingestionDBs/
+# POSTs here, and each accepted report is appended to databases/
 # bugReports.db -- a folder deploys never touch, so reports survive them.
 # Columns mirror the user-entered columns of bugsDB.xlsx, so triage is a
 # copy into the workbook (0_tools/bugs.py add); the rest (Status, Root Cause,
@@ -1114,7 +1121,7 @@ def handle_static(path_info, start_response):
 # browser's checks are only a convenience), a hidden honeypot field bots
 # fill in, and a rate limit per visitor (a salted hash of the IP -- the
 # address itself is never stored) plus a global daily cap.
-BUG_REPORT_DB = 'bugReports.db'
+BUG_REPORT_DB = BUG_REPORTS_DB
 # Which server a report came from. LIVE when Passenger imports this module;
 # set to DEV below when it is run directly (python server.py). Decided by
 # how the server was started, not guessed from the request's hostname.

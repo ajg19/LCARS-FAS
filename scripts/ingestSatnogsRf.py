@@ -43,19 +43,16 @@ ingestSatcat.py / enrichEirp.py is ample.
 """
 
 import json
-import os
 import sqlite3
 import time
-import urllib.error
-import urllib.request
 
-# The DB and .env live in the repo root; this script sits in scripts/, one level down.
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from common import httpGet
+from dbPaths import ORBITAL_DB, dbPath
 
 # 1. Same database the sibling scripts write to -- this job enriches
 # existing rows, it never owns a database of its own. isolation_level=None
 # (autocommit) + WAL, matching the sibling scripts.
-db_path = os.path.join(BASE_DIR, 'ingestionDBs', 'orbitalObjects.db')
+db_path = dbPath(ORBITAL_DB)
 db = sqlite3.connect(db_path, isolation_level=None)
 db.execute('PRAGMA journal_mode = WAL;')
 
@@ -80,23 +77,11 @@ HTTP_HEADERS = {
 FREQ_MIN_HZ, FREQ_MAX_HZ = 2e7, 6e10
 
 
-def http_get(url, headers=None):
-    """(status_code, body_text) -- see ingestOrbitalData.py's twin helper
-    for why (normalises urllib's raise-on-4xx/5xx into fetch()'s "always
-    get a response" shape)."""
-    request = urllib.request.Request(url, headers=headers or {})
-    try:
-        with urllib.request.urlopen(request, timeout=60) as response:
-            return response.status, response.read().decode('utf-8', errors='replace')
-    except urllib.error.HTTPError as e:
-        return e.code, e.read().decode('utf-8', errors='replace')
-
-
 # 3. Fetch -- one GET of the whole transmitter set. The endpoint returns a
 # bare JSON list; a DRF {"results": [...]} shape is tolerated in case that
 # ever changes.
 def fetch_transmitters():
-    status, text = http_get(SATNOGS_TRANSMITTERS_URL, HTTP_HEADERS)
+    status, text = httpGet(SATNOGS_TRANSMITTERS_URL, HTTP_HEADERS)
     if status >= 400:
         raise Exception(f'HTTP {status}')
     data = json.loads(text)

@@ -1,5 +1,5 @@
 """Precomputed figures for the ON-ORBIT overview's charts and tables, stored
-in ingestionDBs/onOrbitStats.db (a derived database: rebuilt by this
+in databases/onOrbitStats.db (a derived database: rebuilt by this
 script, never committed).
 
 Population: the NORAD catalogue (orbitalObjects.db -- CelesTrak and
@@ -42,11 +42,12 @@ import os
 import sqlite3
 from datetime import datetime, timezone
 
-# The DBs live in the repo root's ingestionDBs/; this script sits in scripts/, one level down.
-DB_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'ingestionDBs')
-STATS_DB = os.path.join(DB_DIR, 'onOrbitStats.db')
-GCAT_DB = os.path.join(DB_DIR, 'gcat.db')
-ORBITAL_DB = os.path.join(DB_DIR, 'orbitalObjects.db')
+import dbPaths
+
+# Paths from dbPaths.py; module-level so the tests can point them elsewhere.
+STATS_DB = dbPaths.dbPath(dbPaths.STATS_DB)
+GCAT_DB = dbPaths.dbPath(dbPaths.GCAT_DB)
+ORBITAL_DB = dbPaths.dbPath(dbPaths.ORBITAL_DB)
 
 STATUS_FILTERS = ['active', 'all']
 KIND_FILTERS = ['satellites', 'spacecraft', 'objects']

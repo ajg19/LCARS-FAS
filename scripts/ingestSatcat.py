@@ -17,39 +17,18 @@ import json
 import os
 import sqlite3
 import time
-import urllib.error
-import urllib.parse
-import urllib.request
 
-# The DB and .env live in the repo root; this script sits in scripts/, one level down.
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from common import SpaceTrack, httpGet, loadProjectEnv
+from dbPaths import ORBITAL_DB, dbPath
 
-
-# Minimal stdlib .env loader -- see ingestOrbitalData.py for the same
-# helper; duplicated rather than shared, matching this project's own
-# no-shared-module convention between its ingestion scripts.
-def load_dotenv(path):
-    if not os.path.isfile(path):
-        return
-    with open(path, 'r', encoding='utf-8') as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith('#') or '=' not in line:
-                continue
-            key, _, value = line.partition('=')
-            os.environ.setdefault(key.strip(), value.strip())
-
-
-load_dotenv(os.path.join(BASE_DIR, '.env'))
-# Space-Track credentials live in spacetrack.env (chmod 600, never deployed
-# or committed), read here rather than passed on the cron line.
-load_dotenv(os.path.join(BASE_DIR, 'spacetrack.env'))
+# .env (CelesTrak etiquette) and spacetrack.env (credentials) -- see common.py.
+loadProjectEnv()
 
 # 1. Connect to the SAME database ingestOrbitalData.py writes to -- this
 # job enriches existing rows, it doesn't own a database of its own.
 # isolation_level=None (autocommit) matches node:sqlite's DatabaseSync
 # behaviour -- see ingestOrbitalData.py for the same reasoning.
-db_path = os.path.join(BASE_DIR, 'ingestionDBs', 'orbitalObjects.db')
+db_path = dbPath(ORBITAL_DB)
 db = sqlite3.connect(db_path, isolation_level=None)
 db.execute('PRAGMA journal_mode = WAL;')
 
@@ -255,23 +234,11 @@ def parse_satcat_csv(text):
     return rows
 
 
-def http_get(url, headers=None):
-    """Returns (status_code, body_text) -- see ingestOrbitalData.py's
-    same helper for why (normalises urllib's raise-on-4xx/5xx behaviour
-    into JS fetch()'s "always get a response" shape)."""
-    request = urllib.request.Request(url, headers=headers or {})
-    try:
-        with urllib.request.urlopen(request) as response:
-            return response.status, response.read().decode('utf-8', errors='replace')
-    except urllib.error.HTTPError as e:
-        return e.code, e.read().decode('utf-8', errors='replace')
-
-
 # 4. CelesTrak SATCAT -- primary source. A single static bulk file, not
 # the per-group GP query API, so none of ingestOrbitalData.py's
 # 2-hour/per-group throttling applies here.
 def fetch_celestrak_satcat():
-    status, text = http_get('https://celestrak.org/pub/satcat.csv')
+    status, text = httpGet('https://celestrak.org/pub/satcat.csv')
     if status >= 400:
         raise Exception(f'HTTP {status}')
     return parse_satcat_csv(text)
@@ -281,37 +248,13 @@ def fetch_celestrak_satcat():
 # configured. Reuses the same gp class already proven working in
 # ingestOrbitalData.py; no EPOCH filter this time since the goal here is
 # broad metadata coverage rather than "what changed recently".
-SPACETRACK_USER = os.environ.get('SPACETRACK_USER')
-SPACETRACK_PASS = os.environ.get('SPACETRACK_PASS')
-
-
-def space_track_login():
-    body = urllib.parse.urlencode({'identity': SPACETRACK_USER, 'password': SPACETRACK_PASS}).encode('utf-8')
-    request = urllib.request.Request(
-        'https://www.space-track.org/ajaxauth/login',
-        data=body,
-        method='POST',
-        headers={'Content-Type': 'application/x-www-form-urlencoded'},
-    )
-    try:
-        with urllib.request.urlopen(request) as response:
-            cookie = response.headers.get('Set-Cookie')
-            body_text = response.read().decode('utf-8', errors='replace')
-    except urllib.error.HTTPError as e:
-        raise Exception(f'Space-Track login failed: HTTP {e.code}')
-    if 'Failed' in body_text:
-        raise Exception('Space-Track login rejected (bad credentials)')
-    if not cookie:
-        raise Exception('Space-Track login did not return a session cookie')
-    return cookie.split(';')[0]
-
-
+# Login/logout: common.SpaceTrack.
 def fetch_space_track_satcat():
-    if not SPACETRACK_USER or not SPACETRACK_PASS:
+    space_track = SpaceTrack()
+    if not space_track.configured:
         return {'rows': [], 'skipped': True, 'note': 'no credentials configured'}
-    session_cookie = space_track_login()
-    query = 'https://www.space-track.org/basicspacedata/query/class/gp/format/json'
-    status, text = http_get(query, headers={'Cookie': session_cookie})
+    with space_track:
+        status, text = space_track.get('/basicspacedata/query/class/gp/format/json')
     if status >= 400:
         raise Exception(f'Space-Track query failed: HTTP {status}')
     data = json.loads(text)

@@ -1,5 +1,5 @@
 """Server side script loading Jonathan McDowell's General Catalog of
-Artificial Space Objects (GCAT) into ingestionDBs/gcat.db.
+Artificial Space Objects (GCAT) into databases/gcat.db.
 
 One weekly download serving two sections:
   * Launches -- which payloads flew on which launch (GCAT's launch log),
@@ -44,7 +44,6 @@ Run once and exit -- cron owns the (weekly) schedule. Run by hand from the
 project root:  python scripts/ingestGcat.py
 """
 
-import os
 import re
 import socket
 import sqlite3
@@ -55,9 +54,8 @@ import urllib.request
 
 from ingestionLog import trackRun
 
-# The DB lives in the repo root's ingestionDBs/; this script sits in scripts/, one level down.
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, 'ingestionDBs', 'gcat.db')
+from dbPaths import GCAT_DB, dbPath
+DB_PATH = dbPath(GCAT_DB)
 
 GCAT_BASE_URL = 'https://planet4589.org/space/gcat/tsv/'
 USER_AGENT = 'LCARS-FAS/1.0 (GCAT ingestion; +https://github.com/ajg19/LCARS-FAS)'

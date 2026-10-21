@@ -1,4 +1,4 @@
-"""Builds ingestionDBs/skyCatalogue.db: the fixed sky behind GRD VIEW's sky
+"""Builds databases/skyCatalogue.db: the fixed sky behind GRD VIEW's sky
 view -- the stars, star names, constellations, the Milky Way and the bright
 deep-sky objects.
 
@@ -46,14 +46,12 @@ Each run replaces every table inside one transaction.
 """
 
 import json
-import os
 import sqlite3
 import sys
 import urllib.request
 
-# The DB lives in the repo root's ingestionDBs/; this script sits in scripts/, one level down.
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, 'ingestionDBs', 'skyCatalogue.db')
+from dbPaths import SKY_DB, dbPath
+DB_PATH = dbPath(SKY_DB)
 
 D3C_COMMIT = '7e720a3de062059d4c5400a379146a601d9010e0'   # d3-celestial master, 2022-07-05
 D3C_DATA_URL = f'https://raw.githubusercontent.com/ofrohn/d3-celestial/{D3C_COMMIT}/data/'

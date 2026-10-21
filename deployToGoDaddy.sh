@@ -35,6 +35,7 @@ EXCLUDE_PATTERNS=(
     spacetrack.env
     __pycache__
     '*.pyc'
+    databases
     ingestionDBs
     0_documentation
     0_tests

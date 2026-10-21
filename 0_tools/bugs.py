@@ -303,7 +303,8 @@ def commandSet(log, args):
 
 # --- Tester reports -----------------------------------------------------------
 # The BUG REPORT form (assets/bugReport.js -> /api/bug-report in server.py)
-# appends to ingestionDBs/bugReports.db on whichever server it was used on:
+# appends to bugReports.db in the database folder (scripts/dbPaths.py) on
+# whichever server it was used on:
 # the live site's (server LIVE) or a local dev server's (server DEV).
 # import-reports copies every report not yet copied from both into the
 # workbook, oldest first. Each imported row's Notes carries the key
@@ -312,11 +313,16 @@ def commandSet(log, args):
 # (copiedToBugsDb = 1) just keeps the next fetch small. The live database
 # is read over SSH; nothing is downloaded or stored locally.
 
-DEV_REPORTS_DB = os.path.join(PROJECT_ROOT, 'ingestionDBs', 'bugReports.db')
+sys.path.append(os.path.join(PROJECT_ROOT, 'scripts'))
+import dbPaths  # noqa: E402
+
+DEV_REPORTS_DB = dbPaths.dbPath(dbPaths.BUG_REPORTS_DB)
 LIVE_SSH = ['ssh', '-i', os.path.expanduser('~/.ssh/godaddy_lcars_fas'), '-o', 'BatchMode=yes',
             '-o', 'ConnectTimeout=30', 'sip9rb1lekyg@gaps2024.com']
 LIVE_PYTHON = '/home/sip9rb1lekyg/virtualenv/public_html/LCARS-FAS/3.9/bin/python'
-LIVE_REPORTS_DB = '/home/sip9rb1lekyg/public_html/LCARS-FAS/ingestionDBs/bugReports.db'
+# Candidates in order; the live server uses the first whose folder exists
+# (databases/ once migrated, ingestionDBs/ before -- see dbPaths.py).
+LIVE_REPORTS_DBS = [f'{d}/{dbPaths.BUG_REPORTS_DB}' for d in dbPaths.LIVE_DB_DIRS]
 REPORT_KEY = re.compile(r'\[report (LIVE|DEV)#(\d+)\]')
 
 FETCH_SQL = 'SELECT * FROM bugReports WHERE copiedToBugsDb = 0 ORDER BY id'
@@ -325,7 +331,8 @@ MARK_SQL = 'UPDATE bugReports SET copiedToBugsDb = 1 WHERE id IN ({})'
 # Run by the live server's Python, fed in over SSH's stdin.
 REMOTE_FETCH = '''
 import json, os, sqlite3
-path = {path!r}
+paths = {paths!r}
+path = next((p for p in paths if os.path.isdir(os.path.dirname(p))), paths[-1])
 if not os.path.exists(path):
     print('[]')
 else:
@@ -334,8 +341,10 @@ else:
     print(json.dumps([dict(row) for row in db.execute({sql!r})]))
 '''
 REMOTE_MARK = '''
-import sqlite3
-db = sqlite3.connect({path!r})
+import os, sqlite3
+paths = {paths!r}
+path = next((p for p in paths if os.path.isdir(os.path.dirname(p))), paths[-1])
+db = sqlite3.connect(path)
 db.execute({sql!r}, {ids!r})
 db.commit()
 print('marked', db.total_changes)
@@ -361,7 +370,7 @@ def fetchReports(source):
             return [dict(row) for row in db.execute(FETCH_SQL)]
         finally:
             db.close()
-    return json.loads(runOnLive(REMOTE_FETCH.format(path=LIVE_REPORTS_DB, sql=FETCH_SQL)))
+    return json.loads(runOnLive(REMOTE_FETCH.format(paths=LIVE_REPORTS_DBS, sql=FETCH_SQL)))
 
 
 def markReportsCopied(source, ids):
@@ -376,7 +385,7 @@ def markReportsCopied(source, ids):
         finally:
             db.close()
     else:
-        runOnLive(REMOTE_MARK.format(path=LIVE_REPORTS_DB, sql=sql, ids=list(ids)))
+        runOnLive(REMOTE_MARK.format(paths=LIVE_REPORTS_DBS, sql=sql, ids=list(ids)))
 
 
 def reportToBug(log, report, bugID):

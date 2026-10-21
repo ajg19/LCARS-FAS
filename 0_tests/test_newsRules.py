@@ -1,6 +1,6 @@
 """Unit tests for the news filler/topic rules and the prune/tag
 housekeeping in scripts/ -- run against a throwaway in-memory database,
-never the real ingestionDBs/space_news.db.
+never the real databases/space_news.db.
 
 Run with:  pytest 0_tests/ -v
 """

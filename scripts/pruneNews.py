@@ -19,7 +19,7 @@ recent:
     python scripts/pruneNews.py --dry-run --months 1
     python scripts/pruneNews.py
 
-Deletions are permanent -- back up ingestionDBs/space_news.db first.
+Deletions are permanent -- back up databases/space_news.db first.
 """
 
 import argparse
@@ -32,9 +32,8 @@ from tagNews import ensureTopicsTable, storeTopicCounts
 
 RETENTION_MONTHS = 6
 
-# The DB lives in the repo root's ingestionDBs/; this script sits in scripts/, one level down.
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.path.join(BASE_DIR, 'ingestionDBs', 'space_news.db')
+from dbPaths import NEWS_DB, dbPath
+DB_PATH = dbPath(NEWS_DB)
 
 
 def findFiller(db):

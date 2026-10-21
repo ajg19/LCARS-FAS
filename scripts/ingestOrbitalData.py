@@ -27,41 +27,20 @@ import socket
 import sqlite3
 import time
 import urllib.error
-import urllib.parse
-import urllib.request
 from datetime import datetime, timedelta, timezone
 
-# The DB and .env live in the repo root; this script sits in scripts/, one level down.
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from common import SpaceTrack, httpGet, loadProjectEnv
+from dbPaths import ORBITAL_DB, dbPath
 
-
-# Minimal stdlib .env loader (no python-dotenv dependency, matching this
-# project's stdlib-only philosophy on the Python side) -- only sets
-# variables not already present in the environment, same as dotenv's own
-# non-overriding default behaviour.
-def load_dotenv(path):
-    if not os.path.isfile(path):
-        return
-    with open(path, 'r', encoding='utf-8') as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith('#') or '=' not in line:
-                continue
-            key, _, value = line.partition('=')
-            os.environ.setdefault(key.strip(), value.strip())
-
-
-load_dotenv(os.path.join(BASE_DIR, '.env'))
-# Space-Track credentials live in spacetrack.env (chmod 600, never deployed
-# or committed), read here rather than passed on the cron line.
-load_dotenv(os.path.join(BASE_DIR, 'spacetrack.env'))
+# .env (CelesTrak etiquette) and spacetrack.env (credentials) -- see common.py.
+loadProjectEnv()
 
 # 1. Initialize local SQLite database. isolation_level=None puts the
 # connection in autocommit mode, matching node:sqlite's DatabaseSync (every
 # .run() call commits immediately) -- Python's sqlite3 otherwise holds an
 # implicit transaction open until a explicit commit(), which would leave
 # upserts undurable if this long-running process were killed mid-run.
-db_path = os.path.join(BASE_DIR, 'ingestionDBs', 'orbitalObjects.db')
+db_path = dbPath(ORBITAL_DB)
 db = sqlite3.connect(db_path, isolation_level=None)
 db.execute('PRAGMA journal_mode = WAL;')
 
@@ -267,28 +246,6 @@ def tle_to_omm_fields(norad_id, name, line1, line2, source):
     }
 
 
-# Every request identifies this project (CelesTrak and the other sources can
-# see who is calling and how to reach us, rather than an anonymous
-# "Python-urllib") and gives up after HTTP_TIMEOUT_SEC instead of hanging on
-# the OS's ~2-minute connect timeout.
-USER_AGENT = 'LCARS-FAS/1.0 (orbital-object ingestion; +https://github.com/ajg19/LCARS-FAS)'
-HTTP_TIMEOUT_SEC = 60
-
-
-def http_get(url, headers=None):
-    """Returns (status_code, body_text), matching JS fetch()'s "always get
-    a response, check .ok yourself" behaviour -- urllib raises on 4xx/5xx by
-    default, so this normalises both paths into the same return shape.
-    Connection-level failures (refused, timed out, DNS) still raise
-    urllib.error.URLError."""
-    request = urllib.request.Request(url, headers={'User-Agent': USER_AGENT, **(headers or {})})
-    try:
-        with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SEC) as response:
-            return response.status, response.read().decode('utf-8', errors='replace')
-    except urllib.error.HTTPError as e:
-        return e.code, e.read().decode('utf-8', errors='replace')
-
-
 # 7. CelesTrak fetch -- one group at a time, throttled between requests. Per
 # CelesTrak's usage policy, a repeat request inside its ~2-hour refresh
 # window is answered with a "GP data has not updated..." text message
@@ -300,7 +257,7 @@ def http_get(url, headers=None):
 # way.
 def fetch_celestrak_group(group):
     url = f'https://celestrak.org/NORAD/elements/gp.php?GROUP={group}&FORMAT=json'
-    status, text = http_get(url)
+    status, text = httpGet(url)
     if text.startswith('GP data has not updated') or text.startswith('No GP data found'):
         return {'objects': [], 'skipped': True, 'note': text.strip().split('\n')[0]}
     if status >= 400:
@@ -312,31 +269,8 @@ def fetch_celestrak_group(group):
 
 # 8. Space-Track -- fallback + verification pass. Only runs when
 # credentials are configured via SPACETRACK_USER / SPACETRACK_PASS in
-# spacetrack.env (or .env);
-# skipped otherwise so the CelesTrak-only path keeps working without an
-# account.
-SPACETRACK_USER = os.environ.get('SPACETRACK_USER')
-SPACETRACK_PASS = os.environ.get('SPACETRACK_PASS')
-
-
-def space_track_login():
-    body = urllib.parse.urlencode({'identity': SPACETRACK_USER, 'password': SPACETRACK_PASS}).encode('utf-8')
-    request = urllib.request.Request(
-        'https://www.space-track.org/ajaxauth/login',
-        data=body,
-        method='POST',
-        headers={'Content-Type': 'application/x-www-form-urlencoded'},
-    )
-    try:
-        with urllib.request.urlopen(request) as response:
-            cookie = response.headers.get('Set-Cookie')
-    except urllib.error.HTTPError as e:
-        raise Exception(f'Space-Track login failed: HTTP {e.code}')
-    if not cookie:
-        raise Exception('Space-Track login did not return a session cookie')
-    return cookie.split(';')[0]
-
-
+# spacetrack.env (or .env); skipped otherwise so the CelesTrak-only path
+# keeps working without an account. Login/logout: common.SpaceTrack.
 # Latest elset per object, restricted to objects updated in the last 2 days
 # -- this pass only needs to catch recent movement CelesTrak's groups
 # missed this run, not re-pull the full catalogue every time. Uses the "gp"
@@ -346,11 +280,11 @@ def space_track_login():
 # Space-Track's own documentation), so this reuses omm_row_from_json
 # unchanged rather than narrowing down to just TLE_LINE1/TLE_LINE2.
 def fetch_space_track():
-    if not SPACETRACK_USER or not SPACETRACK_PASS:
+    space_track = SpaceTrack()
+    if not space_track.configured:
         return {'objects': [], 'skipped': True, 'note': 'no credentials configured'}
-    session_cookie = space_track_login()
-    query = 'https://www.space-track.org/basicspacedata/query/class/gp/EPOCH/%3Enow-2/format/json'
-    status, text = http_get(query, headers={'Cookie': session_cookie})
+    with space_track:
+        status, text = space_track.get('/basicspacedata/query/class/gp/EPOCH/%3Enow-2/format/json')
     if status >= 400:
         raise Exception(f'Space-Track query failed: HTTP {status}')
     entries = json.loads(text)
@@ -364,7 +298,7 @@ def fetch_space_track():
 # elements themselves need decoding from the tle1/tle2 text (see
 # tle_to_omm_fields()).
 def fetch_satnogs():
-    status, text = http_get('https://db.satnogs.org/api/tle/?format=json')
+    status, text = httpGet('https://db.satnogs.org/api/tle/?format=json')
     if status >= 400:
         raise Exception(f'HTTP {status}')
     rows = json.loads(text)
