@@ -1,6 +1,6 @@
 # Database and source refactor plan
 
-Agreed 2026-10-21 (Al + Claude). Status: steps 1-11 done on DEV, and step 12 written and rehearsed on DEV (2026-10-21). Nothing has been run on LIVE: step 12 on LIVE waits for Al's go-ahead. The step 9 questions are all settled. Decisions A-D are settled. LIVE still uses `ingestionDBs/` with the old file names, so `dbPaths.py` falls back to that folder and maps each new name to its old one until step 12.
+Agreed 2026-10-21 (Al + Claude). Status: steps 1-12 done. LIVE migrated on 2026-10-21 at 23:04 UTC. Steps 13-15 remain; step 15's clean-up is due about two weeks after the migration. The step 9 questions are all settled. Decisions A-D are settled. LIVE still uses `ingestionDBs/` with the old file names, so `dbPaths.py` falls back to that folder and maps each new name to its old one until step 12.
 
 ## Conventions
 
@@ -335,7 +335,24 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-11 done on DEV, and step 12 wri
 
     Before the migration, change `deployToGoDaddy.sh` so it uploads `databases/ingestionGroundSegment.db` and `databases/ingestionSkyCatalogue.db` and excludes everything else in `databases/`. After any deploy that changes either file, it publishes the matching site file on the server (decision D).
 
-    **WRITTEN AND REHEARSED ON DEV 2026-10-21. Not yet run on LIVE.**
+    **DONE ON LIVE 2026-10-21, 23:04 UTC** (the server clock is UTC−7).
+    - **Deploy:** the dry run listed 34 files updated and none deleted. After the real deploy, LIVE ran the new code on the old layout with every endpoint returning 200, and Al checked the site.
+    - **`migrateLive.py --apply`:** every check passed, and it finished in about 1 minute.
+      - It removed 3 old jobs and installed 5 new ones.
+      - The backup is in `~/dbBackup-20261021-230444`, with the crontab saved alongside. Rollback: `scripts/migrateLive.py --rollback ~/dbBackup-20261021-230444 --apply`.
+      - It seeded 12,690 radar figures.
+      - Space-Track's full pass gave 32,774 objects plus 111 decays, and SatNOGS 1,736 crosswalk rows and 5,121 transmitters. CelesTrak stayed disabled.
+      - It published `siteOrbital.db` (24.9 MB, 41 s), `siteNews.db`, `siteSky.db` and `siteGroundSegment.db`.
+      - Log: `~/logs/migrateLive-20261021-230443.log`.
+    - **Checked after:**
+      - Every endpoint tried returned 200, and the Passenger log was clean.
+      - The freshness table uses the new jobs.
+      - The ISS shows EST. SIZE 399 m².
+      - Groups come from our rules, as CelesTrak is blocked, so the ADD OBJ group filter offers 15 groups, down from 47.
+      - "Satellite groups" in the freshness table stays empty until CelesTrak runs once.
+    - **Old files still on LIVE:** `orbitalObjects.db`, `onOrbitStats.db` and `gcat.db.bak` remain in `databases/` until step 15.
+
+    Written and rehearsed on DEV beforehand:
     - **`scripts/migrateLive.py`** runs on the server and is a dry run unless given `--apply`. In order it:
       1. checks preconditions (old layout present, new absent, SQLite 3.24 or later, `spacetrack.env`, `quick_check` on every DB, disk space, no rename conflicts), and reports whether CelesTrak is enabled;
       2. saves the crontab to the backup folder, removes the LCARS-FAS jobs, and waits up to 30 min for running ones;
