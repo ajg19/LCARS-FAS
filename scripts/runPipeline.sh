@@ -11,7 +11,7 @@
 #
 # Steps 3-4 need step 1 (and 3 also needs 2); they are independent of each
 # other. Step 5 needs the current orbits from 1-2 (and GCAT's ownership,
-# from the separate weekly ingestGcat.py -- it skips itself until gcat.db
+# from the separate weekly ingestGcat.py -- it skips itself until ingestionGCAT.db
 # exists). Every step is idempotent, so 3-5 run on every pass rather than
 # trying to detect whether new objects were actually added.
 #

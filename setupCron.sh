@@ -55,7 +55,7 @@ crontab -l 2>/dev/null | grep -v "$MARKER" > "$TMPFILE"
 # via scripts/runPipeline.sh so the enrichment steps can only start after
 # ingestion returns; flock -n makes a slow run skip the next tick rather
 # than overlap it. The wrapper writes its own consolidated pipeline_cron.log.
-# GCAT (its own gcat.db) is fetched weekly, Sunday 03:00 server time -- GCAT
+# GCAT (its own ingestionGCAT.db) is fetched weekly, Sunday 03:00 server time -- GCAT
 # updates nightly, but its ~30 MB is not worth re-fetching more often, and
 # unchanged files are skipped anyway (If-Modified-Since).
 #

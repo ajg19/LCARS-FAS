@@ -19,7 +19,7 @@ recent:
     python scripts/pruneNews.py --dry-run --months 1
     python scripts/pruneNews.py
 
-Deletions are permanent -- back up databases/space_news.db first.
+Deletions are permanent -- back up databases/ingestionNews.db first.
 """
 
 import argparse

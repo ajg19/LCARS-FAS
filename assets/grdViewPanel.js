@@ -10,7 +10,7 @@
    eye (see Satellites below and assets/grdViewSatWorker.js).
 
    Stars, constellation lines and labels come from api/sky/catalogue
-   (databases/skyCatalogue.db, J2000). Everything else is calculated in
+   (databases/ingestionSkyCatalogue.db, J2000). Everything else is calculated in
    the browser with Astronomy Engine (assets/astronomy/): one rotation
    matrix per redraw takes every star from J2000 to the observer's
    horizontal frame (x north, y west, z zenith), with precession and

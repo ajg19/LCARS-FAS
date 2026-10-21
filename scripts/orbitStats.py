@@ -6,7 +6,7 @@ Population: the NORAD catalogue (orbitalObjects.db -- CelesTrak and
 Space-Track, refreshed by the orbital pipeline every 12 h): every object
 that has not decayed -- payloads (objectType PAY), rocket bodies, debris and
 unknown or untyped objects -- with its CURRENT perigee/apogee.
-GCAT (gcat.db, scripts/ingestGcat.py, weekly) is joined in by NORAD number
+GCAT (ingestionGCAT.db, scripts/ingestGcat.py, weekly) is joined in by NORAD number
 only for ownership (state, owner organisations) and its payload category.
 GCAT's own perigee/apogee are the orbit a satellite was first placed in
 (e.g. Starlinks at ~280 km before raising to ~470 km), so they are never

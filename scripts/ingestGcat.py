@@ -1,5 +1,5 @@
 """Server side script loading Jonathan McDowell's General Catalog of
-Artificial Space Objects (GCAT) into databases/gcat.db.
+Artificial Space Objects (GCAT) into databases/ingestionGCAT.db.
 
 One weekly download serving two sections:
   * Launches -- which payloads flew on which launch (GCAT's launch log),

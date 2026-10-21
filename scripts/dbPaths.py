@@ -1,14 +1,16 @@
 """Where every database lives -- the single place DB paths and names are
 defined, for the ingestion scripts, server.py and 0_tools/bugs.py.
 
-The folder is databases/ (0_documentation/dbRefactorPlan.md, step 4).
-Until the live server is migrated (step 12) its folder is still called
-ingestionDBs/, so DB_DIR falls back to that name when databases/ doesn't
-exist -- master stays deployable throughout the refactor. Remove the
-fallback in step 15.
+The folder is databases/ (0_documentation/dbRefactorPlan.md, step 4) and
+the files follow the ingestion<Source>.db / site<Type>.db / inbox<Name>.db
+convention (step 8 onward). Until the live server is migrated (step 12)
+it still has the old folder, ingestionDBs/, with the old file names. So
+where only ingestionDBs/ exists, DB_DIR falls back to it and dbPath()
+maps each new name to its old one (LEGACY_NAMES) -- master stays
+deployable throughout the refactor. Remove both fallbacks in step 15.
 
-File names are still the pre-refactor ones; step 8 renames them to the
-ingestion<Source>.db / site<Type>.db / inbox<Name>.db convention.
+Always build a path with dbPath(NAME); never join DB_DIR and a name
+yourself, or the old-name mapping is bypassed.
 """
 
 import os
@@ -30,24 +32,37 @@ def dbDir(root=ROOT):
 
 
 DB_DIR = dbDir()
+LEGACY = os.path.basename(DB_DIR) == LEGACY_DB_DIR_NAME
 
-NEWS_DB = 'space_news.db'
-ORBITAL_DB = 'orbitalObjects.db'
-GCAT_DB = 'gcat.db'
-STATS_DB = 'onOrbitStats.db'
-SKY_DB = 'skyCatalogue.db'
-GROUND_SEGMENT_DB = 'groundSegmentAssets.db'
-BUG_REPORTS_DB = 'bugReports.db'
-
-# Ingestion databases under the new convention (one per source).
+# Ingestion databases, one per source.
 SPACETRACK_DB = 'ingestionSpaceTrack.db'
 CELESTRAK_DB = 'ingestionCelesTrak.db'
 SATNOGS_DB = 'ingestionSatNOGS.db'
+GCAT_DB = 'ingestionGCAT.db'
+NEWS_DB = 'ingestionNews.db'
+GROUND_SEGMENT_DB = 'ingestionGroundSegment.db'
+SKY_DB = 'ingestionSkyCatalogue.db'
+
+# Pre-refactor databases the website still reads until the publish step
+# (step 9) replaces them with site<Type>.db files.
+ORBITAL_DB = 'orbitalObjects.db'
+STATS_DB = 'onOrbitStats.db'
+
+# Written by the website (renamed inboxBugReports.db at step 12).
+BUG_REPORTS_DB = 'bugReports.db'
+
+# New name -> the name the file still has in a legacy ingestionDBs/ folder.
+LEGACY_NAMES = {
+    GCAT_DB: 'gcat.db',
+    NEWS_DB: 'space_news.db',
+    GROUND_SEGMENT_DB: 'groundSegmentAssets.db',
+    SKY_DB: 'skyCatalogue.db',
+}
 
 
 def dbPath(name):
     """Full path of database file `name` (one of the *_DB names above)."""
-    return os.path.join(DB_DIR, name)
+    return os.path.join(DB_DIR, LEGACY_NAMES.get(name, name) if LEGACY else name)
 
 
 # The live server's app folder, for tools that reach it over SSH.

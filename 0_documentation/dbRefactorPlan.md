@@ -1,6 +1,6 @@
 # Database and source refactor plan
 
-Agreed 2026-10-21 (Al + Claude). Status: steps 1-7 done on DEV (2026-10-21); step 8 next. Decisions A-D are settled. LIVE still uses `ingestionDBs/`, so `dbPaths.py` falls back to that name until step 12.
+Agreed 2026-10-21 (Al + Claude). Status: steps 1-8 done on DEV (2026-10-21); step 9 next. Decisions A-D are settled. LIVE still uses `ingestionDBs/` with the old file names, so `dbPaths.py` falls back to that folder and maps each new name to its old one until step 12.
 
 ## Conventions
 
@@ -88,7 +88,7 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-7 done on DEV (2026-10-21); ste
   - They are built locally, committed to git, and uploaded by `deployToGoDaddy.sh`. Every other file in `databases/` stays excluded from git and from the deploy.
   - On LIVE, the deploy (or the migration script) then publishes `siteGroundSegment.db` and `siteSky.db`.
   - The server never needs the xlsx, the star catalogues or openpyxl.
-  - The ground-segment builder moves into the repo as `scripts/ingestGroundSegment.py`, from `DEV/LCARS/rschGrdSgmt/build_ground_segment_db.py`.
+  - The ground-segment builder moves into the repo as `scripts/ingestionGroundSegment.py`, from `DEV/LCARS/rschGrdSgmt/build_ground_segment_db.py`.
 
 ## Steps
 
@@ -146,14 +146,18 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-7 done on DEV (2026-10-21); ste
      - **Unlinked, 1,189:** 792 re-entered, 344 not in GCAT (placeholders never catalogued) and a few deep-space. Only 19 that GCAT lists as in orbit remain unlinked.
    - **Deferred to step 11:** removing the SatNOGS code from `ingestOrbitalData.py` and retiring `ingestSatnogsRf.py`.
 
-8. **Renames and reference builders.**
-   - `gcat.db` becomes `ingestionGCAT.db`; `gcatBrightness` moves out.
-   - `space_news.db` becomes `ingestionNews.db`. Its snake_case columns stay unless Al says otherwise.
-   - Ground segment (decision D):
-     - Move `DEV/LCARS/rschGrdSgmt/build_ground_segment_db.py` into the repo as `scripts/ingestGroundSegment.py`, using `dbPaths.py` and openpyxl. Read the master xlsx in place and never modify it.
-     - Rebuild `ingestionGroundSegment.db`, then check it against the existing `groundSegmentAssets.db` (312 rows).
-   - Sky catalogue: point `buildSkyCatalogue.py` at `ingestionSkyCatalogue.db` and rebuild.
-   - `.gitignore`: ignore `databases/*` except those two reference DBs.
+8. **Renames and reference builders.** DONE 2026-10-21.
+   - **New names on DEV:** `gcat.db` → `ingestionGCAT.db`, `space_news.db` → `ingestionNews.db` (snake_case columns kept), `groundSegmentAssets.db` → `ingestionGroundSegment.db`, `skyCatalogue.db` → `ingestionSkyCatalogue.db`.
+   - **LIVE still works.** `dbPaths.LEGACY_NAMES` maps each new name to its old one wherever only `ingestionDBs/` exists, and `0_tests/test_dbPaths.py` covers it. Every path now goes through `dbPath()`, including `server.py`'s.
+   - **Ground segment (decision D):** the builder is now `scripts/ingestionGroundSegment.py`.
+     - It reads `DEV/LCARS/rschGrdSgmt/grndSgmntAssets_master.xlsx` in place, read-only. The file's checksum was unchanged after the run.
+     - It builds into a `.tmp` file and swaps it in.
+     - Table and column names are unchanged, since the panel reads them.
+     - The rebuilt database matched the old one exactly: 312 rows and the same schema.
+   - **Sky catalogue:** `buildSkyCatalogue.py` writes `ingestionSkyCatalogue.db`. The rebuild matched the old file in every content table; only the build timestamp in `skyBuild` differs.
+   - **`.gitignore`:** ignores `databases/*` except the two reference DBs, which are now committed.
+   - **Deferred to step 9:** moving `gcatBrightness` out of `ingestionGCAT.db`. It is derived data that becomes a publish stage, and until then LIVE's site reads it from the GCAT database.
+   - **Checks:** 247 tests pass, and the API matches the step 2 baseline (358 of 359 endpoints; `/api/status` is clock-dependent).
 
 ### Publish steps
 

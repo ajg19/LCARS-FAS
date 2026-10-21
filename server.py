@@ -43,7 +43,7 @@ DB_DIR = dbPaths.DB_DIR
 
 
 def open_db(filename, read_only=False):
-    path = os.path.join(DB_DIR, filename)
+    path = dbPaths.dbPath(filename)
     if read_only:
         conn = sqlite3.connect(f'file:{path}?mode=ro', uri=True, check_same_thread=False)
     else:
@@ -55,7 +55,7 @@ def open_db(filename, read_only=False):
 # Connect to the local space news SQLite database.
 db = open_db(NEWS_DB)
 
-# Ground segment assets DB (built by rschGrdSgmt/build_ground_segment_db.py)
+# Ground segment assets DB (built by scripts/ingestionGroundSegment.py)
 # -- a separate file/connection, unrelated to the news database above.
 ground_segment_db = open_db(GROUND_SEGMENT_DB)
 
@@ -181,12 +181,12 @@ STATUS_SOURCES = [
 
 
 def gcat_db():
-    """gcat.db, opened read-only on first use -- or None while it doesn't
+    """ingestionGCAT.db, opened read-only on first use -- or None while it doesn't
     exist yet (before scripts/ingestGcat.py's first run). Opened lazily,
     not at import like the other databases, so a missing file can't stop
     the whole server starting."""
     global _gcat_db
-    if _gcat_db is None and os.path.exists(os.path.join(DB_DIR, GCAT_DB)):
+    if _gcat_db is None and os.path.exists(dbPaths.dbPath(GCAT_DB)):
         _gcat_db = open_db(GCAT_DB, read_only=True)
     return _gcat_db
 
@@ -199,7 +199,7 @@ def stats_db():
     opened read-only on first use -- or None until it exists. Lazy for the
     same reason as gcat_db()."""
     global _stats_db
-    if _stats_db is None and os.path.exists(os.path.join(DB_DIR, STATS_DB)):
+    if _stats_db is None and os.path.exists(dbPaths.dbPath(STATS_DB)):
         _stats_db = open_db(STATS_DB, read_only=True)
     return _stats_db
 
@@ -271,7 +271,7 @@ def handle_status(start_response):
         return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
 
 
-# GRD VIEW sky view: the fixed sky from databases/skyCatalogue.db (built
+# GRD VIEW sky view: the fixed sky from databases/ingestionSkyCatalogue.db (built
 # once by scripts/buildSkyCatalogue.py), read once and the JSON kept until
 # the file changes; browser-cached (cached_json_response()). Compact
 # arrays, positions in J2000 degrees:
@@ -325,7 +325,7 @@ def cached_json_response(environ, start_response, cache, build, db_files, max_ag
     changes; gzipped when the browser accepts it; with ETag / Cache-Control,
     answering a matching If-None-Match with 304 Not Modified."""
     try:
-        key = tuple(os.path.getmtime(os.path.join(DB_DIR, f)) for f in db_files)
+        key = tuple(os.path.getmtime(dbPaths.dbPath(f)) for f in db_files)
         if cache.get('key') != key:
             body = json.dumps(build(), separators=(',', ':')).encode('utf-8')
             cache.update(key=key, json=body, gzip=gzip.compress(body, compresslevel=6),
@@ -356,7 +356,7 @@ def cached_json_response(environ, start_response, cache, build, db_files, max_ag
 # is VISIBLE_LIMIT_MAG or brighter: standard + 5 log10(perigee / 1000 km)
 # - 1.24. That drops debris and unknown objects (no brightness estimate,
 # by design) and almost everything in high orbits, before anything is sent.
-# Brightness from gcat.db gcatBrightness (scripts/estimateBrightness.py).
+# Brightness from ingestionGCAT.db gcatBrightness (scripts/estimateBrightness.py).
 # Rebuilt when either database file changes (every pipeline / GCAT run).
 # Compact rows, with no names or other details -- those are fetched one
 # object at a time when needed (api/sky/object):
@@ -621,7 +621,7 @@ def launch_log_where(query_params):
 def handle_launches_per_year(query_params, start_response):
     """LAUNCHES line chart: orbital and deep-space launch attempts per year
     (GCAT launch codes O* and D*, successes and failures; suborbital N*/X*
-    tests left out), from gcat.db's launch log -- one row per payload, so
+    tests left out), from ingestionGCAT.db's launch log -- one row per payload, so
     launches are counted by distinct launch tag. Counted on request: a few
     tens of thousands of rows."""
     try:
@@ -659,7 +659,7 @@ LAUNCH_COUNTRY_GROUPS = {'F': 'EU', 'I-ESA': 'EU', 'I-ELDO': 'EU', 'I': 'EU', 'D
 def handle_launches_by_country(query_params, start_response):
     """LAUNCHES stacked bar chart: orbital and deep-space launch attempts per
     year by launch-vehicle country (LAUNCH_COUNTRY_SERIES), counted on
-    request from gcat.db's launch log; W/O SPACEX leaves out SpaceX's."""
+    request from ingestionGCAT.db's launch log; W/O SPACEX leaves out SpaceX's."""
     try:
         spacex, outcome, where, params = launch_log_where(query_params)
         conn = gcat_db()

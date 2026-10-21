@@ -12,7 +12,7 @@
 // Which ground segment asset types are toggled on for map plotting,
 // persisted across reloads via localStorage rather than reset every visit.
 // The 12 values here match the `type` column in the ground_segment_assets
-// table exactly (see rschGrdSgmt/build_ground_segment_db.py) -- these are
+// table exactly (see scripts/ingestionGroundSegment.py) -- these are
 // the strings map-filtering code will eventually match against, not just
 // display labels.
 const ASSET_TYPES = [

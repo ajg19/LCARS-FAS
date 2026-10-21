@@ -3,7 +3,7 @@ succeeded, and how many records it changed -- for the landing page's
 data-freshness table (api/status in server.py).
 
 Each job logs into its OWN database's ingestionRuns table (news into
-space_news.db, the orbital pipeline into orbitalObjects.db), keeping to
+ingestionNews.db, the orbital pipeline into orbitalObjects.db), keeping to
 the one-database-per-domain rule rather than sharing a log file.
 
 Usage, from a job's __main__ block:

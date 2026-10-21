@@ -338,8 +338,8 @@ def test_svg_asset_has_correct_content_type():
 
 
 def test_sky_catalogue_returns_stars_lines_and_constellations():
-    if not os.path.exists(os.path.join(server.DB_DIR, 'skyCatalogue.db')):
-        pytest.skip('skyCatalogue.db not built (scripts/buildSkyCatalogue.py)')
+    if not os.path.exists(server.dbPaths.dbPath(server.SKY_DB)):
+        pytest.skip('sky catalogue not built (scripts/buildSkyCatalogue.py)')
     status, headers, body = call_app('/api/sky/catalogue')
     assert status == '200 OK'
     data = json.loads(body)
@@ -360,8 +360,8 @@ def test_sky_object_returns_404_for_an_unknown_object():
 
 
 def test_sky_catalogue_is_browser_cacheable_and_revalidates_with_304():
-    if not os.path.exists(os.path.join(server.DB_DIR, 'skyCatalogue.db')):
-        pytest.skip('skyCatalogue.db not built (scripts/buildSkyCatalogue.py)')
+    if not os.path.exists(server.dbPaths.dbPath(server.SKY_DB)):
+        pytest.skip('sky catalogue not built (scripts/buildSkyCatalogue.py)')
     environ = {'REQUEST_METHOD': 'GET', 'PATH_INFO': '/api/sky/catalogue', 'QUERY_STRING': '',
                'HTTP_ACCEPT_ENCODING': 'gzip'}
     captured = {}
@@ -401,7 +401,7 @@ def test_nested_asset_is_served():
     '/deployToGoDaddy.sh',
     '/spacetrack.env.example',
     '/scripts/readNews.py',
-    '/databases/groundSegmentAssets.db',
+    '/databases/ingestionGroundSegment.db',
     '/ingestionDBs/groundSegmentAssets.db',
     '/.gitignore',
     '/bugsDB.xlsx',
@@ -409,7 +409,7 @@ def test_nested_asset_is_served():
     '/assets/../../server.py',
     '/assets/leaflet/../../server.py',
     r'/assets/..\server.py',   # Windows separator
-    '/assets/../databases/groundSegmentAssets.db',
+    '/assets/../databases/ingestionGroundSegment.db',
     '/assets/../ingestionDBs/groundSegmentAssets.db',
     '/assets\x00.js',
 ])
@@ -437,6 +437,7 @@ def test_get_param_returns_none_when_absent():
 @pytest.fixture
 def bug_db(tmp_path, monkeypatch):
     monkeypatch.setattr(server, 'DB_DIR', str(tmp_path))
+    monkeypatch.setattr(server.dbPaths, 'DB_DIR', str(tmp_path))  # open_db goes through dbPath
     monkeypatch.setattr(server, '_bug_db', None)
     yield tmp_path
     if server._bug_db is not None:

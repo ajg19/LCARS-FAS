@@ -10,13 +10,15 @@ __pycache__/
 bugsDB.xlsx.bak
 
 # Databases are never committed: each is rebuilt or kept current by its own
-# ingestion job (news, orbital pipeline, GCAT, orbitStats), the live server
-# keeps its own, and committed copies would republish Space-Track data.
-# The one exception is groundSegmentAssets.db, which can't easily be rebuilt.
+# ingestion job, the live server keeps its own, and committed copies would
+# republish Space-Track data. The exceptions are the two reference
+# databases, built on the laptop from files the server doesn't have and
+# carried to it by the deploy (dbRefactorPlan.md, decision D).
 # ingestionDBs/ is the folder's old name (scripts/dbPaths.py); kept here
 # until every working copy has been renamed to databases/.
 databases/*
-!databases/groundSegmentAssets.db
+!databases/ingestionGroundSegment.db
+!databases/ingestionSkyCatalogue.db
 ingestionDBs/*
 !ingestionDBs/groundSegmentAssets.db
 

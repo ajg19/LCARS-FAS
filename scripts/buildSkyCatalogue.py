@@ -1,4 +1,4 @@
-"""Builds databases/skyCatalogue.db: the fixed sky behind GRD VIEW's sky
+"""Builds databases/ingestionSkyCatalogue.db: the fixed sky behind GRD VIEW's sky
 view -- the stars, star names, constellations, the Milky Way and the bright
 deep-sky objects.
 

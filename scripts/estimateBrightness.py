@@ -1,6 +1,6 @@
 """Estimates the standard magnitude of every payload in orbit -- satellites,
 operational or defunct, and space stations -- and every rocket body (spent
-stages, among the brighter objects in the sky) into databases/gcat.db
+stages, among the brighter objects in the sky) into databases/ingestionGCAT.db
 table gcatBrightness, for GRD VIEW. Debris and unknown objects are
 deliberately not estimated: they get no row.
 
