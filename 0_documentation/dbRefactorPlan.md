@@ -1,6 +1,6 @@
 # Database and source refactor plan
 
-Agreed 2026-10-21 (Al + Claude). Status: steps 1-9 done on DEV (2026-10-21); step 10 next, with the open questions under step 9 to settle. Decisions A-D are settled. LIVE still uses `ingestionDBs/` with the old file names, so `dbPaths.py` falls back to that folder and maps each new name to its old one until step 12.
+Agreed 2026-10-21 (Al + Claude). Status: steps 1-9 done on DEV (2026-10-21); step 10 next. The step 9 questions are all settled. Decisions A-D are settled. LIVE still uses `ingestionDBs/` with the old file names, so `dbPaths.py` falls back to that folder and maps each new name to its old one until step 12.
 
 ## Conventions
 
@@ -193,7 +193,7 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-9 done on DEV (2026-10-21); ste
    - **Options:**
      - `--no-celestrak` builds groups from our rules only, as LIVE would while blocked.
      - `--force` overrides the sanity check.
-   - **Parameters chosen, for Al to confirm:**
+   - **Parameters, confirmed by Al 2026-10-21:**
      - `MAX_ELEMENT_AGE_DAYS` = 30, matching Space-Track's own catalogue query.
      - Recently decayed objects are kept for 30 days, with their decay date.
      - `CELESTRAK_MAX_AGE_DAYS` = 14.
@@ -263,7 +263,7 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-9 done on DEV (2026-10-21); ste
           - `satcat.csv` added 20,241 more (32,931 in all, many for decayed objects).
           - The site now has 13,164 objects with EST. SIZE, against 12,690 on LIVE, with identical values wherever both have one.
           - Only 3,464 of 18,904 payloads in orbit have a figure: CelesTrak leaves RCS blank for most newer satellites, Starlink included.
-     4. **Parameters.** Confirm the four values above.
+     4. **Parameters, DECIDED 2026-10-21: kept as chosen.** 30 days maximum element age, 30 days for recent decays, CelesTrak available for 14 days after a fetch, and 10% maximum drop.
 
 ### Website
 
