@@ -1,6 +1,6 @@
 # Database and source refactor plan
 
-Agreed 2026-10-21 (Al + Claude). Status: steps 1-6 done on DEV (2026-10-21); step 7 next. Decisions A-D are settled. LIVE still uses `ingestionDBs/`, so `dbPaths.py` falls back to that name until step 12.
+Agreed 2026-10-21 (Al + Claude). Status: steps 1-7 done on DEV (2026-10-21); step 8 next. Decisions A-D are settled. LIVE still uses `ingestionDBs/`, so `dbPaths.py` falls back to that name until step 12.
 
 ## Conventions
 
@@ -115,7 +115,18 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-6 done on DEV (2026-10-21); ste
    - **Changes and failures:** memberships added or removed count as changes (decision C1). A pass in which no group succeeds is recorded as failed. A group that fails keeps its previous membership.
    - **First DEV run** (3 groups only): active 16,765, stations 21, starlink 11,121. Compared with LIVE's frozen August lists, 851 objects became active and 189 stopped being active.
 
-7. **SatNOGS.** `ingestionSatNOGS.db`: one script for TLEs and transmitters, replacing the SatNOGS parts of `ingestOrbitalData.py` and `ingestSatnogsRf.py`.
+7. **SatNOGS.** DONE 2026-10-21: `scripts/ingestionSatNOGS.py` writes `ingestionSatNOGS.db`, with tests in `0_tests/test_ingestionSatNOGS.py` and fixtures in `0_tests/fixtures/`.
+   - **`tle` table:** one row per NORAD ID. It holds SatNOGS's fields including `tleSource`, the decoded elements (epoch in Space-Track's format) and `lastSeen`.
+     - A row is replaced only by a later epoch, or by the same epoch with a changed TLE or source.
+     - Objects that leave the feed count as changes.
+   - **`transmitters` table:** every record, keyed by uuid and replaced wholesale.
+   - **Moves to step 9:** picking each satellite's main downlink and uplink (`choose_rf` in `ingestSatnogsRf.py`).
+   - **Failures:** each feed fails independently and keeps its last good table, and the run is recorded as failed.
+   - **First DEV run:** 1,736 TLEs and 5,121 transmitters covering 2,691 objects.
+     - 1,572 TLEs are copies of Space-Track's, and the epochs are identical wherever both have the object.
+     - About 268 objects with element sets under 30 days old are absent from Space-Track's current catalogue.
+     - 235 TLEs are more than 30 days old, back to 1975; the maximum-age rule drops them.
+   - **Deferred to step 11:** removing the SatNOGS code from `ingestOrbitalData.py` and retiring `ingestSatnogsRf.py`.
 8. **Renames and reference builders.**
    - `gcat.db` becomes `ingestionGCAT.db`; `gcatBrightness` moves out.
    - `space_news.db` becomes `ingestionNews.db`. Its snake_case columns stay unless Al says otherwise.

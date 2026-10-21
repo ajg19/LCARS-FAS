@@ -42,6 +42,7 @@ BUG_REPORTS_DB = 'bugReports.db'
 # Ingestion databases under the new convention (one per source).
 SPACETRACK_DB = 'ingestionSpaceTrack.db'
 CELESTRAK_DB = 'ingestionCelesTrak.db'
+SATNOGS_DB = 'ingestionSatNOGS.db'
 
 
 def dbPath(name):
