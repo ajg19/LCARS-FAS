@@ -1,36 +1,53 @@
-"""SatNOGS ingestion: keeps databases/ingestionSatNOGS.db holding what the
-SatNOGS DB (db.satnogs.org, crowd-sourced, CC BY-SA) currently says --
-its TLEs and its radio transmitter records.
+"""SatNOGS ingestion: keeps databases/ingestionSatNOGS.db holding the
+SatNOGS DB's (db.satnogs.org, crowd-sourced, CC BY-SA) radio transmitter
+records, and the crosswalk from SatNOGS's own satellite numbers to
+NORAD's.
 
 Step 7 of 0_documentation/dbRefactorPlan.md. One script for both SatNOGS
 feeds, which used to be read by ingestOrbitalData.py (TLEs) and
 ingestSatnogsRf.py (transmitters). It only fetches and stores; the
-publish step (step 9) decides what reaches the website:
-  - orbits: SatNOGS ranks below Space-Track, and very old element sets
-    are dropped by the publish step's maximum-age rule;
-  - radio: picking each satellite's main downlink / uplink from its
-    transmitter records (choose_rf in ingestSatnogsRf.py) is publish
-    work, so every record is kept here as SatNOGS gives it.
+publish step (step 9) decides what reaches the website.
+
+Why the TLE feed is kept, and why it supplies no orbits (decided
+2026-10-21). SatNOGS only publishes TLE text, never OMM, and doesn't
+support Alpha-5, so since NORAD's 5-digit catalogue numbers ran out in
+July 2026 it can't carry a new satellite's real number. A newly launched
+satellite appears under a SatNOGS placeholder number (98xxx / 99xxx),
+usually with Space-Track's elements for the real object re-encoded under
+that number; most of the rest of the feed is plain copies of Space-Track
+TLEs. Orbits therefore come from Space-Track alone. But the transmitter
+records -- the link budget's real frequencies -- are filed under
+SatNOGS's numbers, and for satellites launched since July neither
+norad_follow_id nor the satellites endpoint links a placeholder to
+NORAD's object. The international designator in the TLE line does (e.g.
+SatNOGS 98193 carries 2026-229K), so the feed is kept as that crosswalk.
+The publish step links each transmitter to a NORAD object by, in order:
+  1. its norad_follow_id;
+  2. the designator from SatNOGS's TLE for its norad_cat_id, matched to
+     Space-Track's OBJECT_ID;
+  3. its norad_cat_id.
 
 Feeds -- one unauthenticated GET each, the whole set every time:
-  tle           ~1.7k objects (amateur / CubeSat coverage). SatNOGS only
-                publishes TLE text, never OMM, so this is the one place
-                the fixed TLE columns are still decoded (tleToElements).
-                tle_source says where SatNOGS got each one -- often
-                Space-Track itself.
+  tle           ~1.7k records. tle_source says where SatNOGS got each one.
   transmitters  ~5k records, one per transmitter / transceiver /
                 transponder.
 
 Storage:
-  tle           one row per NORAD ID: SatNOGS's fields, the decoded
-                elements, fetchedAt and lastSeen (the last fetch that
-                listed it). A row is only replaced by a later epoch, or
-                the same epoch with a changed TLE or source.
+  tle           the crosswalk, one row per SatNOGS number (noradID): the
+                catalogue number and international designator from the
+                TLE line, the name, source, epoch and raw TLE lines,
+                fetchedAt and lastSeen (the last fetch that listed it).
+                No orbital elements are decoded. A row is only replaced
+                by a later epoch, or the same epoch with a changed TLE,
+                source or name.
   transmitters  one row per record (keyed by SatNOGS's uuid), replaced
-                wholesale on every successful fetch.
+                wholesale on every successful fetch. Picking each
+                satellite's main downlink / uplink (choose_rf in
+                ingestSatnogsRf.py) is publish work, so every record is
+                kept as SatNOGS gives it.
 
-"changes" -- what triggers a publish (decision C1) -- counts TLEs
-inserted or replaced, objects that left the TLE feed, and transmitter
+"changes" -- what triggers a publish (decision C1) -- counts crosswalk
+rows inserted or replaced, rows that left the TLE feed, and transmitter
 records added, removed or updated. A feed that fails leaves its table
 as it was; the run is then recorded as failed.
 """
@@ -85,32 +102,33 @@ TX_FIELDS = (
 )
 TX_COLUMNS = [column for _, column, _ in TX_FIELDS]
 
-ELEMENT_COLUMNS = ('epoch', 'meanMotion', 'eccentricity', 'inclination', 'raOfAscNode',
-                   'argOfPericenter', 'meanAnomaly', 'bstar', 'meanMotionDot', 'meanMotionDdot')
-TLE_COLUMNS = ('noradID', 'objectName', 'tle0', 'tle1', 'tle2', 'tleSource', 'satID', 'updated') + ELEMENT_COLUMNS
+TLE_COLUMNS = ('noradID', 'tleCatalogNumber', 'designator', 'objectName', 'tleSource', 'satID', 'updated',
+               'epoch', 'tle0', 'tle1', 'tle2')
 
 
 def openDb(path=None):
     db = sqlite3.connect(path or dbPath(SATNOGS_DB))
     db.execute('PRAGMA journal_mode = WAL')
-    elements = ',\n            '.join(f'{c} {"TEXT" if c == "epoch" else "REAL"}' for c in ELEMENT_COLUMNS)
     tx = ',\n            '.join(f'{column} {"TEXT" if kind == "JSON" else kind}'
                                 + (' PRIMARY KEY' if column == 'uuid' else '')
                                 for _, column, kind in TX_FIELDS)
     db.executescript(f'''
         CREATE TABLE IF NOT EXISTS tle (
-            noradID    INTEGER PRIMARY KEY,
-            objectName TEXT,
-            tle0       TEXT,
-            tle1       TEXT NOT NULL,
-            tle2       TEXT NOT NULL,
-            tleSource  TEXT,
-            satID      TEXT,
-            updated    TEXT,
-            {elements},
-            fetchedAt  TEXT NOT NULL,
-            lastSeen   TEXT NOT NULL
+            noradID          INTEGER PRIMARY KEY,
+            tleCatalogNumber INTEGER,
+            designator       TEXT,
+            objectName       TEXT,
+            tleSource        TEXT,
+            satID            TEXT,
+            updated          TEXT,
+            epoch            TEXT NOT NULL,
+            tle0             TEXT,
+            tle1             TEXT NOT NULL,
+            tle2             TEXT NOT NULL,
+            fetchedAt        TEXT NOT NULL,
+            lastSeen         TEXT NOT NULL
         );
+        CREATE INDEX IF NOT EXISTS tleByDesignator ON tle (designator);
         CREATE TABLE IF NOT EXISTS transmitters (
             {tx}
         );
@@ -120,25 +138,12 @@ def openDb(path=None):
     return db
 
 
-# --- TLE decoding -----------------------------------------------------------
-# Column positions follow the TLE spec (and satellite.js's twoline2satrec,
-# so results agree with it): line 1 cols 19-32 epoch, 34-43 mean motion
-# dot (plain decimal), 45-52 / 54-61 mean motion ddot / bstar (assumed
-# decimal point); line 2 cols 9-16 / 18-25 / 27-33 / 35-42 / 44-51 / 53-63
-# inclination / RAAN / eccentricity / arg of perigee / mean anomaly /
-# mean motion.
-
-def assumedDecimal(field):
-    """' 17299-3' -> 0.17299e-3 (TLE 'assumed decimal point' notation)."""
-    field = field.strip()
-    sign = '-' if field.startswith('-') else ''
-    field = field.lstrip('+-')
-    mantissa = field[:-2].strip() or '0'
-    return float(f'{sign}0.{mantissa}E{field[-2:]}')
-
+# --- TLE crosswalk fields -----------------------------------------------------
+# Line 1 columns (TLE spec): 3-7 catalogue number, 10-17 international
+# designator (YYNNNPPP), 19-32 epoch.
 
 def tleEpoch(line1):
-    """ISO epoch from TLE line 1, matching Space-Track's format
+    """ISO epoch from TLE line 1, in Space-Track's format
     (YYYY-MM-DDTHH:MM:SS.ffffff, UTC, no zone suffix)."""
     field = line1[18:32].strip()
     year = int(field[:2])
@@ -147,40 +152,44 @@ def tleEpoch(line1):
     return epoch.strftime('%Y-%m-%dT%H:%M:%S.%f')
 
 
-def tleToElements(line1, line2):
-    return {
-        'epoch': tleEpoch(line1),
-        'meanMotionDot': float(line1[33:43]),
-        'meanMotionDdot': assumedDecimal(line1[44:52]),
-        'bstar': assumedDecimal(line1[53:61]),
-        'inclination': float(line2[8:16]),
-        'raOfAscNode': float(line2[17:25]),
-        'eccentricity': float(f'.{line2[26:33].strip()}'),
-        'argOfPericenter': float(line2[34:42]),
-        'meanAnomaly': float(line2[43:51]),
-        'meanMotion': float(line2[52:63]),
-    }
+def tleDesignator(line1):
+    """'26229K  ' -> '2026-229K', Space-Track's OBJECT_ID form; None when
+    the field is blank or malformed (some team-supplied TLEs leave it
+    empty)."""
+    field = line1[9:17].strip()
+    if len(field) < 6 or not field[:5].isdigit():
+        return None
+    year = int(field[:2])
+    return f'{2000 + year if year < 57 else 1900 + year}-{field[2:]}'
+
+
+def tleCatalogNumber(line1):
+    """The catalogue number in TLE line 1 -- for a SatNOGS placeholder
+    the placeholder itself. None if not plain digits (Alpha-5)."""
+    field = line1[2:7].strip()
+    return int(field) if field.isdigit() else None
 
 
 def tleRow(record):
-    """Our column values for one SatNOGS TLE record, or None when it
-    lacks a NORAD ID or its TLE lines don't decode."""
+    """Crosswalk values for one SatNOGS TLE record, or None when it lacks
+    a NORAD ID or its line 1 has no readable epoch."""
     norad = record.get('norad_cat_id')
     line1, line2 = record.get('tle1') or '', record.get('tle2') or ''
-    if not isinstance(norad, int) or isinstance(norad, bool) or norad <= 0:
+    if not isinstance(norad, int) or isinstance(norad, bool) or norad <= 0 or not line2:
         return None
     try:
-        elements = tleToElements(line1, line2)
+        epoch = tleEpoch(line1)
     except (ValueError, IndexError):
         return None
     tle0 = (record.get('tle0') or '').strip()
     return {
         'noradID': norad,
+        'tleCatalogNumber': tleCatalogNumber(line1),
+        'designator': tleDesignator(line1),
         'objectName': tle0[2:].strip() if tle0.startswith('0 ') else tle0,
-        'tle0': tle0 or None, 'tle1': line1, 'tle2': line2,
         'tleSource': record.get('tle_source'), 'satID': record.get('sat_id'),
-        'updated': record.get('updated'),
-        **elements,
+        'updated': record.get('updated'), 'epoch': epoch,
+        'tle0': tle0 or None, 'tle1': line1, 'tle2': line2,
     }
 
 
@@ -279,7 +288,7 @@ def runIngestion(db, fetch=fetchList):
             records = fetch(url)
             if name == 'tle':
                 changed, stored, skipped = storeTles(db, records, now)
-                notes.append(f'{stored} TLEs' + (f' ({skipped} undecodable)' if skipped else ''))
+                notes.append(f'{stored} crosswalk TLEs' + (f' ({skipped} unreadable)' if skipped else ''))
             else:
                 changed, stored = storeTransmitters(db, records)
                 notes.append(f'{stored} transmitters')

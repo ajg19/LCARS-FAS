@@ -115,18 +115,26 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-7 done on DEV (2026-10-21); ste
    - **Changes and failures:** memberships added or removed count as changes (decision C1). A pass in which no group succeeds is recorded as failed. A group that fails keeps its previous membership.
    - **First DEV run** (3 groups only): active 16,765, stations 21, starlink 11,121. Compared with LIVE's frozen August lists, 851 objects became active and 189 stopped being active.
 
-7. **SatNOGS.** DONE 2026-10-21: `scripts/ingestionSatNOGS.py` writes `ingestionSatNOGS.db`, with tests in `0_tests/test_ingestionSatNOGS.py` and fixtures in `0_tests/fixtures/`.
-   - **`tle` table:** one row per NORAD ID. It holds SatNOGS's fields including `tleSource`, the decoded elements (epoch in Space-Track's format) and `lastSeen`.
-     - A row is replaced only by a later epoch, or by the same epoch with a changed TLE or source.
-     - Objects that leave the feed count as changes.
+7. **SatNOGS.** DONE 2026-10-21, revised the same day: `scripts/ingestionSatNOGS.py` writes `ingestionSatNOGS.db`, with tests in `0_tests/test_ingestionSatNOGS.py` and fixtures in `0_tests/fixtures/`.
+   - **No orbits from SatNOGS (decided 2026-10-21).**
+     - SatNOGS serves only TLEs, never OMM, and doesn't support Alpha-5. This was checked on the web on 2026-10-21: its API has no OMM endpoint, and release 1.76 still has no Alpha-5.
+     - Since NORAD's 5-digit catalogue numbers ran out in July 2026, new satellites appear in SatNOGS under its own placeholder numbers (98xxx/99xxx), mostly carrying Space-Track's elements re-encoded.
+     - 1,572 of its 1,736 TLEs are copies of Space-Track's.
+     - Orbits therefore come from Space-Track only.
+   - **`tle` table: an ID crosswalk only.** One row per SatNOGS number, holding:
+     - the catalogue number and international designator from the TLE line;
+     - name, source, epoch, the raw lines, and `lastSeen`.
+
+     No elements are decoded. A row is replaced only by a later epoch, or by the same epoch with a changed TLE, source or name. Rows that leave the feed count as changes.
+   - **Why keep the TLE feed.** For satellites launched since July, neither `norad_follow_id` nor SatNOGS's satellites endpoint links a placeholder to NORAD's object, but the designator in the TLE line does. For example, SatNOGS 98193 (JACK-007) carries 2026-229K.
    - **`transmitters` table:** every record, keyed by uuid and replaced wholesale.
    - **Moves to step 9:** picking each satellite's main downlink and uplink (`choose_rf` in `ingestSatnogsRf.py`).
    - **Failures:** each feed fails independently and keeps its last good table, and the run is recorded as failed.
-   - **First DEV run:** 1,736 TLEs and 5,121 transmitters covering 2,691 objects.
-     - 1,572 TLEs are copies of Space-Track's, and the epochs are identical wherever both have the object.
-     - About 268 objects with element sets under 30 days old are absent from Space-Track's current catalogue.
-     - 235 TLEs are more than 30 days old, back to 1975; the maximum-age rule drops them.
+   - **DEV run:** 1,736 crosswalk rows (1,707 with a designator) and 5,121 transmitters for 2,691 satellites.
+     - **Linked to a Space-Track object:** 1,307 via the designator, 192 via `norad_follow_id`, 3 via their own ID.
+     - **Unlinked, 1,189:** 792 re-entered, 344 not in GCAT (placeholders never catalogued) and a few deep-space. Only 19 that GCAT lists as in orbit remain unlinked.
    - **Deferred to step 11:** removing the SatNOGS code from `ingestOrbitalData.py` and retiring `ingestSatnogsRf.py`.
+
 8. **Renames and reference builders.**
    - `gcat.db` becomes `ingestionGCAT.db`; `gcatBrightness` moves out.
    - `space_news.db` becomes `ingestionNews.db`. Its snake_case columns stay unless Al says otherwise.
@@ -141,13 +149,14 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-7 done on DEV (2026-10-21); ste
 9. **`scripts/publishSite.py <type>`.** It builds `site<Type>.db.tmp` from the ingestion DBs that type depends on, ATTACHed read-only.
    - **Orbital:**
      1. Merge `orbital_objects`:
-        - priority Space-Track, then SatNOGS, with the newest epoch winning;
+        - elements from Space-Track only (CelesTrak supplies none, per decision A; SatNOGS none, per step 7);
         - drop elements older than a maximum age (to agree);
         - exclude decayed objects;
         - normalise epochs to one format and object types to codes.
      2. Build the groups using the decision A precedence. The explanatory comment sits next to these rules.
-     3. Run EIRP (`enrichEirp`), brightness (`estimateBrightness`) and ON-ORBIT/LAUNCHES stats (`orbitStats`) as stages.
-     4. Copy in the GCAT tables and columns the site reads.
+     3. Link SatNOGS transmitters to NORAD objects: by `norad_follow_id`, then by the designator from SatNOGS's TLE (matched to Space-Track's `objectID`), then by their own `norad_cat_id`. Pick each satellite's main downlink and uplink (today's `choose_rf`). This fixes a current bug: RF data attached to SatNOGS's duplicate 9xxxx rows instead of the real object.
+     4. Run EIRP (`enrichEirp`), brightness (`estimateBrightness`) and ON-ORBIT/LAUNCHES stats (`orbitStats`) as stages.
+     5. Copy in the GCAT tables and columns the site reads.
    - **News, Sky, Ground segment:** copy the tables the site reads.
    - **Every type:**
      - Copy in its sources' `ingestionRuns`.

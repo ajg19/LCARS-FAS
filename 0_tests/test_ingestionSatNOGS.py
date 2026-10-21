@@ -18,7 +18,7 @@ def fixture(name):
         return json.load(f)
 
 
-TLES = fixture('satnogsTle.json')            # ISS, NEMO-HD, OBJECT G
+TLES = fixture('satnogsTle.json')            # ISS, NEMO-HD, OBJECT G, placeholder 98193
 TRANSMITTERS = fixture('satnogsTransmitters.json')  # four records for NORAD 965
 
 
@@ -40,30 +40,35 @@ def withEpochDay(record, day):
     return {**record, 'tle1': line1[:20] + f'{day:012.8f}' + line1[32:]}
 
 
-# --- TLE decoding -------------------------------------------------------------
+# --- Crosswalk fields ---------------------------------------------------------
 
-def test_iss_decodes_to_space_tracks_own_elements():
-    # Space-Track's OMM for the same ISS element set, fetched the same day.
+def test_iss_row_has_real_number_designator_and_epoch():
     row = isn.tleRow(TLES[0])
-    assert row['noradID'] == 25544
+    assert row['noradID'] == 25544 and row['tleCatalogNumber'] == 25544
+    assert row['designator'] == '1998-067A'
     assert row['objectName'] == 'ISS (ZARYA)'
     assert row['tleSource'] == 'Space-Track.org'
-    assert row['epoch'] == '2026-10-21T11:59:19.095648'
-    assert row['meanMotion'] == pytest.approx(15.48973463)
-    assert row['eccentricity'] == pytest.approx(0.0006826)
-    assert row['inclination'] == pytest.approx(51.6330)
-    assert row['raOfAscNode'] == pytest.approx(35.0282)
-    assert row['argOfPericenter'] == pytest.approx(292.5374)
-    assert row['meanAnomaly'] == pytest.approx(67.4891)
-    assert row['bstar'] == pytest.approx(0.00017299)
-    assert row['meanMotionDot'] == pytest.approx(0.00009087)
-    assert row['meanMotionDdot'] == 0.0
+    assert row['epoch'] == '2026-10-21T11:59:19.095648'  # Space-Track's own ISS epoch, same set
+    assert 'meanMotion' not in row  # no orbits from SatNOGS
 
 
-def test_assumed_decimal_notation():
-    assert isn.assumedDecimal(' 17299-3') == pytest.approx(0.17299e-3)
-    assert isn.assumedDecimal('-11606-4') == pytest.approx(-0.11606e-4)
-    assert isn.assumedDecimal(' 00000-0') == 0.0
+def test_placeholder_carries_the_real_objects_designator():
+    # SatNOGS 98193 (JACK-007, launched 2026-10-07): a placeholder number in
+    # the TLE, but Space-Track's designator for the real object.
+    row = isn.tleRow(TLES[3])
+    assert row['noradID'] == 98193 and row['tleCatalogNumber'] == 98193
+    assert row['designator'] == '2026-229K'
+
+
+def test_designator_edge_cases():
+    line1 = '1 00005U 58002B   75042.50000000  .00000023  00000-0  28098-4 0  9997'
+    assert isn.tleDesignator(line1) == '1958-002B'
+    blank = '1 98195U          26280.50000000  .00000000  00000-0  00000-0 0  9990'
+    assert isn.tleDesignator(blank) is None
+
+
+def test_alpha5_catalogue_number_is_not_misread():
+    assert isn.tleCatalogNumber('1 A0001U 26229K   26292.94310762 ...') is None
 
 
 def test_twentieth_century_epoch():
@@ -71,16 +76,16 @@ def test_twentieth_century_epoch():
     assert isn.tleEpoch(line1).startswith('1975-02-11T12:00:00')
 
 
-def test_undecodable_or_unkeyed_records_are_skipped():
-    assert isn.tleRow({**TLES[0], 'tle2': 'garbage'}) is None
+def test_unreadable_or_unkeyed_records_are_skipped():
+    assert isn.tleRow({**TLES[0], 'tle1': 'garbage'}) is None
     assert isn.tleRow({**TLES[0], 'norad_cat_id': None}) is None
 
 
 # --- Storing TLEs -------------------------------------------------------------
 
 def test_store_tles_and_repeat_is_not_a_change(db):
-    assert isn.storeTles(db, TLES, '2026-10-21T10:00:00Z') == (3, 3, 0)
-    assert isn.storeTles(db, TLES, '2026-10-21T22:00:00Z') == (0, 3, 0)
+    assert isn.storeTles(db, TLES, '2026-10-21T10:00:00Z') == (4, 4, 0)
+    assert isn.storeTles(db, TLES, '2026-10-21T22:00:00Z') == (0, 4, 0)
     assert tle(db, 25544, 'lastSeen') == '2026-10-21T22:00:00Z'
     assert tle(db, 25544, 'fetchedAt') == '2026-10-21T10:00:00Z'
 
@@ -97,8 +102,8 @@ def test_older_epoch_never_replaces_newer(db):
 
 def test_object_leaving_the_feed_counts_as_a_change(db):
     isn.storeTles(db, TLES, '2026-10-21T10:00:00Z')
-    changes, stored, _ = isn.storeTles(db, TLES[:2], '2026-10-21T22:00:00Z')
-    assert (changes, stored) == (1, 2)
+    changes, stored, _ = isn.storeTles(db, TLES[:2] + TLES[3:], '2026-10-21T22:00:00Z')
+    assert (changes, stored) == (1, 3)
     assert tle(db, TLES[2]['norad_cat_id'], 'lastSeen') == '2026-10-21T10:00:00Z'
 
 
@@ -133,7 +138,7 @@ def test_failed_feed_leaves_its_table_and_fails_the_run(db):
 
     changes, failed, note = isn.runIngestion(db, fetch)
     assert failed and 'transmitters: Exception: HTTP 503' in note
-    assert changes == 3
+    assert changes == 4
     assert db.execute('SELECT COUNT(*) FROM transmitters').fetchone()[0] == 4
 
 
