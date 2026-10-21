@@ -1,6 +1,6 @@
 # Database and source refactor plan
 
-Agreed 2026-10-21 (Al + Claude). Status: not started. Decisions A-D are settled.
+Agreed 2026-10-21 (Al + Claude). Status: steps 1-4 done on DEV (2026-10-21); step 5 next. Decisions A-D are settled. LIVE still uses `ingestionDBs/`, so `dbPaths.py` falls back to that name until step 12.
 
 ## Conventions
 
