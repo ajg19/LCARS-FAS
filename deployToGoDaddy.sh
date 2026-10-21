@@ -17,6 +17,13 @@
 # Preview what the sync would change and, especially, DELETE on the server
 # without applying anything (the app is not restarted):
 #     DRY_RUN=1 ./deployToGoDaddy.sh
+#
+# Databases never travel in the archive (databases/ is excluded both ways).
+# The one exception, decision D of 0_documentation/dbRefactorPlan.md: the
+# two reference databases built on the laptop (REFERENCE_DBS) are uploaded
+# separately after the sync, and scripts/installReferenceDbs.py on the
+# server swaps in any that changed and publishes their site files. Before
+# the server is migrated (plan step 12) that script just discards them.
 set -euo pipefail
 
 REMOTE_USER="sip9rb1lekyg"
@@ -24,6 +31,9 @@ REMOTE_HOST="gaps2024.com"
 REMOTE_PATH="public_html/LCARS-FAS"
 SSH_KEY="$HOME/.ssh/godaddy_lcars_fas"
 ARCHIVE="lcarsFasDeploy.tar.gz"
+REMOTE_PYTHON="/home/sip9rb1lekyg/virtualenv/public_html/LCARS-FAS/3.9/bin/python"
+REFERENCE_UPLOAD=".referenceUpload"
+REFERENCE_DBS=(databases/ingestionGroundSegment.db databases/ingestionSkyCatalogue.db)
 EXCLUDE_FILE=".deployExcludes"
 STAGE=".deployStage"
 
@@ -37,6 +47,7 @@ EXCLUDE_PATTERNS=(
     '*.pyc'
     databases
     ingestionDBs
+    .referenceUpload
     0_documentation
     0_tests
     0_testReports
@@ -103,4 +114,14 @@ ssh -i "$SSH_KEY" "$REMOTE_USER@$REMOTE_HOST" "
 "
 
 rm -f "$EXCLUDE_FILE"
+
+if [ -n "${DRY_RUN:-}" ]; then
+    echo "(dry run: reference databases not uploaded: ${REFERENCE_DBS[*]})"
+else
+    echo "Uploading reference databases..."
+    ssh -i "$SSH_KEY" "$REMOTE_USER@$REMOTE_HOST" "rm -rf '$REMOTE_PATH/$REFERENCE_UPLOAD' && mkdir '$REMOTE_PATH/$REFERENCE_UPLOAD'"
+    scp -i "$SSH_KEY" "${REFERENCE_DBS[@]}" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_PATH/$REFERENCE_UPLOAD/"
+    ssh -i "$SSH_KEY" "$REMOTE_USER@$REMOTE_HOST" \
+        "cd '$REMOTE_PATH' && '$REMOTE_PYTHON' scripts/installReferenceDbs.py '$REFERENCE_UPLOAD'"
+fi
 echo "Deploy complete."

@@ -1,6 +1,6 @@
 # Database and source refactor plan
 
-Agreed 2026-10-21 (Al + Claude). Status: steps 1-11 done on DEV (2026-10-21); step 12 (LIVE migration) next. The step 9 questions are all settled. Decisions A-D are settled. LIVE still uses `ingestionDBs/` with the old file names, so `dbPaths.py` falls back to that folder and maps each new name to its old one until step 12.
+Agreed 2026-10-21 (Al + Claude). Status: steps 1-11 done on DEV, and step 12 written and rehearsed on DEV (2026-10-21). Nothing has been run on LIVE: step 12 on LIVE waits for Al's go-ahead. The step 9 questions are all settled. Decisions A-D are settled. LIVE still uses `ingestionDBs/` with the old file names, so `dbPaths.py` falls back to that folder and maps each new name to its old one until step 12.
 
 ## Conventions
 
@@ -328,12 +328,47 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-11 done on DEV (2026-10-21); st
 12. **LIVE migration.** A one-off script, run with `DRY_RUN` first:
     1. Take the lock.
     2. Back up every DB.
-    3. Seed the radar figures from LIVE's `orbitalObjects.db` with `ingestionCelesTrak.py --seed-rcs`, before that database is retired (decision 3 under step 9). While CelesTrak blocks LIVE, these figures are LIVE's only source for EST. SIZE.
-    4. Rename the folder and files; bug reports become `inboxBugReports.db`.
+    3. Rename the folder and files; bug reports become `inboxBugReports.db`.
+    4. Seed the radar figures from LIVE's `orbitalObjects.db` with `ingestionCelesTrak.py --seed-rcs`, before that database is retired (decision 3 under step 9). While CelesTrak blocks LIVE, these figures are LIVE's only source for EST. SIZE.
     5. Run a full ingestion, then publish every type.
     6. Restart Passenger and install the new cron.
 
     Before the migration, change `deployToGoDaddy.sh` so it uploads `databases/ingestionGroundSegment.db` and `databases/ingestionSkyCatalogue.db` and excludes everything else in `databases/`. After any deploy that changes either file, it publishes the matching site file on the server (decision D).
+
+    **WRITTEN AND REHEARSED ON DEV 2026-10-21. Not yet run on LIVE.**
+    - **`scripts/migrateLive.py`** runs on the server and is a dry run unless given `--apply`. In order it:
+      1. checks preconditions (old layout present, new absent, SQLite 3.24 or later, `spacetrack.env`, `quick_check` on every DB, disk space, no rename conflicts), and reports whether CelesTrak is enabled;
+      2. saves the crontab to the backup folder, removes the LCARS-FAS jobs, and waits up to 30 min for running ones;
+      3. backs up every DB with SQLite's backup API to `~/dbBackup-<UTC time>/`, under the old names;
+      4. checkpoints the WAL files and renames the folder and files, bug reports included;
+      5. restarts the app (the renamed pre-refactor DBs serve until the site files exist);
+      6. seeds the radar figures from `orbitalObjects.db`;
+      7. runs Space-Track `--full`, SatNOGS and CelesTrak (which does nothing while disabled);
+      8. publishes all four site files;
+      9. runs `setupCron.sh`.
+
+      Steps 6–9 run as separate processes, because `dbPaths` fixes the layout when it's imported. The lock isn't needed: no other writer can run between step 2 and step 9.
+    - **Rollback:** `--rollback <backup> [--apply]` restores the crontab, moves `databases/` to `databases.failed-<time>/`, restores the DBs into `ingestionDBs/` and restarts the app.
+    - **Deploy (decision D):**
+      - `databases/` stays excluded from the archive and the sync.
+      - After the sync, the two reference DBs are uploaded to `.referenceUpload/`, and `scripts/installReferenceDbs.py` swaps in any that changed (after an integrity check, under the writers' lock) and publishes their site files.
+      - On a server not yet migrated, it discards the uploads.
+      - A `DRY_RUN` uploads nothing.
+    - **Rehearsal on DEV:** a copy of the app, with LIVE's DBs from 2026-10-21 under their old names and `CELESTRAK_ENABLED=0` as on LIVE.
+      - The dry run passed every check.
+      - `--apply` ran end to end in about 1 minute: groups from our rules, the EIRP class tier from GCAT, and 12,621 objects with EST. SIZE.
+      - Against its own pre-migration snapshot, no endpoint changed status and 21 were identical. Only the orbital endpoints differed, as at step 10.
+      - The reference install put in changed DBs and published them, and left unchanged ones alone.
+      - `--rollback --apply` restored the old layout: 358 of 359 endpoints were identical to before, the other being the clock-dependent `/api/status`.
+    - **Tests:** `0_tests/test_migrateLive.py`. 300 tests pass.
+    - **RUN-BOOK FOR LIVE** (only on Al's go-ahead):
+      1. `DRY_RUN=1 ./deployToGoDaddy.sh`, then review what the sync would change or delete.
+      2. `./deployToGoDaddy.sh`. LIVE keeps serving the old layout through the legacy fallback, the old cron keeps running, and the reference uploads are discarded.
+      3. Check the site.
+      4. `ssh` to the server, `cd public_html/LCARS-FAS`, and run `…/3.9/bin/python scripts/migrateLive.py`. That is the dry run: review its checks and plan.
+      5. Run the same command with `--apply`. Note the backup folder and rollback command it prints.
+      6. Check the site and the freshness table, then `crontab -l` and the first `*_cron.log` files after the next scheduled runs.
+      7. If anything is wrong: `python scripts/migrateLive.py --rollback ~/dbBackup-<time> --apply`.
 
 ### Checking it, and tidying up
 
