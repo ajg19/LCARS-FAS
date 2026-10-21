@@ -44,6 +44,17 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-7 done on DEV (2026-10-21); ste
      - `stations` = ISS and CSS modules plus crewed and cargo vehicles from GCAT payload classes. Check the GCAT codes first.
 
   A comment in the code next to the rules explains this precedence and the 3-month assumption.
+
+  **Extended 2026-10-21 to the link-budget constellations.**
+  - **Why.** `enrichEirp.py` takes a payload's downlink band, EIRP and receive gain from its constellation, matched by CelesTrak group. On LIVE's current data that gives 12,924 of 18,936 payloads constellation-grade figures. LIVE's groups have been frozen since August, so newer launches fall back to class estimates or "unknown".
+  - **What changes.** Every group `CONSTELLATION_EIRP` uses gets its own rule, with the same precedence as above: CelesTrak's list when available, otherwise ours.
+  - **Groups covered:** starlink, oneweb, kuiper, iridium-NEXT, globalstar, orbcomm, gps-ops, glo-ops, galileo, beidou, sbas, gnss, planet, ses, intelsat, eutelsat, telesat, qianfan, hulianwang, sar, spire, argos, sarsat.
+  - **How each rule works:**
+    - **Operator constellations:** a name pattern (`ONEWEB*`, `KUIPER*`, `IRIDIUM*` and so on), the GCAT owner code, or both.
+    - **Function groups:** GCAT payload class, category or programme. These are sar, argos, sarsat, sbas and gnss.
+    - Each rule is written and checked at step 9 against today's CelesTrak lists, reporting the agreement like the 97% figure for `active`.
+    - A rule that can't reach a sensible agreement is listed in the plan, not used silently.
+  - **Coverage of the recent-launch rule:** it applies only to `active`. Constellation membership doesn't expire.
 - **B. DECIDED 2026-10-21: one site database per type of data.** One shared file only pays off for data that is joined or must stay mutually consistent, and that applies only within the orbital data. The site files are:
 
   | File | Contents | Size* |
@@ -153,7 +164,7 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-7 done on DEV (2026-10-21); ste
         - drop elements older than a maximum age (to agree);
         - exclude decayed objects;
         - normalise epochs to one format and object types to codes.
-     2. Build the groups using the decision A precedence. The explanatory comment sits next to these rules.
+     2. Build the groups using the decision A precedence: `active`, `stations`, `starlink` and every constellation group `enrichEirp.py` uses (decision A, extended). Each rule's agreement with the latest CelesTrak list is printed on every publish, so drift shows up. The explanatory comment sits next to these rules.
      3. Link SatNOGS transmitters to NORAD objects: by `norad_follow_id`, then by the designator from SatNOGS's TLE (matched to Space-Track's `objectID`), then by their own `norad_cat_id`. Pick each satellite's main downlink and uplink (today's `choose_rf`). This fixes a current bug: RF data attached to SatNOGS's duplicate 9xxxx rows instead of the real object.
      4. Run EIRP (`enrichEirp`), brightness (`estimateBrightness`) and ON-ORBIT/LAUNCHES stats (`orbitStats`) as stages.
      5. Copy in the GCAT tables and columns the site reads.
