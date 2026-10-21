@@ -1,6 +1,6 @@
 # Database and source refactor plan
 
-Agreed 2026-10-21 (Al + Claude). Status: steps 1-10 done on DEV (2026-10-21); step 11 next. The step 9 questions are all settled. Decisions A-D are settled. LIVE still uses `ingestionDBs/` with the old file names, so `dbPaths.py` falls back to that folder and maps each new name to its old one until step 12.
+Agreed 2026-10-21 (Al + Claude). Status: steps 1-11 done on DEV (2026-10-21); step 12 (LIVE migration) next. The step 9 questions are all settled. Decisions A-D are settled. LIVE still uses `ingestionDBs/` with the old file names, so `dbPaths.py` falls back to that folder and maps each new name to its old one until step 12.
 
 ## Conventions
 
@@ -120,7 +120,7 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-10 done on DEV (2026-10-21); st
      - `groupFetches` (lastAttempt, lastSuccess, members, note) per group. The publish step uses `lastSuccess` to decide whether CelesTrak counts as available (decision A).
    - **Etiquette:**
      - `CELESTRAK_ENABLED=0` means no requests.
-     - At most one pass per `CELESTRAK_GROUPS_INTERVAL_HOURS`, default 168, counted from the last attempt.
+     - At most one pass per `CELESTRAK_GROUPS_INTERVAL_HOURS`, counted from the last attempt. The default is 72 h, and cron starts it every 3 days (decided 2026-10-21, at step 11; it was 168 h).
      - 3 s between groups, and a pass stops at the first connection failure.
      - A "not updated" reply counts as a skip, not an error.
    - **Changes and failures:** memberships added or removed count as changes (decision C1). A pass in which no group succeeds is recorded as failed. A group that fails keeps its previous membership.
@@ -255,7 +255,7 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-10 done on DEV (2026-10-21); st
      3. **EST. SIZE, DECIDED 2026-10-21: keep CelesTrak's radar figure for good once known (satellites don't change size).**
         - **Storage:** `ingestionCelesTrak.db` has a `satcatRcs` table. Rows are only ever added or updated, never removed, and a blank never replaces a held figure.
         - **Sources:**
-          - Each full weekly CelesTrak pass ends with one `satcat.csv` request.
+          - Each full CelesTrak pass (every 3 days) ends with one `satcat.csv` request.
           - `ingestionCelesTrak.py --seed-rcs <orbitalObjects.db>` is a one-off import of the figures the old database holds, filling only objects that don't have one yet.
         - **Publish:** `rcsSize` comes from that table; `rcsCategory` keeps Space-Track's SMALL, MEDIUM or LARGE.
         - **DEV results:**
@@ -295,6 +295,36 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-10 done on DEV (2026-10-21); st
     - Each ingestion runs on its own schedule, and one failing doesn't block the others.
     - Each ingestion that changed something calls `publishSite.py` for the site files that depend on it (decision C1).
     - All writers share one `flock`.
+
+    **DONE 2026-10-21 on DEV.**
+    - **`scripts/runIngestion.py <source>`** (spaceTrack, satnogs, celesTrak, gcat or news). It:
+      1. takes the shared writers' lock, `databases/.writers.lock`, waiting up to 15 minutes (fcntl, so Linux only; skipped on Windows);
+      2. runs the source's ingestion as its own process;
+      3. reads the run that process recorded;
+      4. publishes the dependent site files only if that run succeeded with changes.
+
+      A failed or skipped run publishes nothing (C2). A refused publish makes the run exit 1. Tests: `0_tests/test_runIngestion.py`.
+    - **`setupCron.sh`** installs the new crontab (server time), and refuses unless `databases/` exists, so it can't start the new pipeline before the migration.
+
+      | Source | Schedule |
+      |---|---|
+      | news | every 30 min |
+      | spaceTrack | every 12 h (the daily full pass is chosen by the script) |
+      | satnogs | every 12 h, at :30 |
+      | celesTrak | 04:15 on days 1, 4, 7 … of the month, with the script's own 72 h check |
+      | gcat | Sunday 03:00 |
+
+      The ground segment and sky have no job (decision D).
+    - **CelesTrak cadence decided 2026-10-21:** fetched every 3 days. Cron runs it every 3 days, and `CELESTRAK_GROUPS_INTERVAL_HOURS` now defaults to 72 instead of 168.
+    - **`runPipeline.sh`, LIVE's current cron job, is untouched.** A deploy before step 12 changes nothing on LIVE. It and the old scripts go at step 15.
+    - **DEV run through the runner:**
+      - satnogs: 995 changes, then published orbital.
+      - news: 13 new articles, then published news.
+      - spaceTrack: recent pass, 20,752 changes, then published orbital.
+      - celesTrak: skipped by its 72 h check, so nothing published.
+
+      GCAT was not run live (a ~30 MB weekly download); the tests cover its wiring. 289 tests pass.
+    - **Known gap:** a news run that only prunes old articles records 0 changes, so the pruning reaches `siteNews.db` at the next run with new articles.
 12. **LIVE migration.** A one-off script, run with `DRY_RUN` first:
     1. Take the lock.
     2. Back up every DB.

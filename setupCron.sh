@@ -1,5 +1,5 @@
 #!/bin/bash
-# Idempotent cron installer for the LCARS-FAS ingestion scripts.
+# Idempotent cron installer for the LCARS-FAS ingestion jobs.
 #
 # Safe to re-run any number of times: always strips out any previous
 # LCARS-FAS entries first (matched by the MARKER comment on each managed
@@ -49,23 +49,40 @@ TMPFILE=$(mktemp)
 # the account.
 crontab -l 2>/dev/null | grep -v "$MARKER" > "$TMPFILE"
 
-# News ingestion is independent (its own DB, no dependency on the orbital
-# pipeline). The orbital-object pipeline -- ingestOrbitalData -> ingestSatcat
-# (daily) -> enrichEirp -> ingestSatnogsRf -- runs as ONE ordered process
-# via scripts/runPipeline.sh so the enrichment steps can only start after
-# ingestion returns; flock -n makes a slow run skip the next tick rather
-# than overlap it. The wrapper writes its own consolidated pipeline_cron.log.
-# GCAT (its own ingestionGCAT.db) is fetched weekly, Sunday 03:00 server time -- GCAT
-# updates nightly, but its ~30 MB is not worth re-fetching more often, and
-# unchanged files are skipped anyway (If-Modified-Since).
+# Since the database refactor (0_documentation/dbRefactorPlan.md, step 11)
+# every job is one source's ingestion run through scripts/runIngestion.py,
+# which takes the shared writers' lock, runs the ingestion, and publishes
+# the site files that source feeds -- only if the run changed something.
+# Each source runs on its own schedule, so one failing never holds up the
+# others. Server time throughout.
+#   news        every 30 min
+#   spaceTrack  every 12 h (one pass a day is the full catalogue)
+#   satnogs     every 12 h, offset 30 min from Space-Track
+#   celesTrak   every 3 days (the script itself also refuses to ask
+#               CelesTrak sooner than 72 h, and nothing at all while the
+#               server's .env has CELESTRAK_ENABLED=0)
+#   gcat        weekly, Sunday 03:00 -- GCAT updates nightly, but its
+#               ~30 MB is not worth re-fetching more often
+# The reference databases (ground segment, sky) have no job: they are
+# built on the laptop and published by the deploy (decision D).
 #
-# CelesTrak etiquette lives in the ingest scripts (72 h default) and the
-# server's own .env (CELESTRAK_ENABLED=0 since 2026-10-17), NOT here: a
-# variable set on the cron line would override .env.
+# This crontab is for the migrated layout only (databases/). Installing it
+# on a server still on the old layout would start the new pipeline before
+# the migration (step 12) has backed up and converted the databases.
+if [ ! -d "$APP_ROOT/databases" ]; then
+    echo "ERROR: $APP_ROOT/databases not found -- this server hasn't been migrated (plan step 12)."
+    echo "Nothing installed; the existing crontab is unchanged."
+    rm "$TMPFILE"
+    exit 1
+fi
+
+RUN="$PYTHON $APP_ROOT/scripts/runIngestion.py"
 cat >> "$TMPFILE" << EOF
-*/30 * * * * $PYTHON $APP_ROOT/scripts/readNews.py >> $LOG_DIR/readNews_cron.log 2>&1 $MARKER
-0 */12 * * * PYTHON="$PYTHON" LOG_DIR="$LOG_DIR" /usr/bin/flock -n $LOG_DIR/lcarsPipeline.lock /bin/bash $APP_ROOT/scripts/runPipeline.sh >> $LOG_DIR/pipeline_cron.log 2>&1 $MARKER
-0 3 * * 0 $PYTHON $APP_ROOT/scripts/ingestGcat.py >> $LOG_DIR/gcat_cron.log 2>&1 $MARKER
+*/30 * * * * $RUN news >> $LOG_DIR/news_cron.log 2>&1 $MARKER
+0 */12 * * * $RUN spaceTrack >> $LOG_DIR/spaceTrack_cron.log 2>&1 $MARKER
+30 */12 * * * $RUN satnogs >> $LOG_DIR/satnogs_cron.log 2>&1 $MARKER
+15 4 */3 * * $RUN celesTrak >> $LOG_DIR/celesTrak_cron.log 2>&1 $MARKER
+0 3 * * 0 $RUN gcat >> $LOG_DIR/gcat_cron.log 2>&1 $MARKER
 EOF
 
 crontab "$TMPFILE"

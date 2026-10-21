@@ -13,12 +13,14 @@ tell.
 
 Etiquette. CelesTrak's firewall has dropped the live server since
 2026-08-27, after our old twice-daily sweeps of every group. This script
-asks for each group at most once a week:
+asks for each group at most once every 3 days (cron starts it every 3
+days -- setupCron.sh -- and the interval below makes sure a manual or
+extra run can't ask sooner):
   CELESTRAK_ENABLED=0                 no CelesTrak request at all (the
                                       live server's .env, until unblocked)
   CELESTRAK_GROUPS_INTERVAL_HOURS=N   at most one pass per N hours,
                                       counted from the last attempt,
-                                      successful or not. Default 168.
+                                      successful or not. Default 72.
 Groups are requested one at a time, GROUP_DELAY_SEC apart, and a pass
 stops at the first connection failure (refused or timed out means
 blocked or down -- the remaining groups would fail the same way).
@@ -31,7 +33,7 @@ RADAR CROSS-SECTION (decided 2026-10-21). CelesTrak's catalogue file
 it as EST. SIZE. Satellites don't change size, so a figure once known is
 kept for good: table satcatRcs is only ever added to or updated, never
 emptied, and a blank from CelesTrak never replaces a figure we hold. Each
-full weekly pass ends with one satcat.csv request; --seed-rcs imports
+full pass ends with one satcat.csv request; --seed-rcs imports
 the figures the old orbitalObjects.db already holds (a one-off, on DEV
 and in the live server's migration), without overwriting any.
 
@@ -71,8 +73,8 @@ GROUPS = [
 GROUP_URL = 'https://celestrak.org/NORAD/elements/gp.php?GROUP={}&FORMAT=csv'
 SATCAT_URL = 'https://celestrak.org/pub/satcat.csv'
 GROUP_DELAY_SEC = 3
-DEFAULT_INTERVAL_HOURS = 168
-# A cron run started a little early still counts as a week.
+DEFAULT_INTERVAL_HOURS = 72
+# A cron run started a little early still counts as a full interval.
 INTERVAL_SLACK_SEC = 60 * 60
 JOB = 'celesTrakGroups'
 
@@ -298,7 +300,7 @@ def seedRcs(db, orbitalPath):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description='CelesTrak group membership into ingestionCelesTrak.db.')
-    parser.add_argument('--force', action='store_true', help='ignore the weekly interval (not CELESTRAK_ENABLED)')
+    parser.add_argument('--force', action='store_true', help='ignore the 3-day interval (not CELESTRAK_ENABLED)')
     parser.add_argument('--groups', help='comma-separated subset of groups (default: all; no satcat.csv)')
     parser.add_argument('--seed-rcs', metavar='ORBITAL_DB',
                         help='one-off: import radar figures from the old orbitalObjects.db, then stop')
