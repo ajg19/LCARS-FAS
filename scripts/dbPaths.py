@@ -39,6 +39,9 @@ SKY_DB = 'skyCatalogue.db'
 GROUND_SEGMENT_DB = 'groundSegmentAssets.db'
 BUG_REPORTS_DB = 'bugReports.db'
 
+# Ingestion databases under the new convention (one per source).
+SPACETRACK_DB = 'ingestionSpaceTrack.db'
+
 
 def dbPath(name):
     """Full path of database file `name` (one of the *_DB names above)."""

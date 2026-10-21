@@ -1,6 +1,6 @@
 # Database and source refactor plan
 
-Agreed 2026-10-21 (Al + Claude). Status: steps 1-4 done on DEV (2026-10-21); step 5 next. Decisions A-D are settled. LIVE still uses `ingestionDBs/`, so `dbPaths.py` falls back to that name until step 12.
+Agreed 2026-10-21 (Al + Claude). Status: steps 1-5 done on DEV (2026-10-21); step 6 next. Decisions A-D are settled. LIVE still uses `ingestionDBs/`, so `dbPaths.py` falls back to that name until step 12.
 
 ## Conventions
 
@@ -94,11 +94,14 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-4 done on DEV (2026-10-21); ste
 
 ### One ingestion database per source
 
-5. **Space-Track.** `ingestionSpaceTrack.py` writes `ingestionSpaceTrack.db`.
-   - Full GP pull once a day, plus `EPOCH>now-2` twice a day.
-   - Stores the raw fields plus `fetchedAt`.
-   - Replaces the Space-Track parts of both current ingest scripts.
-   - Records failed runs as failed (`run.failed`).
+5. **Space-Track.** DONE 2026-10-21: `scripts/ingestionSpaceTrack.py` writes `ingestionSpaceTrack.db` (table `gp`), with tests in `0_tests/test_ingestionSpaceTrack.py`.
+   - **Full pass (daily):** Space-Track's recommended current-catalogue query (not decayed, epoch within 30 days), plus decays from the last 30 days. It sets `lastSeenFull`, and objects that leave the catalogue count as changes.
+   - **Recent pass (otherwise):** `EPOCH>now-2`. On 2026-10-21 that returned about 30k of the 32.8k objects.
+   - **Storage:** all GP fields except the TLE lines, in camelCase columns, plus `fetchedAt`.
+   - **Updates:** an element set only replaces a stored row if its epoch is newer, or if the epoch is the same and the metadata has changed. A repeated record is not counted as a change.
+   - **Failures:** failed runs are recorded as failed.
+   - **First DEV run:** 32,776 catalogue objects plus 108 recent decays, about 7 s, 12.5 MB. Space-Track's elements were newer than `orbitalObjects.db`'s for 26,839 objects, equal for 5,906 and never older.
+   - **Deferred to step 11:** removing the Space-Track code from `ingestOrbitalData.py` and `ingestSatcat.py`. LIVE depends on it until the new pipeline takes over.
 6. **CelesTrak.** `ingestionCelesTrak.db`: group lists only (decision A), weekly.
    - Keeps the etiquette rules and `CELESTRAK_ENABLED`.
    - Stores each group's membership and the time of its last successful fetch.
