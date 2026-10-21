@@ -93,7 +93,7 @@ def test_status_endpoint_shape():
         assert set(row) >= {'data', 'source', 'lastRefreshUtc', 'changes', 'lastRunFailed', 'nextSyncUtc'}
 
 
-def test_status_next_sync_is_last_start_plus_interval():
+def test_status_next_sync_is_last_start_plus_interval(monkeypatch):
     import sqlite3
     conn = sqlite3.connect(':memory:')
     conn.row_factory = sqlite3.Row
@@ -103,12 +103,8 @@ def test_status_next_sync_is_last_start_plus_interval():
                  "VALUES ('news', '2026-10-09T12:00:00Z', '2026-10-09T12:01:00Z', 1, 7)")
     conn.execute("INSERT INTO ingestionRuns (job, startedAt, finishedAt, succeeded, changes) "
                  "VALUES ('news', '2026-10-09T12:30:00Z', '2026-10-09T12:31:00Z', 0, NULL)")
-    original = server.db
-    server.db = conn
-    try:
-        row = server.status_row(server.STATUS_SOURCES[0])
-    finally:
-        server.db = original
+    monkeypatch.setattr(server, 'site_db', lambda kind: conn)
+    row = server.status_row(server.STATUS_SOURCES[0])
     assert row['nextSyncUtc'] == '2026-10-09T13:00:00Z'     # latest attempt + 30 min
     assert row['lastRefreshUtc'] == '2026-10-09T12:01:00Z'  # latest *successful* run
     assert row['changes'] == 7
@@ -515,3 +511,88 @@ def test_bug_report_records_the_server_role(bug_db, monkeypatch):
     row = server.get_bug_db().execute('SELECT server, dateFound FROM bugReports').fetchone()
     assert row['server'] == 'DEV'
     assert row['dateFound'].endswith('+00:00') and 'T' in row['dateFound']  # full UTC DTG
+
+
+# --- Site databases (dbRefactorPlan.md step 10) --------------------------------
+# Against a temporary database folder, never the real databases/.
+
+@pytest.fixture
+def site_dir(tmp_path, monkeypatch):
+    import sqlite3
+    monkeypatch.setattr(server.dbPaths, 'DB_DIR', str(tmp_path))
+    monkeypatch.setattr(server.dbPaths, 'LEGACY', False)
+    server.release_site_dbs()
+    yield tmp_path, sqlite3
+    server.release_site_dbs()
+
+
+def write_assets(sqlite3, path, names):
+    db = sqlite3.connect(str(path))
+    db.execute('DROP TABLE IF EXISTS ground_segment_assets')
+    db.execute('CREATE TABLE ground_segment_assets (id INTEGER PRIMARY KEY, name TEXT)')
+    db.executemany('INSERT INTO ground_segment_assets (name) VALUES (?)', [(n,) for n in names])
+    db.commit()
+    db.close()
+
+
+def asset_names():
+    status, _, body = call_app('/api/ground-segment-assets')
+    assert status == '200 OK'
+    return [row['name'] for row in json.loads(body)]
+
+
+def test_site_file_is_served_and_a_swap_is_picked_up(site_dir, monkeypatch):
+    tmp_path, sqlite3 = site_dir
+    monkeypatch.setattr(server, 'RELEASE_AFTER_REQUEST', False)   # hold connections, as on Linux
+    write_assets(sqlite3, tmp_path / 'siteGroundSegment.db', ['A'])
+    assert asset_names() == ['A']
+    write_assets(sqlite3, tmp_path / 'new.db', ['B', 'C'])
+    if os.name == 'nt':
+        server.release_site_dbs()   # Windows can't replace an open file
+    os.replace(tmp_path / 'new.db', tmp_path / 'siteGroundSegment.db')
+    assert asset_names() == ['B', 'C']
+
+
+def test_without_a_site_file_the_pre_refactor_database_serves(site_dir):
+    tmp_path, sqlite3 = site_dir
+    write_assets(sqlite3, tmp_path / 'ingestionGroundSegment.db', ['legacy'])
+    assert asset_names() == ['legacy']
+    paths, legacy = server.site_files('groundSegment')
+    assert legacy and paths[0].endswith('ingestionGroundSegment.db')
+
+
+def test_legacy_orbital_attaches_stats_and_gcat(site_dir):
+    tmp_path, sqlite3 = site_dir
+    for name, table in (('orbitalObjects.db', 'orbital_objects'), ('onOrbitStats.db', 'onOrbitRegimes'),
+                        ('ingestionGCAT.db', 'gcatOrgs')):
+        db = sqlite3.connect(str(tmp_path / name))
+        db.execute(f'CREATE TABLE {table} (x INTEGER)')
+        db.commit()
+        db.close()
+    conn = server.site_db('orbital')
+    for table in ('orbital_objects', 'onOrbitRegimes', 'gcatOrgs'):   # all resolve unqualified
+        conn.execute(f'SELECT COUNT(*) FROM {table}').fetchone()
+
+
+def test_windows_releases_connections_after_each_request(site_dir, monkeypatch):
+    tmp_path, sqlite3 = site_dir
+    monkeypatch.setattr(server, 'RELEASE_AFTER_REQUEST', True)
+    write_assets(sqlite3, tmp_path / 'siteGroundSegment.db', ['A'])
+    asset_names()
+    assert getattr(server._site_conns, 'conns', {}) == {}
+
+
+def test_status_takes_the_newest_of_several_job_names(monkeypatch):
+    import sqlite3
+    conn = sqlite3.connect(':memory:')
+    conn.row_factory = sqlite3.Row
+    conn.execute('CREATE TABLE ingestionRuns (sourceDb TEXT, job TEXT, startedAt TEXT, finishedAt TEXT, '
+                 'succeeded INTEGER, changes INTEGER, note TEXT)')
+    conn.executemany('INSERT INTO ingestionRuns VALUES (?, ?, ?, ?, 1, ?, NULL)', [
+        ('ingestionSpaceTrack', 'spaceTrackFull', '2026-10-21T00:00:00Z', '2026-10-21T00:01:00Z', 30000),
+        ('ingestionSpaceTrack', 'spaceTrackRecent', '2026-10-21T12:00:00Z', '2026-10-21T12:01:00Z', 500)])
+    monkeypatch.setattr(server, 'site_db', lambda kind: conn)
+    monkeypatch.setattr(server, 'site_files', lambda kind: (['x'], False))
+    spec = next(s for s in server.STATUS_SOURCES if s['data'] == 'Orbital elements')
+    row = server.status_row(spec)
+    assert row['lastRefreshUtc'] == '2026-10-21T12:01:00Z' and row['changes'] == 500

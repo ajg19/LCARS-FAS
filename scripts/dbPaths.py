@@ -55,8 +55,8 @@ SITE_GROUND_SEGMENT_DB = 'siteGroundSegment.db'
 ORBITAL_DB = 'orbitalObjects.db'
 STATS_DB = 'onOrbitStats.db'
 
-# Written by the website (renamed inboxBugReports.db at step 12).
-BUG_REPORTS_DB = 'bugReports.db'
+# Written by the website: visitor submissions (inbox<Name>.db).
+BUG_REPORTS_DB = 'inboxBugReports.db'
 
 # New name -> the name the file still has in a legacy ingestionDBs/ folder.
 LEGACY_NAMES = {
@@ -64,6 +64,7 @@ LEGACY_NAMES = {
     NEWS_DB: 'space_news.db',
     GROUND_SEGMENT_DB: 'groundSegmentAssets.db',
     SKY_DB: 'skyCatalogue.db',
+    BUG_REPORTS_DB: 'bugReports.db',
 }
 
 

@@ -303,7 +303,7 @@ def commandSet(log, args):
 
 # --- Tester reports -----------------------------------------------------------
 # The BUG REPORT form (assets/bugReport.js -> /api/bug-report in server.py)
-# appends to bugReports.db in the database folder (scripts/dbPaths.py) on
+# appends to inboxBugReports.db in the database folder (scripts/dbPaths.py) on
 # whichever server it was used on:
 # the live site's (server LIVE) or a local dev server's (server DEV).
 # import-reports copies every report not yet copied from both into the
@@ -320,9 +320,11 @@ DEV_REPORTS_DB = dbPaths.dbPath(dbPaths.BUG_REPORTS_DB)
 LIVE_SSH = ['ssh', '-i', os.path.expanduser('~/.ssh/godaddy_lcars_fas'), '-o', 'BatchMode=yes',
             '-o', 'ConnectTimeout=30', 'sip9rb1lekyg@gaps2024.com']
 LIVE_PYTHON = '/home/sip9rb1lekyg/virtualenv/public_html/LCARS-FAS/3.9/bin/python'
-# Candidates in order; the live server uses the first whose folder exists
-# (databases/ once migrated, ingestionDBs/ before -- see dbPaths.py).
-LIVE_REPORTS_DBS = [f'{d}/{dbPaths.BUG_REPORTS_DB}' for d in dbPaths.LIVE_DB_DIRS]
+# Candidates in order; the live server uses the first whose folder exists:
+# databases/inboxBugReports.db once migrated, ingestionDBs/bugReports.db
+# before (see dbPaths.py).
+LIVE_REPORTS_DBS = [f'{dbPaths.LIVE_DB_DIRS[0]}/{dbPaths.BUG_REPORTS_DB}',
+                    f'{dbPaths.LIVE_DB_DIRS[1]}/{dbPaths.LEGACY_NAMES[dbPaths.BUG_REPORTS_DB]}']
 REPORT_KEY = re.compile(r'\[report (LIVE|DEV)#(\d+)\]')
 
 FETCH_SQL = 'SELECT * FROM bugReports WHERE copiedToBugsDb = 0 ORDER BY id'

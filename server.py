@@ -37,7 +37,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(BASE_DIR, 'scripts'))
 import dbPaths  # noqa: E402
 from dbPaths import (BUG_REPORTS_DB, GCAT_DB, GROUND_SEGMENT_DB, NEWS_DB,  # noqa: E402
-                     ORBITAL_DB, SKY_DB, STATS_DB)
+                     ORBITAL_DB, SITE_GROUND_SEGMENT_DB, SITE_NEWS_DB, SITE_ORBITAL_DB, SITE_SKY_DB,
+                     SKY_DB, STATS_DB)
 
 DB_DIR = dbPaths.DB_DIR
 
@@ -52,18 +53,80 @@ def open_db(filename, read_only=False):
     return conn
 
 
-# Connect to the local space news SQLite database.
-db = open_db(NEWS_DB)
+# The website's databases (0_documentation/dbRefactorPlan.md, step 10):
+# one site<Type>.db per kind of data, each built and swapped in whole by
+# scripts/publishSite.py. site_db(kind) hands out a read-only connection,
+# one per thread, and reopens it whenever the file has been replaced
+# (inode, mtime or size changed) -- so a publish is picked up on the next
+# request, and a request never sees half a file.
+#
+# Until the live server is migrated (step 12) it has no site files. A kind
+# whose site file doesn't exist is served from the pre-refactor databases
+# instead, opened together (the first as main, the rest attached) so the
+# same unqualified table names resolve -- master stays deployable.
+#
+# On Windows (the DEV box) an open connection stops publishSite.py
+# replacing the file, so there each thread's connections are closed after
+# every request (release_site_dbs, called by application()).
+SITE_FILES = {
+    'orbital': SITE_ORBITAL_DB,
+    'news': SITE_NEWS_DB,
+    'sky': SITE_SKY_DB,
+    'groundSegment': SITE_GROUND_SEGMENT_DB,
+}
+LEGACY_FILES = {
+    'orbital': (ORBITAL_DB, STATS_DB, GCAT_DB),
+    'news': (NEWS_DB,),
+    'sky': (SKY_DB,),
+    'groundSegment': (GROUND_SEGMENT_DB,),
+}
+RELEASE_AFTER_REQUEST = os.name == 'nt'
+_site_conns = threading.local()
 
-# Ground segment assets DB (built by scripts/ingestionGroundSegment.py)
-# -- a separate file/connection, unrelated to the news database above.
-ground_segment_db = open_db(GROUND_SEGMENT_DB)
 
-# Orbital objects (OMM elements) DB, populated/refreshed by the scripts/
-# ingestion jobs (ingestOrbitalData.py, ingestSatcat.py, enrichEirp.py,
-# ingestSatnogsRf.py -- separate processes) -- read-only here since this
-# endpoint only ever reads it.
-orbital_objects_db = open_db(ORBITAL_DB, read_only=True)
+def site_files(kind):
+    """(paths, legacy) -- the files serving `kind` right now."""
+    path = dbPaths.dbPath(SITE_FILES[kind])
+    if os.path.exists(path):
+        return [path], False
+    return [p for p in (dbPaths.dbPath(name) for name in LEGACY_FILES[kind]) if os.path.exists(p)], True
+
+
+def site_version(kind):
+    """Identifies the current content of `kind`'s files: changes whenever
+    one is replaced or rewritten."""
+    paths, _ = site_files(kind)
+    if not paths:
+        raise FileNotFoundError(f'no database for {kind}')
+    return tuple((p, st.st_ino, st.st_mtime_ns, st.st_size) for p, st in ((p, os.stat(p)) for p in paths))
+
+
+def site_db(kind):
+    """Read-only connection for `kind` ('orbital', 'news', 'sky',
+    'groundSegment'), or None when no database for it exists yet."""
+    conns = _site_conns.__dict__.setdefault('conns', {})
+    try:
+        version = site_version(kind)
+    except FileNotFoundError:
+        return None
+    held = conns.get(kind)
+    if held is not None and held[0] == version:
+        return held[1]
+    if held is not None:
+        held[1].close()
+    paths = [entry[0] for entry in version]
+    conn = sqlite3.connect(f'file:{paths[0]}?mode=ro', uri=True)
+    for index, path in enumerate(paths[1:]):
+        conn.execute(f'ATTACH DATABASE ? AS legacy{index}', (f'file:{path}?mode=ro',))
+    conn.row_factory = sqlite3.Row
+    conns[kind] = (version, conn)
+    return conn
+
+
+def release_site_dbs():
+    for _, conn in getattr(_site_conns, 'conns', {}).values():
+        conn.close()
+    _site_conns.conns = {}
 
 
 # Altitude-regime buckets for the ADD OBJ search form, keyed on mean
@@ -136,7 +199,7 @@ def handle_news(query_params, start_response):
 
         # MODIFIED: Added 'url' to the SELECT statement (kept in sync with server.js)
         try:
-            rows = db.execute(
+            rows = site_db('news').execute(
                 f'SELECT title, source, published_date, url, description FROM articles {where_clause} '
                 'ORDER BY published_date DESC LIMIT ?',
                 params + [limit],
@@ -155,56 +218,46 @@ def handle_news(query_params, start_response):
 
 
 # Rows of the landing page's data-freshness table, in display order.
-# `job` matches the name each ingestion script records in its database's
-# ingestionRuns table (scripts/ingestionLog.py); `interval_min` must match
+# `jobs` are the names ingestion scripts record in ingestionRuns
+# (scripts/ingestionLog.py) -- the newest of any of them counts; the
+# pre-refactor names stay listed until the live server is migrated
+# (dbRefactorPlan.md, step 12). The site files carry every source's runs
+# (publishSite.py), plus the publish itself (publishOrbital, the time the
+# EIRP figures were computed). `interval_min` must match
 # that job's cron schedule (setupCron.sh / scripts/runPipeline.sh) -- the
 # next sync is estimated as the last run's start plus this interval, which
 # stays right whatever timezone the host's cron uses. `fallback_sql` gives a
 # last-refresh time for a database with no recorded runs yet.
 STATUS_SOURCES = [
-    {'data': 'News', 'source': '18 RSS feeds', 'db': 'news', 'job': 'news', 'interval_min': 30,
+    {'data': 'News', 'source': '18 RSS feeds', 'db': 'news', 'jobs': ('news',), 'interval_min': 30,
      'fallback_sql': 'SELECT MAX(fetched_at) FROM articles'},
-    # NORAD = the US satellite catalogue (now maintained by US Space Force);
-    # CelesTrak and Space-Track distribute it, SatNOGS is independent.
-    {'data': 'Orbital elements', 'source': 'NORAD via CelesTrak · Space-Track; SatNOGS', 'db': 'orbital',
-     'job': 'orbitalElements', 'interval_min': 12 * 60,
+    # NORAD = the US satellite catalogue; Space-Track publishes it.
+    {'data': 'Orbital elements', 'source': 'NORAD via Space-Track', 'db': 'orbital',
+     'jobs': ('spaceTrackRecent', 'spaceTrackFull', 'orbitalElements'), 'interval_min': 12 * 60,
      'fallback_sql': 'SELECT MAX(fetchedAt) FROM orbital_objects'},
-    {'data': 'Satellite catalogue', 'source': 'NORAD SATCAT via CelesTrak · Space-Track', 'db': 'orbital',
-     'job': 'satcat', 'interval_min': 24 * 60},
-    {'data': 'Downlink EIRP', 'source': 'Filings · band plans', 'db': 'orbital', 'job': 'eirp',
+    {'data': 'Satellite catalogue', 'source': 'NORAD SATCAT via Space-Track', 'db': 'orbital',
+     'jobs': ('spaceTrackFull', 'satcat'), 'interval_min': 24 * 60},
+    {'data': 'Satellite groups', 'source': 'CelesTrak · our own rules', 'db': 'orbital',
+     'jobs': ('celesTrakGroups',), 'interval_min': 7 * 24 * 60},
+    {'data': 'Downlink EIRP', 'source': 'Filings · band plans', 'db': 'orbital', 'jobs': ('publishOrbital', 'eirp'),
      'interval_min': 12 * 60},
-    {'data': 'Radio frequencies', 'source': 'SatNOGS DB', 'db': 'orbital', 'job': 'satnogsRf',
+    {'data': 'Radio frequencies', 'source': 'SatNOGS DB', 'db': 'orbital', 'jobs': ('satnogs', 'satnogsRf'),
      'interval_min': 12 * 60},
-    {'data': 'Launch & ownership', 'source': 'GCAT', 'db': 'gcat', 'job': 'gcat',
+    {'data': 'Launch & ownership', 'source': 'GCAT', 'db': 'gcat', 'jobs': ('gcat',),
      'interval_min': 7 * 24 * 60},
 ]
 
 
 def gcat_db():
-    """ingestionGCAT.db, opened read-only on first use -- or None while it doesn't
-    exist yet (before scripts/ingestGcat.py's first run). Opened lazily,
-    not at import like the other databases, so a missing file can't stop
-    the whole server starting."""
-    global _gcat_db
-    if _gcat_db is None and os.path.exists(dbPaths.dbPath(GCAT_DB)):
-        _gcat_db = open_db(GCAT_DB, read_only=True)
-    return _gcat_db
-
-
-_gcat_db = None
+    """The GCAT tables (siteOrbital.db, or GCAT attached to the legacy
+    orbital connection) -- or None while no orbital database exists."""
+    return site_db('orbital')
 
 
 def stats_db():
-    """onOrbitStats.db (scripts/orbitStats.py's precomputed ON-ORBIT figures),
-    opened read-only on first use -- or None until it exists. Lazy for the
-    same reason as gcat_db()."""
-    global _stats_db
-    if _stats_db is None and os.path.exists(dbPaths.dbPath(STATS_DB)):
-        _stats_db = open_db(STATS_DB, read_only=True)
-    return _stats_db
-
-
-_stats_db = None
+    """The ON-ORBIT figures (siteOrbital.db, or onOrbitStats.db attached to
+    the legacy orbital connection) -- or None while none exists."""
+    return site_db('orbital')
 
 
 def to_utc_iso(value):
@@ -221,16 +274,19 @@ def add_minutes_iso(iso_value, minutes):
     return (parsed + timedelta(minutes=minutes)).strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
-def latest_runs(conn, job):
-    """(latest run, latest successful run) for `job`, each a sqlite3.Row or
-    None -- (None, None) for a database with no ingestionRuns table yet."""
+def latest_runs(conn, jobs, table='ingestionRuns'):
+    """(latest run, latest successful run) of any of `jobs`, each a
+    sqlite3.Row or None -- (None, None) for a database with no runs table
+    yet. A site file's table holds every source's runs (publishSite.py);
+    ordered by finish time, as it has no id column."""
+    marks = ','.join('?' * len(jobs))
     try:
         latest = conn.execute(
-            'SELECT startedAt, finishedAt, succeeded, changes FROM ingestionRuns '
-            'WHERE job = ? ORDER BY id DESC LIMIT 1', (job,)).fetchone()
+            f'SELECT startedAt, finishedAt, succeeded, changes FROM {table} '
+            f'WHERE job IN ({marks}) ORDER BY finishedAt DESC LIMIT 1', jobs).fetchone()
         latest_ok = conn.execute(
-            'SELECT startedAt, finishedAt, succeeded, changes FROM ingestionRuns '
-            'WHERE job = ? AND succeeded = 1 ORDER BY id DESC LIMIT 1', (job,)).fetchone()
+            f'SELECT startedAt, finishedAt, succeeded, changes FROM {table} '
+            f'WHERE job IN ({marks}) AND succeeded = 1 ORDER BY finishedAt DESC LIMIT 1', jobs).fetchone()
     except sqlite3.OperationalError as e:
         if 'no such table' in str(e):
             return None, None
@@ -242,10 +298,14 @@ def status_row(spec):
     row = {'data': spec['data'], 'source': spec['source'], 'lastRefreshUtc': None,
            'changes': None, 'lastRunFailed': False, 'nextSyncUtc': None}
 
-    conn = {'news': db, 'orbital': orbital_objects_db, 'gcat': gcat_db()}[spec['db']]
+    conn = site_db('news' if spec['db'] == 'news' else 'orbital')
     if conn is None:
         return row   # database not created yet -- nothing recorded
-    latest, latest_ok = latest_runs(conn, spec['job'])
+    # Before the live server's migration, GCAT's runs are in its own file,
+    # attached to the legacy orbital connection as legacy1.
+    _, legacy = site_files('orbital')
+    table = 'legacy1.ingestionRuns' if legacy and spec['db'] == 'gcat' else 'ingestionRuns'
+    latest, latest_ok = latest_runs(conn, spec['jobs'], table)
     if latest is not None:
         row['lastRunFailed'] = not latest['succeeded']
         row['nextSyncUtc'] = add_minutes_iso(latest['startedAt'], spec['interval_min'])
@@ -285,20 +345,19 @@ _sky_catalogue_cache = {}
 
 
 def sky_catalogue_payload():
-    conn = open_db(SKY_DB, read_only=True)
-    try:
-        stars = [[r['raDeg'], r['decDeg'], r['mag'], r['bv'], r['name']]
-                 for r in conn.execute('SELECT raDeg, decDeg, mag, bv, name FROM skyStars ORDER BY mag')]
-        lines = [json.loads(r['pointsJson'])
-                 for r in conn.execute('SELECT pointsJson FROM skyConstellationLines ORDER BY desig, lineIndex')]
-        constellations = [[r['name'], r['labelRaDeg'], r['labelDecDeg'], r['rank']]
-                          for r in conn.execute('SELECT name, labelRaDeg, labelDecDeg, rank FROM skyConstellations')]
-        milky_way = [[r['level'], json.loads(r['pointsJson'])]
-                     for r in conn.execute('SELECT level, pointsJson FROM skyMilkyWay ORDER BY level, ringIndex')]
-        deep_sky = [[r['name'] or r['id'], r['type'], r['raDeg'], r['decDeg'], r['mag'], r['dimArcmin']]
-                    for r in conn.execute('SELECT id, name, type, raDeg, decDeg, mag, dimArcmin FROM skyDeepSky ORDER BY mag')]
-    finally:
-        conn.close()
+    conn = site_db('sky')
+    if conn is None:
+        raise FileNotFoundError('no sky catalogue database')
+    stars = [[r['raDeg'], r['decDeg'], r['mag'], r['bv'], r['name']]
+             for r in conn.execute('SELECT raDeg, decDeg, mag, bv, name FROM skyStars ORDER BY mag')]
+    lines = [json.loads(r['pointsJson'])
+             for r in conn.execute('SELECT pointsJson FROM skyConstellationLines ORDER BY desig, lineIndex')]
+    constellations = [[r['name'], r['labelRaDeg'], r['labelDecDeg'], r['rank']]
+                      for r in conn.execute('SELECT name, labelRaDeg, labelDecDeg, rank FROM skyConstellations')]
+    milky_way = [[r['level'], json.loads(r['pointsJson'])]
+                 for r in conn.execute('SELECT level, pointsJson FROM skyMilkyWay ORDER BY level, ringIndex')]
+    deep_sky = [[r['name'] or r['id'], r['type'], r['raDeg'], r['decDeg'], r['mag'], r['dimArcmin']]
+                for r in conn.execute('SELECT id, name, type, raDeg, decDeg, mag, dimArcmin FROM skyDeepSky ORDER BY mag')]
     return {'stars': stars, 'lines': lines, 'constellations': constellations,
             'milkyWay': milky_way, 'deepSky': deep_sky}
 
@@ -306,7 +365,7 @@ def sky_catalogue_payload():
 def handle_sky_catalogue(environ, start_response):
     return cached_json_response(
         environ, start_response, _sky_catalogue_cache, sky_catalogue_payload,
-        (SKY_DB,), SKY_CATALOGUE_MAX_AGE_SEC,
+        'sky', SKY_CATALOGUE_MAX_AGE_SEC,
         'Sky catalogue unavailable ({}); run scripts/buildSkyCatalogue.py')
 
 
@@ -320,16 +379,17 @@ SKY_CATALOGUE_MAX_AGE_SEC = 24 * 3600   # the fixed sky: rebuilt by hand, rarely
 SKY_SATELLITES_MAX_AGE_SEC = 30 * 60    # orbital elements: refreshed every 12 hours
 
 
-def cached_json_response(environ, start_response, cache, build, db_files, max_age, error_text):
-    """Serves build()'s JSON from `cache`, rebuilt when any of db_files
-    changes; gzipped when the browser accepts it; with ETag / Cache-Control,
-    answering a matching If-None-Match with 304 Not Modified."""
+def cached_json_response(environ, start_response, cache, build, kind, max_age, error_text):
+    """Serves build()'s JSON from `cache`, rebuilt when `kind`'s site
+    database changes (site_version); gzipped when the browser accepts it;
+    with ETag / Cache-Control, answering a matching If-None-Match with 304
+    Not Modified."""
     try:
-        key = tuple(os.path.getmtime(dbPaths.dbPath(f)) for f in db_files)
+        key = site_version(kind)
         if cache.get('key') != key:
             body = json.dumps(build(), separators=(',', ':')).encode('utf-8')
             cache.update(key=key, json=body, gzip=gzip.compress(body, compresslevel=6),
-                         etag='"' + '-'.join(str(int(t)) for t in key) + '"')
+                         etag='"' + '-'.join(str(mtime // 1_000_000_000) for _, _, mtime, _ in key) + '"')
     except (OSError, sqlite3.Error) as e:
         return json_response(start_response, '503 Service Unavailable', {'error': error_text.format(e)})
     use_gzip = 'gzip' in environ.get('HTTP_ACCEPT_ENCODING', '')
@@ -372,21 +432,18 @@ _sky_satellites_cache = {}
 
 
 def sky_satellites_payload():
-    gcat = open_db(GCAT_DB, read_only=True)
-    try:
-        brightness = {r['noradID']: r['stdMag'] for r in gcat.execute(
-            'SELECT noradID, stdMag FROM gcatBrightness WHERE stdMag IS NOT NULL')}
-        spacex = {r['noradID'] for r in gcat.execute(
-            f"SELECT noradID FROM gcatObjects WHERE noradID IS NOT NULL "
-            f"AND ownerCode IN ({','.join('?' * len(SPACEX_ORG_CODES))})", SPACEX_ORG_CODES)}
-    finally:
-        gcat.close()
-    active = {r['noradID'] for r in orbital_objects_db.execute(
+    gcat = gcat_db()
+    brightness = {r['noradID']: r['stdMag'] for r in gcat.execute(
+        'SELECT noradID, stdMag FROM gcatBrightness WHERE stdMag IS NOT NULL')}
+    spacex = {r['noradID'] for r in gcat.execute(
+        f"SELECT noradID FROM gcatObjects WHERE noradID IS NOT NULL "
+        f"AND ownerCode IN ({','.join('?' * len(SPACEX_ORG_CODES))})", SPACEX_ORG_CODES)}
+    active = {r['noradID'] for r in site_db('orbital').execute(
         "SELECT noradID FROM orbital_object_groups WHERE groupName = 'active'")}
-    stations = {r['noradID'] for r in orbital_objects_db.execute(
+    stations = {r['noradID'] for r in site_db('orbital').execute(
         "SELECT noradID FROM orbital_object_groups WHERE groupName = 'stations'")}
     rows = []
-    for r in orbital_objects_db.execute(
+    for r in site_db('orbital').execute(
             "SELECT noradID, name, objectType, perigee, epoch, meanMotion, eccentricity, inclination, "
             "raOfAscNode, argOfPericenter, meanAnomaly, bstar, meanMotionDot, meanMotionDdot "
             "FROM orbital_objects WHERE objectType IN ('PAY', 'R/B') "
@@ -420,22 +477,18 @@ def handle_sky_object(query_params, start_response):
     except ValueError:
         return json_response(start_response, '400 Bad Request', {'error': 'noradID must be a number'})
     try:
-        row = orbital_objects_db.execute(
+        row = site_db('orbital').execute(
             "SELECT noradID, name, objectType, owner, launchDate, launchSite, perigee, apogee, "
             "inclination, period, rcsSize, downlinkBand FROM orbital_objects WHERE noradID = ?",
             (norad_id,)).fetchone()
         if row is None:
             return json_response(start_response, '404 Not Found', {'error': f'No object {norad_id}'})
         details = dict(row)
-        gcat = open_db(GCAT_DB, read_only=True)
-        try:
-            extra = gcat.execute(
-                "SELECT o.name AS gcatName, o.owners, o.stateCode, o.manufacturer, o.bus, o.massKg, "
-                "o.lengthM, o.diameterM, o.spanM, b.stdMag, b.source AS brightnessSource "
-                "FROM gcatObjects o LEFT JOIN gcatBrightness b ON b.noradID = o.noradID "
-                "WHERE o.noradID = ?", (norad_id,)).fetchone()
-        finally:
-            gcat.close()
+        extra = gcat_db().execute(
+            "SELECT o.name AS gcatName, o.owners, o.stateCode, o.manufacturer, o.bus, o.massKg, "
+            "o.lengthM, o.diameterM, o.spanM, b.stdMag, b.source AS brightnessSource "
+            "FROM gcatObjects o LEFT JOIN gcatBrightness b ON b.noradID = o.noradID "
+            "WHERE o.noradID = ?", (norad_id,)).fetchone()
         if extra:
             details.update(dict(extra))
         return json_response(start_response, '200 OK', details)
@@ -446,7 +499,7 @@ def handle_sky_object(query_params, start_response):
 def handle_sky_satellites(environ, start_response):
     return cached_json_response(
         environ, start_response, _sky_satellites_cache, sky_satellites_payload,
-        (ORBITAL_DB, GCAT_DB), SKY_SATELLITES_MAX_AGE_SEC,
+        'orbital', SKY_SATELLITES_MAX_AGE_SEC,
         'Satellite data unavailable ({})')
 
 
@@ -852,7 +905,7 @@ def handle_news_topic_counts(start_response):
     read rather than a count over articleTopics on every page load."""
     try:
         try:
-            rows = db.execute('SELECT topic, articleCount, updatedAt FROM newsTopicCounts').fetchall()
+            rows = site_db('news').execute('SELECT topic, articleCount, updatedAt FROM newsTopicCounts').fetchall()
         except sqlite3.OperationalError as e:
             # Not tagged yet since this was deployed -- no counts to show.
             if 'no such table' in str(e):
@@ -870,7 +923,7 @@ def handle_news_topic_counts(start_response):
 
 def handle_ground_segment_assets(start_response):
     try:
-        rows = ground_segment_db.execute('SELECT * FROM ground_segment_assets').fetchall()
+        rows = site_db('groundSegment').execute('SELECT * FROM ground_segment_assets').fetchall()
         return json_response(start_response, '200 OK', rows_to_dicts(rows))
     except Exception as e:
         return json_response(start_response, '500 Internal Server Error', {'error': str(e)})
@@ -894,7 +947,7 @@ def handle_orbital_objects(query_params, start_response):
             return json_response(start_response, '200 OK', [])
 
         placeholders = ','.join('?' * len(norad_ids))
-        rows = orbital_objects_db.execute(
+        rows = site_db('orbital').execute(
             f'SELECT noradID, name, objectID, epoch, meanMotion, eccentricity, inclination, raOfAscNode, argOfPericenter, meanAnomaly, bstar, meanMotionDot, meanMotionDdot, objectType, owner, launchDate, launchSite, decayDate, rcsSize, period, apogee, perigee, source, downlinkBand, eirpDbw, eirpSource FROM orbital_objects WHERE noradID IN ({placeholders})',
             norad_ids,
         ).fetchall()
@@ -914,7 +967,7 @@ def handle_orbital_objects(query_params, start_response):
 # "satellites" a station tasks) and decayDate IS NULL.
 def handle_active_orbital_objects(start_response):
     try:
-        rows = orbital_objects_db.execute(
+        rows = site_db('orbital').execute(
             "SELECT noradID, name, owner, launchDate, launchSite, objectType, "
             "period, apogee, perigee, rcsSize, downlinkBand, eirpDbw, eirpSource, "
             "satRxGainDbi, satNoiseTempK, satGtDbk, satGtSource, "
@@ -938,7 +991,7 @@ def handle_active_orbital_objects(start_response):
 # columns). ~13k rows.
 def handle_active_nonpayload_objects(start_response):
     try:
-        rows = orbital_objects_db.execute(
+        rows = site_db('orbital').execute(
             "SELECT noradID, epoch, meanMotion, eccentricity, inclination, "
             "raOfAscNode, argOfPericenter, meanAnomaly, bstar, "
             "meanMotionDot, meanMotionDdot "
@@ -953,13 +1006,13 @@ def handle_active_nonpayload_objects(start_response):
 
 def handle_filter_options(start_response):
     try:
-        owners = [r['owner'] for r in orbital_objects_db.execute(
+        owners = [r['owner'] for r in site_db('orbital').execute(
             'SELECT DISTINCT owner FROM orbital_objects WHERE owner IS NOT NULL ORDER BY owner'
         ).fetchall()]
-        groups = [r['groupName'] for r in orbital_objects_db.execute(
+        groups = [r['groupName'] for r in site_db('orbital').execute(
             'SELECT DISTINCT groupName FROM orbital_object_groups ORDER BY groupName'
         ).fetchall()]
-        launch_sites = [r['launchSite'] for r in orbital_objects_db.execute(
+        launch_sites = [r['launchSite'] for r in site_db('orbital').execute(
             'SELECT DISTINCT launchSite FROM orbital_objects WHERE launchSite IS NOT NULL ORDER BY launchSite'
         ).fetchall()]
         return json_response(start_response, '200 OK', {
@@ -1027,7 +1080,7 @@ def handle_orbital_objects_search(query_params, start_response):
         # rather than crowding out real dates) -- previously ORDER BY
         # noradID, which meant an unfiltered/default search only ever
         # showed the oldest ~500 cataloged objects.
-        rows = orbital_objects_db.execute(
+        rows = site_db('orbital').execute(
             f'SELECT o.noradID, o.name, o.objectID, o.epoch, o.meanMotion, o.eccentricity, o.inclination, o.raOfAscNode, o.argOfPericenter, o.meanAnomaly, o.bstar, o.meanMotionDot, o.meanMotionDdot, o.objectType, o.owner, o.launchDate, o.launchSite, o.decayDate, o.rcsSize, o.period, o.apogee, o.perigee, o.source, o.downlinkBand, o.eirpDbw, o.eirpSource FROM orbital_objects o {where_clause} ORDER BY o.launchDate DESC LIMIT ?',
             params + [RESULT_SCAN_LIMIT],
         ).fetchall()
@@ -1113,7 +1166,7 @@ def handle_static(path_info, start_response):
 
 # Tester bug reports: the BUG REPORT spine button's form (assets/bugReport.js)
 # POSTs here, and each accepted report is appended to databases/
-# bugReports.db -- a folder deploys never touch, so reports survive them.
+# inboxBugReports.db -- a folder deploys never touch, so reports survive them.
 # Columns mirror the user-entered columns of bugsDB.xlsx, so triage is a
 # copy into the workbook (0_tools/bugs.py add); the rest (Status, Root Cause,
 # Date Fixed) stay the developers'. This is the only endpoint that writes,
@@ -1264,6 +1317,14 @@ def _store_bug_report(environ, start_response, clean):
 
 
 def application(environ, start_response):
+    try:
+        return route(environ, start_response)
+    finally:
+        if RELEASE_AFTER_REQUEST:
+            release_site_dbs()   # Windows: let publishSite.py replace the files
+
+
+def route(environ, start_response):
     path_info = environ.get('PATH_INFO', '/')
     method = environ.get('REQUEST_METHOD', 'GET')
     query_params = parse_qs(environ.get('QUERY_STRING', ''))

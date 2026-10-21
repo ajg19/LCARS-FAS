@@ -1,6 +1,6 @@
 # Database and source refactor plan
 
-Agreed 2026-10-21 (Al + Claude). Status: steps 1-9 done on DEV (2026-10-21); step 10 next. The step 9 questions are all settled. Decisions A-D are settled. LIVE still uses `ingestionDBs/` with the old file names, so `dbPaths.py` falls back to that folder and maps each new name to its old one until step 12.
+Agreed 2026-10-21 (Al + Claude). Status: steps 1-10 done on DEV (2026-10-21); step 11 next. The step 9 questions are all settled. Decisions A-D are settled. LIVE still uses `ingestionDBs/` with the old file names, so `dbPaths.py` falls back to that folder and maps each new name to its old one until step 12.
 
 ## Conventions
 
@@ -270,6 +270,24 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-9 done on DEV (2026-10-21); ste
 10. **`server.py`.**
     - Opens each site file read-only and reconnects when that file's inode or mtime changes. A long-lived connection would otherwise keep reading the old file after `os.replace`.
     - The bug-report endpoint writes to `inboxBugReports.db`; `bugs.py import-reports` reads from there.
+
+    **DONE 2026-10-21 on DEV.**
+    - **`site_db(kind)`** (kind is orbital, news, sky or groundSegment) gives a read-only connection, one per thread. It reopens whenever the site file's inode, mtime or size changes, so each publish is picked up on the next request.
+      - `gcat_db()` and `stats_db()` now read `siteOrbital.db`.
+      - The sky handlers' own connections and the browser-cache versions (ETag) follow the site files.
+    - **On Windows (DEV),** each thread's connections are closed after every request (`release_site_dbs()`). Otherwise an open file would stop `publishSite.py` replacing it while the local server runs. On Linux they stay open.
+    - **LIVE before step 12:** a kind whose site file doesn't exist is served from the pre-refactor databases. For orbital, `orbitalObjects.db` is opened with `onOrbitStats.db` and the GCAT database attached, so the same table names resolve. Checked on DEV by moving the site files aside: 345 of 359 endpoints matched the baseline, and the rest are time-dependent. **`master` stays deployable.**
+    - **Freshness table:**
+      - It reads the site files' combined run history. Each row lists the job names it accepts, newest first, with the old names kept until step 12.
+      - Labels now say "NORAD via Space-Track".
+      - There is a new "Satellite groups" row (CelesTrak plus our own rules), so a stale CelesTrak shows (decision C2).
+      - `publishSite.py` records each publish as a run (`publishOrbital` and so on), which gives "Downlink EIRP" its refresh time.
+    - **Bug reports:** `inboxBugReports.db` is mapped to `bugReports.db` on the old layout. `bugs.py` looks for either on LIVE.
+    - **Checks:** 281 tests pass (5 new for site databases and status).
+    - **API against the step 2 baseline, served from the site files:**
+      - Every endpoint still answers as before; no status code changed.
+      - 21 endpoints are identical: news, launches, ground segment and the sky catalogue.
+      - The orbital endpoints differ as intended: newer element sets, and the groups and counts from step 9.
 
 ### Scheduling, deployment and switching LIVE over
 

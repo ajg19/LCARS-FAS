@@ -432,18 +432,30 @@ def check(kind, tmpPath, livePath, force):
     return counts
 
 
+def recordPublish(tmpPath, kind, startedAt, counts):
+    """The publish itself, as a run in the file's ingestionRuns -- the
+    freshness table's 'last refresh' for data computed here (EIRP)."""
+    db = sqlite3.connect(tmpPath)
+    with db:
+        copyRuns(db, [])
+        db.execute('INSERT INTO ingestionRuns VALUES (?, ?, ?, ?, 1, ?, NULL)',
+                   ('publishSite', 'publish' + kind[0].upper() + kind[1:], startedAt,
+                    utcNow().strftime('%Y-%m-%dT%H:%M:%SZ'), next(iter(counts.values()))))
+    db.execute('VACUUM')
+    db.close()
+
+
 def publish(kind, now=None, useCelestrak=True, force=False):
     """Builds, checks and swaps in one site file. Returns its row counts."""
     now = now or utcNow()
+    startedAt = utcNow().strftime('%Y-%m-%dT%H:%M:%SZ')
     livePath = dbPath(TYPES[kind])
     tmpPath = livePath + '.tmp'
     freshFile(tmpPath)
     try:
         build(kind, tmpPath, now, useCelestrak)
         counts = check(kind, tmpPath, livePath, force)
-        db = sqlite3.connect(tmpPath)
-        db.execute('VACUUM')
-        db.close()
+        recordPublish(tmpPath, kind, startedAt, counts)
         if os.path.exists(livePath):
             shutil.copy2(livePath, livePath + '.prev')
         os.replace(tmpPath, livePath)
