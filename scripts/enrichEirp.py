@@ -221,8 +221,48 @@ def classify(groups, period):
     return None
 
 
-def resolve(name, object_type, groups, period):
+# GCAT fallback for the class tier (decided 2026-10-21). classify() reads
+# CelesTrak groups; while CelesTrak is unavailable (the live server has
+# been blocked since 2026-08-27) the publish step passes each payload's
+# class from its GCAT entry instead, using these rules in order. Only
+# used then: with CelesTrak available, the groups stay the class tier.
+# Measured on 2026-10-21: where both place a payload they agree about
+# half the time -- mostly GCAT being more specific than CelesTrak's
+# catch-all groups (imaging cubesats, defence GEO comms, SAR) -- and the
+# rules place 3,572 payloads the groups leave unknown.
+SMALL_SAT_MAX_KG = 30
+
+
+def gcat_class(category, payload_class, period, mass_kg):
+    """A BAND_CLASS_EIRP key from a payload's GCAT entry, or None.
+    category: gcatPayloads.category (COM, IMG, MET, SS, ...);
+    payload_class: A academic/amateur, B business, C civil, D defence."""
+    category = category or ''
+    is_geo = period is not None and GEO_PERIOD_MIN <= period <= GEO_PERIOD_MAX
+    if category.startswith('SS'):
+        return 'station'
+    if mass_kg is not None and mass_kg <= SMALL_SAT_MAX_KG:
+        return 'amateur' if payload_class == 'A' else 'cubesat'
+    if category == 'MET':
+        return 'weather-geo' if is_geo else 'weather-leo'
+    if category.startswith('IMG-R'):
+        return 'eo-radar'
+    if category.startswith('IMG') or category == 'EOSCI':
+        return 'eo-optical'
+    if category.startswith('COM'):
+        if is_geo:
+            return 'military-comms' if payload_class == 'D' else 'comms-geo'
+        return 'comms-leo-narrow'
+    if category.startswith(('SCI', 'AST', 'TECH')):
+        return 'science'
+    return None
+
+
+def resolve(name, object_type, groups, period, fallback_class=None):
     """(downlinkBand, eirpDbw, eirpSource, satRxGainDbi) for one object.
+    fallback_class: the GCAT class (gcat_class), used only when the groups
+    place the payload in no class -- the publish step passes it only
+    while CelesTrak is unavailable.
 
     The gain is None exactly when the object is a rocket body / debris or
     an unplaceable payload -- i.e. whenever there is no band either."""
@@ -243,7 +283,7 @@ def resolve(name, object_type, groups, period):
             return spec['band'], spec['eirpDbw'], spec['source'], spec['rxGainDbi']
 
     # Tier 2 -- class-typical figure.
-    cls = classify(groups, period)
+    cls = classify(groups, period) or fallback_class
     if cls is not None:
         spec = BAND_CLASS_EIRP[cls]
         return spec['band'], spec['eirpDbw'], 'estimated', spec['rxGainDbi']
@@ -272,7 +312,9 @@ UPDATE_SQL = (
 
 
 # 5. Main enrichment run
-def run_eirp_enrichment(db):
+def run_eirp_enrichment(db, fallback_classes=None):
+    """fallback_classes: {noradID: GCAT class} for the class tier, passed
+    by the publish step only while CelesTrak is unavailable."""
     print(f'\n=== [{time.strftime("%H:%M:%S")}] Starting EIRP Enrichment ===')
 
     # noradID -> set of its CelesTrak group names.
@@ -292,7 +334,8 @@ def run_eirp_enrichment(db):
     updated = 0
     for norad_id, name, object_type, period in rows:
         band, eirp, source, rx_gain = resolve(
-            name, object_type, groups_by_id.get(norad_id, set()), period
+            name, object_type, groups_by_id.get(norad_id, set()), period,
+            (fallback_classes or {}).get(norad_id)
         )
         gain, temp, gt, gt_source = sat_receive_fom(rx_gain, source)
         db.execute(UPDATE_SQL,

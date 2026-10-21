@@ -1,4 +1,4 @@
-"""Satellite group membership -- 'active', 'stations', 'starlink' and the
+"""Satellite group membership -- 'active', 'starlink' and the
 constellation groups the link budget uses -- by our own documented rules,
 with CelesTrak's lists definitive whenever they are available.
 
@@ -20,25 +20,30 @@ PRECEDENCE, per group and object:
      after CelesTrak's fetch, and every object when CelesTrak isn't
      available (the live server has been blocked by CelesTrak since
      2026-08-27).
-Groups with no rule here (weather, cubesat, geo, ...) come from CelesTrak
-only, and are absent while it isn't available.
+Groups with no rule here (weather, cubesat, geo, stations, ...) come from
+CelesTrak only, and are absent while it isn't available. The link
+budget's class tier, which reads several of them, then falls back to
+GCAT instead (enrichEirp.gcat_class).
 
 OUR RULES work from the object's Space-Track record and its GCAT entry
-(owner code, programme, payload category, operations-end date):
+(owner code, programme, operations-end date):
   - active:   a payload in orbit with no GCAT operations-end date
-              (gcatPayloads.tOp). On the August data this agreed with
-              CelesTrak for 97% of on-orbit payloads. A payload GCAT
-              doesn't list yet is active only under the recent-launch rule.
-  - stations: GCAT payload category SS (station modules and the crewed
-              and cargo craft docked to them), or, for craft too new for
-              GCAT, a crewed/cargo vehicle name.
+              (gcatPayloads.tOp). Agreed with CelesTrak for 92% of
+              on-orbit payloads on 2026-10-21. A payload GCAT doesn't
+              list yet is active only under the recent-launch rule.
   - constellation groups: an active payload whose GCAT owner code or
-              programme belongs to the constellation (or, for the
-              function groups sar / gnss / sbas / sarsat / argos, whose
-              payload category or programme does); for payloads GCAT
+              programme belongs to the constellation; for payloads GCAT
               doesn't list yet, a name prefix.
 Each rule's agreement with CelesTrak's latest list is measured on every
 publish (agreement()), so drift shows up.
+
+CELESTRAK-ONLY (decided 2026-10-21): groups whose rules agreed poorly
+with CelesTrak have no rule, and are absent while CelesTrak is
+unavailable -- until it is back. Agreement measured on 2026-10-21:
+stations 50%, orbcomm 48%, sbas 34%, gnss 55%, sarsat 56%, ses 83%,
+intelsat 64%, telesat 61%, sar 67%, spire 65%. (stations matters little:
+orbitStats takes stations from GCAT's SS category and uses the group
+only for craft GCAT doesn't list yet.)
 """
 
 from datetime import datetime, timedelta, timezone
@@ -46,43 +51,27 @@ from datetime import datetime, timedelta, timezone
 RECENT_LAUNCH_DAYS = 91
 CELESTRAK_MAX_AGE_DAYS = 14
 
-# Crewed and cargo craft that visit stations, for those not yet in GCAT.
-STATION_VEHICLE_NAMES = ('ISS ', 'CSS ', 'SOYUZ', 'PROGRESS', 'CREW DRAGON', 'DRAGON', 'CYGNUS',
-                         'TIANZHOU', 'SHENZHOU', 'HTV', 'DREAM CHASER', 'STARLINER')
-
 # Constellation rules. owners: GCAT owner codes; programs: GCAT programme
-# prefixes; categories: GCAT payload categories; names: name prefixes,
-# used only for payloads GCAT doesn't list yet. A payload matches when
-# any of its GCAT fields matches (or, without GCAT, its name does).
+# prefixes; names: name prefixes, used only for payloads GCAT doesn't list
+# yet. A payload matches when any of its GCAT fields matches (or, without
+# GCAT, its name does).
 RULES = {
     'starlink':     {'owners': {'SPXS'}, 'names': ('STARLINK',)},
     'oneweb':       {'owners': {'ONEWEB', 'ONEWEBN', 'ONEWEBE'}, 'names': ('ONEWEB',)},
     'kuiper':       {'owners': {'KUIP'}, 'names': ('KUIPER',)},
     'iridium-NEXT': {'programs': ('Iridium Next',), 'names': ('IRIDIUM',)},
     'globalstar':   {'owners': {'GLOBL', 'GLOB'}, 'names': ('GLOBALSTAR',)},
-    'orbcomm':      {'owners': {'ORBC'}, 'names': ('ORBCOMM',)},
     'gps-ops':      {'programs': ('GPS ',), 'names': ('NAVSTAR', 'GPS ')},
     'glo-ops':      {'programs': ('Uragan', 'Glonass'), 'names': ('GLONASS',)},
     'galileo':      {'programs': ('Galileo',), 'names': ('GALILEO',)},
     'beidou':       {'programs': ('Beidou-2', 'Beidou-3'), 'names': ('BEIDOU',)},
-    'sbas':         {'programs': ('QZSS', 'Luch5', 'Beidou-3G', 'GSAT', 'WAAS', 'EGNOS', 'SDCM'), 'names': ('QZS',)},
-    'gnss':         {'categories': {'NAV', 'NAV/COM'},
-                     'names': ('NAVSTAR', 'GPS ', 'GALILEO', 'BEIDOU', 'GLONASS', 'QZS', 'IRNSS', 'NVS')},
     'planet':       {'owners': {'PLAN', 'PLABST', 'TBELLA', 'SKYBOX'}, 'names': ('FLOCK', 'SKYSAT', 'PELICAN', 'TANAGER')},
-    'ses':          {'owners': {'O3BS', 'O3B', 'SESSA', 'SESSL', 'SES', 'SESGS'}, 'names': ('SES', 'O3B', 'ASTRA')},
-    'intelsat':     {'owners': {'INTELU', 'INTELD', 'INTEL', 'PAN'}, 'names': ('INTELSAT', 'GALAXY', 'HORIZONS')},
     'eutelsat':     {'owners': {'EUTSA', 'EUTAM', 'EUTEL'}, 'names': ('EUTELSAT', 'EUTE ', 'HOTBIRD')},
-    'telesat':      {'owners': {'TCANL', 'TCAN', 'TSKY', 'TELES'}, 'names': ('NIMIQ', 'ANIK', 'TELSTAR', 'TELESAT')},
     'qianfan':      {'owners': {'YUANX'}, 'programs': ('Qianfan',), 'names': ('QIANFAN',)},
     'hulianwang':   {'owners': {'ZXW'}, 'programs': ('HWD',), 'names': ('HULIANWANG',)},
-    'sar':          {'categories': {'IMG-R'}, 'names': ('ICEYE', 'CAPELLA', 'QPS', 'STRIX', 'UMBRA')},
-    'spire':        {'owners': {'SPIRE', 'SPIREL', 'SPIREG', 'ORORA'}, 'names': ('LEMUR',)},
     'argos':        {'owners': {'KINEIS'}, 'programs': ('METOP', 'NOAA', 'SARAL', 'Kineis'), 'names': ('KINEIS',)},
-    'sarsat':       {'programs': ('Galileo', 'GPS IIF', 'GPS IIR', 'GPS III', 'Beidou-3M', 'Meteosat', 'GOES',
-                                  'NOAA', 'METOP', 'Elektro', 'Meteor-M'),
-                     'names': ('GALILEO', 'NAVSTAR', 'GOES', 'METEOSAT', 'NOAA')},
 }
-RULE_GROUPS = ('active', 'stations') + tuple(RULES)
+RULE_GROUPS = ('active',) + tuple(RULES)
 
 
 def parseDate(text):
@@ -110,18 +99,13 @@ def ruleMembers(objects, now):
             active = not o['tOp'] or newLaunch
         else:
             active = newLaunch
-        if active:
-            members['active'].add(o['noradID'])
-        category = o['category'] or ''
-        if category.startswith('SS') or (not o['inGcat'] and name.startswith(STATION_VEHICLE_NAMES)):
-            members['stations'].add(o['noradID'])
         if not active:
             continue
+        members['active'].add(o['noradID'])
         for group, rule in RULES.items():
             if o['inGcat']:
                 hit = (o['ownerCode'] in rule.get('owners', ())
-                       or (o['program'] or '').startswith(rule.get('programs', ()) or ('\0',))
-                       or category in rule.get('categories', ()))
+                       or (o['program'] or '').startswith(rule.get('programs', ()) or ('\0',)))
             else:
                 hit = name.startswith(rule.get('names', ()) or ('\0',))
             if hit:

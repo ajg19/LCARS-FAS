@@ -217,7 +217,7 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-9 done on DEV (2026-10-21); ste
      - **SatNOGS frequencies:** 1,433 satellites against 1,677. None now sit on 9xxxx duplicates; LIVE has 384.
      - **Stats:** `onOrbitObjects` 32,776 and brightness 21,115, against 33,186 and 21,144.
    - **The website doesn't read these files yet;** that is step 10. The API still matches the step 2 baseline apart from time-dependent endpoints.
-   - **Rule agreement with CelesTrak** (our rules alone against CelesTrak's lists of 2026-10-21):
+   - **Rule agreement with CelesTrak** (our rules alone against CelesTrak's lists of 2026-10-21; the weak ones were later made CelesTrak-only, see question 1 below):
 
      | Agreement | Groups |
      |---|---|
@@ -230,9 +230,28 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-9 done on DEV (2026-10-21); ste
      - sbas, sarsat and sar are function groups;
      - stations misses cubesats released from the ISS;
      - orbcomm includes satellites GCAT hasn't marked as ended.
-   - **OPEN QUESTIONS FOR AL:**
-     1. **Weak rules.** Refine them, accept them, or leave those groups CelesTrak-only, so they are absent while LIVE is blocked?
-     2. **Classification groups.** `enrichEirp.py`'s class tier uses CelesTrak groups (weather, radar, resource, science, amateur, cubesat, military, geo, other-comm and others) that have no rules. In a rules-only publish, 1,132 more payloads drop from estimated to unknown. Give these rules too (GCAT category, plus the orbit for geo)?
+   - **Questions 1 and 2, DECIDED 2026-10-21:**
+     1. **Weak rules: CelesTrak-only until it's back.** stations, orbcomm, sbas, gnss, sarsat, ses, intelsat, telesat, sar and spire have no rule in `groupRules.py`, and are absent while CelesTrak is unavailable. The 14 groups kept are active plus 13 constellations.
+     2. **Classification: CelesTrak groups stay the class tier; GCAT is the fallback only when CelesTrak is unavailable.**
+        - **Where:** `enrichEirp.gcat_class()`.
+        - **Rules, in order:**
+          1. GCAT category SS → station.
+          2. Mass 30 kg or less → amateur (payload class A) or cubesat.
+          3. MET → weather-geo or weather-leo, by orbit.
+          4. IMG-R → eo-radar.
+          5. IMG or EOSCI → eo-optical.
+          6. COM in GEO → military-comms (class D) or comms-geo.
+          7. COM elsewhere → comms-leo-narrow.
+          8. SCI, AST or TECH → science.
+
+          Anything else stays unknown.
+        - **How it's applied:** `publishSite.py` passes these classes to the EIRP stage when no CelesTrak list is available, and prints which tier it used.
+        - **DEV, payloads in orbit:**
+
+          | Publish | Constellation (filing) | Estimated | Unknown |
+          |---|---|---|---|
+          | With CelesTrak | 12,928 | 1,874 | 4,102 |
+          | Without CelesTrak (as LIVE today) | 12,762 | 4,881 | 1,261 |
      3. **EST. SIZE.** Space-Track gives radar cross-section only as SMALL, MEDIUM or LARGE, so `rcsSize` (shown as "EST. SIZE" in m²) is empty and `rcsCategory` carries the category. Options: show the category, estimate the size from GCAT's dimensions, or use CelesTrak's figure when available.
      4. **Parameters.** Confirm the four values above.
 

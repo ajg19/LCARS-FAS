@@ -36,7 +36,8 @@ ORBITAL (siteOrbital.db) is the only type with real work:
     norad_follow_id, then the designator from SatNOGS's TLE, then their
     own number; then rfSelection.choose_rf picks the main downlink and
     uplink.
-  - derived: EIRP and receive G/T (enrichEirp), brightness
+  - derived: EIRP and receive G/T (enrichEirp; its class tier falls back
+    to GCAT -- enrichEirp.gcat_class -- while CelesTrak is unavailable), brightness
     (estimateBrightness -> gcatBrightness), the ON-ORBIT / LAUNCHES stats
     (orbitStats).
   - GCAT: only the tables and columns the website reads.
@@ -200,10 +201,11 @@ def loadGroupInputs(stagePath):
     GCAT and ingestionCelesTrak.db."""
     db = connectUri(stagePath, readOnly=True)
     attach(db, dbPath(GCAT_DB), 'gcat')
-    objects = [dict(zip(('noradID', 'name', 'objectType', 'launchDate', 'decayDate', 'inGcat', 'ownerCode',
-                         'program', 'category', 'tOp'), row)) for row in db.execute('''
-        SELECT o.noradID, o.name, o.objectType, o.launchDate, o.decayDate, g.noradID IS NOT NULL,
-               g.ownerCode, p.program, p.category, p.tOp
+    objects = [dict(zip(('noradID', 'name', 'objectType', 'launchDate', 'decayDate', 'period', 'inGcat',
+                         'ownerCode', 'program', 'category', 'payloadClass', 'massKg', 'tOp'), row))
+               for row in db.execute('''
+        SELECT o.noradID, o.name, o.objectType, o.launchDate, o.decayDate, o.period, g.noradID IS NOT NULL,
+               g.ownerCode, p.program, p.category, p.payloadClass, g.massKg, p.tOp
         FROM orbital_objects o
         LEFT JOIN (SELECT * FROM gcat.gcatObjects WHERE noradID IS NOT NULL GROUP BY noradID) g
                ON g.noradID = o.noradID
@@ -280,9 +282,21 @@ def linkTransmitters(stagePath):
     return len(updates), counts
 
 
-def enrichEirpInto(stagePath):
+def gcatClasses(objects):
+    """{noradID: class} from GCAT for every payload enrichEirp.gcat_class
+    can place -- the class tier's fallback while CelesTrak is unavailable."""
+    classes = {}
+    for o in objects:
+        if o['objectType'] == 'PAY':
+            cls = enrichEirp.gcat_class(o['category'], o['payloadClass'], o['period'], o['massKg'])
+            if cls:
+                classes[o['noradID']] = cls
+    return classes
+
+
+def enrichEirpInto(stagePath, fallbackClasses=None):
     db = sqlite3.connect(stagePath)   # implicit transaction: one commit, not one per row
-    tagged = enrichEirp.run_eirp_enrichment(db)
+    tagged = enrichEirp.run_eirp_enrichment(db, fallbackClasses)
     db.commit()
     db.close()
     return tagged
@@ -295,6 +309,8 @@ def publishOrbital(tmpPath, now, useCelestrak=True):
         print(f'  objects: {summary["objects"]} from Space-Track')
 
         objects, celestrak = loadGroupInputs(stagePath)
+        available = useCelestrak and any(groupRules.celestrakAvailable(lastSuccess, now)
+                                         for lastSuccess, _ in celestrak.values())
         members = groupRules.groupMembers(objects, celestrak if useCelestrak else {}, now)
         storeGroups(stagePath, members)
         print(f'  groups: {len(members)} ({", ".join(f"{g} {len(m)}" for g, m in sorted(members.items()) if g in groupRules.RULE_GROUPS)})')
@@ -303,7 +319,11 @@ def publishOrbital(tmpPath, now, useCelestrak=True):
 
         linked, how = linkTransmitters(stagePath)
         print(f'  radio: {linked} satellites with SatNOGS frequencies ({", ".join(f"{k} {v}" for k, v in sorted(how.items()))})')
-        enrichEirpInto(stagePath)
+        # The class tier reads CelesTrak groups; without them, GCAT stands in.
+        fallback = None if available else gcatClasses(objects)
+        print('  EIRP class tier: ' + ('CelesTrak groups' if available
+                                       else f'GCAT (CelesTrak unavailable; {len(fallback)} payloads placed)'))
+        enrichEirpInto(stagePath, fallback)
 
         # Brightness reads GCAT unqualified, so it runs before the trimmed
         # gcatObjects is copied into the site file.

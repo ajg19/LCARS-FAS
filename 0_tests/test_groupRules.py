@@ -37,11 +37,14 @@ def test_only_payloads_in_orbit_count():
     assert members['active'] == set()
 
 
-def test_stations_by_gcat_category_or_vehicle_name():
-    members = gr.ruleMembers([obj(1, category='SS', tOp='2020'), obj(2, name='SOYUZ-MS 29', inGcat=False,
-                                                                     launch='2026-09-01'),
-                              obj(3, name='SOYUZ-MS 29', category='TECH')], NOW)
-    assert members['stations'] == {1, 2}
+def test_weak_groups_are_celestrak_only():
+    # Decided 2026-10-21: no rule until CelesTrak is back.
+    for group in ('stations', 'orbcomm', 'sbas', 'gnss', 'sarsat', 'ses', 'intelsat', 'telesat', 'sar', 'spire'):
+        assert group not in gr.RULE_GROUPS
+    objects = [obj(1, category='SS'), obj(2, owner='ORBC')]
+    assert gr.groupMembers(objects, {'stations': (FRESH, {1})}, NOW)['stations'] == {1}
+    assert 'stations' not in gr.groupMembers(objects, {'stations': (STALE, {1})}, NOW)
+    assert 'orbcomm' not in gr.groupMembers(objects, {}, NOW)
 
 
 def test_constellation_needs_active_and_matches_gcat_or_name():
