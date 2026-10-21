@@ -128,6 +128,18 @@ def test_selection_and_mapping(dbDir):
     db.close()
 
 
+def test_rcs_comes_from_kept_celestrak_figures(dbDir):
+    import ingestionCelesTrak
+    makeSpaceTrack(full=[gp(1, '2026-10-19T00:00:00', RCS_SIZE='LARGE'), gp(2, '2026-10-19T00:00:00')])
+    ct = ingestionCelesTrak.openDb(dbPaths.dbPath(dbPaths.CELESTRAK_DB))
+    ingestionCelesTrak.storeRcs(ct, [(1, 12.5), (99, 1.0)], 'T1')
+    ct.close()
+    db, _ = staged(dbDir)
+    assert dict(db.execute('SELECT noradID, rcsSize FROM orbital_objects')) == {1: 12.5, 2: None}
+    assert db.execute('SELECT rcsCategory FROM orbital_objects WHERE noradID = 1').fetchone()[0] == 'LARGE'
+    db.close()
+
+
 def test_object_that_left_the_catalogue_is_not_published(dbDir):
     db = ingestionSpaceTrack.openDb(dbPaths.dbPath(dbPaths.SPACETRACK_DB))
     ingestionSpaceTrack.storeEntries(db, [gp(1, '2026-10-19T00:00:00'), gp(2, '2026-10-19T00:00:00')],

@@ -5,6 +5,7 @@ the real databases/ingestionCelesTrak.db."""
 import calendar
 import os
 import socket
+import sqlite3
 import sys
 import time
 
@@ -115,3 +116,48 @@ def test_disabled_makes_no_request(tmp_path, monkeypatch):
     monkeypatch.setattr(ict, 'settings', lambda: (False, 168 * 3600))
     monkeypatch.setattr(ict, 'httpGet', lambda url: pytest.fail('CelesTrak was contacted'))
     assert ict.main([]) == 0
+
+
+# --- Radar cross-section (satcat.csv) -------------------------------------------
+
+SATCAT = ('OBJECT_NAME,OBJECT_ID,NORAD_CAT_ID,OBJECT_TYPE,RCS\r\n'
+          'ISS (ZARYA),1998-067A,25544,PAY,399.0524\r\n'
+          'SMALLSAT,2020-001A,45000,PAY,0.0123\r\n'
+          'NO RCS,2020-001B,45001,PAY,\r\n'
+          'ZERO,2020-001C,45002,DEB,0\r\n')
+
+
+def rcs(db):
+    return dict(db.execute('SELECT noradID, rcsM2 FROM satcatRcs'))
+
+
+def test_parse_satcat_rcs_skips_blank_and_zero():
+    assert ict.parseSatcatRcs(SATCAT) == [(25544, 399.0524), (45000, 0.0123)]
+
+
+def test_figures_are_kept_for_good(db):
+    assert ict.storeRcs(db, [(1, 2.0), (2, 3.0)], 'T1') == 2
+    # A later catalogue without object 2 removes nothing; a changed figure updates.
+    assert ict.storeRcs(db, [(1, 2.5)], 'T2') == 1
+    assert rcs(db) == {1: 2.5, 2: 3.0}
+    assert ict.storeRcs(db, [(1, 2.5)], 'T3') == 0
+
+
+def test_seed_never_overwrites(db, tmp_path):
+    ict.storeRcs(db, [(1, 2.5)], 'T1')
+    old = sqlite3.connect(str(tmp_path / 'orbitalObjects.db'))
+    old.execute('CREATE TABLE orbital_objects (noradID INTEGER, rcsSize REAL)')
+    old.executemany('INSERT INTO orbital_objects VALUES (?, ?)', [(1, 9.9), (2, 4.0), (3, None)])
+    old.commit()
+    old.close()
+    assert ict.seedRcs(db, str(tmp_path / 'orbitalObjects.db')) == 1
+    assert rcs(db) == {1: 2.5, 2: 4.0}
+    assert 'seeded' in db.execute('SELECT source FROM satcatRcs WHERE noradID = 2').fetchone()[0]
+
+
+def test_satcat_failure_keeps_figures(db):
+    ict.storeRcs(db, [(1, 2.5)], 'T1')
+    changed, ok, note = ict.runSatcat(db, fetch=lambda: (_ for _ in ()).throw(Exception('HTTP 503')))
+    assert (changed, ok) == (0, False) and 'HTTP 503' in note
+    assert rcs(db) == {1: 2.5}
+    assert db.execute("SELECT lastSuccess, note FROM satcatFetches").fetchone() == (None, 'Exception: HTTP 503')

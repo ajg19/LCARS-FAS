@@ -252,7 +252,17 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-9 done on DEV (2026-10-21); ste
           |---|---|---|---|
           | With CelesTrak | 12,928 | 1,874 | 4,102 |
           | Without CelesTrak (as LIVE today) | 12,762 | 4,881 | 1,261 |
-     3. **EST. SIZE.** Space-Track gives radar cross-section only as SMALL, MEDIUM or LARGE, so `rcsSize` (shown as "EST. SIZE" in m²) is empty and `rcsCategory` carries the category. Options: show the category, estimate the size from GCAT's dimensions, or use CelesTrak's figure when available.
+     3. **EST. SIZE, DECIDED 2026-10-21: keep CelesTrak's radar figure for good once known (satellites don't change size).**
+        - **Storage:** `ingestionCelesTrak.db` has a `satcatRcs` table. Rows are only ever added or updated, never removed, and a blank never replaces a held figure.
+        - **Sources:**
+          - Each full weekly CelesTrak pass ends with one `satcat.csv` request.
+          - `ingestionCelesTrak.py --seed-rcs <orbitalObjects.db>` is a one-off import of the figures the old database holds, filling only objects that don't have one yet.
+        - **Publish:** `rcsSize` comes from that table; `rcsCategory` keeps Space-Track's SMALL, MEDIUM or LARGE.
+        - **DEV results:**
+          - The seed added 12,690 figures, and CelesTrak's current `satcat.csv` matched every one of them exactly.
+          - `satcat.csv` added 20,241 more (32,931 in all, many for decayed objects).
+          - The site now has 13,164 objects with EST. SIZE, against 12,690 on LIVE, with identical values wherever both have one.
+          - Only 3,464 of 18,904 payloads in orbit have a figure: CelesTrak leaves RCS blank for most newer satellites, Starlink included.
      4. **Parameters.** Confirm the four values above.
 
 ### Website
@@ -270,9 +280,10 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-9 done on DEV (2026-10-21); ste
 12. **LIVE migration.** A one-off script, run with `DRY_RUN` first:
     1. Take the lock.
     2. Back up every DB.
-    3. Rename the folder and files; bug reports become `inboxBugReports.db`.
-    4. Run a full ingestion, then publish every type.
-    5. Restart Passenger and install the new cron.
+    3. Seed the radar figures from LIVE's `orbitalObjects.db` with `ingestionCelesTrak.py --seed-rcs`, before that database is retired (decision 3 under step 9). While CelesTrak blocks LIVE, these figures are LIVE's only source for EST. SIZE.
+    4. Rename the folder and files; bug reports become `inboxBugReports.db`.
+    5. Run a full ingestion, then publish every type.
+    6. Restart Passenger and install the new cron.
 
     Before the migration, change `deployToGoDaddy.sh` so it uploads `databases/ingestionGroundSegment.db` and `databases/ingestionSkyCatalogue.db` and excludes everything else in `databases/`. After any deploy that changes either file, it publishes the matching site file on the server (decision D).
 

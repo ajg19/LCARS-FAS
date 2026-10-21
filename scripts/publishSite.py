@@ -49,9 +49,10 @@ own; its tables are then copied into the site file.
 
 NEWS, SKY, GROUND SEGMENT: copies of the tables the website reads.
 
-Space-Track's radar cross-section is a size category, not CelesTrak's
-m^2 figure, so rcsSize (shown as EST. SIZE) is left empty and the
-category is published as rcsCategory -- an open decision in the plan.
+EST. SIZE (rcsSize) is CelesTrak's radar cross-section in m^2, kept for
+good once known (ingestionCelesTrak.db satcatRcs; decided 2026-10-21:
+satellites don't change size). Space-Track's SMALL / MEDIUM / LARGE is
+published alongside as rcsCategory.
 """
 
 import argparse
@@ -190,7 +191,18 @@ def buildObjects(stagePath, now):
             WHERE (g.decayDate IS NULL AND (g.lastSeenFull = ? OR g.fetchedAt >= ?) AND g.epoch >= ?)
                OR (g.decayDate IS NOT NULL AND g.decayDate >= ?)
         ''', (latestFull, latestFull, oldest, decayedSince))
-    summary = {'objects': db.execute('SELECT COUNT(*) FROM orbital_objects').fetchone()[0]}
+    # EST. SIZE: CelesTrak's radar figure, kept for good once known
+    # (ingestionCelesTrak.db satcatRcs; satellites don't change size).
+    rcs = 0
+    if os.path.exists(dbPath(CELESTRAK_DB)):
+        attach(db, dbPath(CELESTRAK_DB), 'ct')
+        if db.execute("SELECT 1 FROM ct.sqlite_master WHERE name = 'satcatRcs'").fetchone():
+            with db:
+                rcs = db.execute('UPDATE orbital_objects SET rcsSize = (SELECT r.rcsM2 FROM ct.satcatRcs r '
+                                 'WHERE r.noradID = orbital_objects.noradID) '
+                                 'WHERE noradID IN (SELECT noradID FROM ct.satcatRcs)').rowcount
+        db.execute('DETACH DATABASE ct')
+    summary = {'objects': db.execute('SELECT COUNT(*) FROM orbital_objects').fetchone()[0], 'rcs': rcs}
     db.execute('DETACH DATABASE st')
     db.close()
     return summary
@@ -306,7 +318,7 @@ def publishOrbital(tmpPath, now, useCelestrak=True):
     stagePath = tmpPath + '.objects'
     try:
         summary = buildObjects(stagePath, now)
-        print(f'  objects: {summary["objects"]} from Space-Track')
+        print(f'  objects: {summary["objects"]} from Space-Track, {summary["rcs"]} with a CelesTrak radar figure')
 
         objects, celestrak = loadGroupInputs(stagePath)
         available = useCelestrak and any(groupRules.celestrakAvailable(lastSuccess, now)

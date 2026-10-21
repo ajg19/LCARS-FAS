@@ -25,9 +25,19 @@ blocked or down -- the remaining groups would fail the same way).
 Elements come back with the membership whatever the format; CSV is the
 smallest, and only the NORAD ID and name are kept.
 
+RADAR CROSS-SECTION (decided 2026-10-21). CelesTrak's catalogue file
+(satcat.csv) is the only source of a numeric radar cross-section in m^2
+-- Space-Track gives just SMALL / MEDIUM / LARGE -- and the website shows
+it as EST. SIZE. Satellites don't change size, so a figure once known is
+kept for good: table satcatRcs is only ever added to or updated, never
+emptied, and a blank from CelesTrak never replaces a figure we hold. Each
+full weekly pass ends with one satcat.csv request; --seed-rcs imports
+the figures the old orbitalObjects.db already holds (a one-off, on DEV
+and in the live server's migration), without overwriting any.
+
 Every run is recorded in ingestionRuns (job celesTrakGroups); "changes"
-counts memberships added or removed, which is what triggers a publish
-(decision C1).
+counts memberships added or removed and radar figures added or changed,
+which is what triggers a publish (decision C1).
 """
 
 import argparse
@@ -59,6 +69,7 @@ GROUPS = [
     'weather', 'x-comm',
 ]
 GROUP_URL = 'https://celestrak.org/NORAD/elements/gp.php?GROUP={}&FORMAT=csv'
+SATCAT_URL = 'https://celestrak.org/pub/satcat.csv'
 GROUP_DELAY_SEC = 3
 DEFAULT_INTERVAL_HOURS = 168
 # A cron run started a little early still counts as a week.
@@ -82,6 +93,20 @@ def openDb(path=None):
             lastAttempt TEXT NOT NULL,
             lastSuccess TEXT,
             members     INTEGER,
+            note        TEXT
+        );
+        CREATE TABLE IF NOT EXISTS satcatRcs (
+            noradID   INTEGER PRIMARY KEY,
+            rcsM2     REAL NOT NULL,
+            source    TEXT NOT NULL,
+            firstSeen TEXT NOT NULL,
+            lastSeen  TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS satcatFetches (
+            fileName    TEXT PRIMARY KEY,
+            lastAttempt TEXT NOT NULL,
+            lastSuccess TEXT,
+            rcsValues   INTEGER,
             note        TEXT
         );
     ''')
@@ -192,11 +217,98 @@ def runPass(db, groups, fetch=fetchGroup, delay=GROUP_DELAY_SEC):
     return changes, succeeded, failed, note[:500]
 
 
+# --- Radar cross-section (satcat.csv) ------------------------------------------
+
+def parseSatcatRcs(text):
+    """[(noradID, rcsM2)] for every catalogue row with a positive RCS."""
+    rows = []
+    for row in csv.DictReader(io.StringIO(text)):
+        try:
+            norad, rcs = int(row['NORAD_CAT_ID']), float(row['RCS'])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if rcs > 0:
+            rows.append((norad, rcs))
+    return rows
+
+
+def fetchSatcat():
+    status, text = httpGet(SATCAT_URL)
+    if status >= 400:
+        raise Exception(f'HTTP {status}')
+    rows = parseSatcatRcs(text)
+    if not rows:
+        raise Exception('no RCS values in satcat.csv')
+    return rows
+
+
+def storeRcs(db, rows, now, source='celestrak satcat', overwrite=True):
+    """Adds or updates radar figures; never removes one. overwrite=False
+    (the seed) only fills objects with no figure yet. Returns the number
+    of figures added or changed."""
+    with db:
+        held = dict(db.execute('SELECT noradID, rcsM2 FROM satcatRcs'))
+        changed = sum(1 for norad, rcs in rows if norad not in held or (overwrite and held[norad] != rcs))
+        db.executemany(
+            'INSERT INTO satcatRcs (noradID, rcsM2, source, firstSeen, lastSeen) VALUES (?, ?, ?, ?, ?) '
+            'ON CONFLICT(noradID) DO UPDATE SET rcsM2 = excluded.rcsM2, source = excluded.source, '
+            'lastSeen = excluded.lastSeen' + ('' if overwrite else ' WHERE 0'),
+            [(norad, rcs, source, now, now) for norad, rcs in rows])
+    return changed
+
+
+def recordSatcatFetch(db, now, values=None, note=None):
+    with db:
+        db.execute('INSERT INTO satcatFetches (fileName, lastAttempt) VALUES (?, ?) '
+                   'ON CONFLICT(fileName) DO UPDATE SET lastAttempt = excluded.lastAttempt', ('satcat.csv', now))
+        if values is not None:
+            db.execute("UPDATE satcatFetches SET lastSuccess = ?, rcsValues = ?, note = NULL WHERE fileName = 'satcat.csv'",
+                       (now, values))
+        elif note:
+            db.execute("UPDATE satcatFetches SET note = ? WHERE fileName = 'satcat.csv'", (note[:300],))
+
+
+def runSatcat(db, fetch=fetchSatcat):
+    """One satcat.csv request. Returns (changes, ok, note)."""
+    now = utcNowIso()
+    recordSatcatFetch(db, now)
+    try:
+        rows = fetch()
+    except Exception as error:
+        recordSatcatFetch(db, now, note=f'{type(error).__name__}: {error}')
+        print(f'  satcat.csv: ERROR {error}')
+        return 0, False, f'satcat.csv: {error}'
+    changed = storeRcs(db, rows, now)
+    recordSatcatFetch(db, now, values=len(rows))
+    print(f'  satcat.csv: {len(rows)} radar figures, {changed} added or changed')
+    return changed, True, f'satcat.csv {len(rows)} RCS, {changed} changed'
+
+
+def seedRcs(db, orbitalPath):
+    """One-off: the CelesTrak radar figures the old orbitalObjects.db holds
+    (its rcsSize was only ever set from CelesTrak's satcat), added where
+    we have none. Returns the number added."""
+    old = sqlite3.connect(f'file:{orbitalPath}?mode=ro', uri=True)
+    rows = old.execute('SELECT noradID, rcsSize FROM orbital_objects WHERE rcsSize > 0').fetchall()
+    old.close()
+    added = storeRcs(db, rows, utcNowIso(), 'celestrak satcat (seeded from orbitalObjects.db)', overwrite=False)
+    print(f'  seed: {len(rows)} radar figures in {orbitalPath}, {added} added')
+    return added
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description='CelesTrak group membership into ingestionCelesTrak.db.')
     parser.add_argument('--force', action='store_true', help='ignore the weekly interval (not CELESTRAK_ENABLED)')
-    parser.add_argument('--groups', help='comma-separated subset of groups (default: all)')
+    parser.add_argument('--groups', help='comma-separated subset of groups (default: all; no satcat.csv)')
+    parser.add_argument('--seed-rcs', metavar='ORBITAL_DB',
+                        help='one-off: import radar figures from the old orbitalObjects.db, then stop')
     args = parser.parse_args(argv)
+
+    if args.seed_rcs:
+        db = openDb()
+        seedRcs(db, args.seed_rcs)
+        db.close()
+        return 0
 
     groups = args.groups.split(',') if args.groups else GROUPS
     unknown = [g for g in groups if g not in GROUPS]
@@ -215,10 +327,18 @@ def main(argv=None):
         return 0
     with trackRun(db, JOB) as run:
         run.changes, succeeded, failed, run.note = runPass(db, groups)
+        # A full pass ends with the catalogue file, unless CelesTrak has
+        # stopped answering (the group loop then broke off at a
+        # connection failure and fetched nothing).
+        if not args.groups and succeeded:
+            time.sleep(GROUP_DELAY_SEC)
+            changed, ok, note = runSatcat(db)
+            run.changes += changed
+            run.note = f'{run.note}; {note}'[:500]
         # A pass where nothing arrived is a failure; some groups failing
         # is noted but still a successful pass.
         run.failed = succeeded == 0 and failed > 0
-    print(f'  {"FAILED" if run.failed else "OK"} -- {run.note}; {run.changes} memberships changed')
+    print(f'  {"FAILED" if run.failed else "OK"} -- {run.note}; {run.changes} changes')
     db.close()
     return 1 if run.failed else 0
 
