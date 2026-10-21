@@ -1,6 +1,6 @@
 # Database and source refactor plan
 
-Agreed 2026-10-21 (Al + Claude). Status: steps 1-5 done on DEV (2026-10-21); step 6 next. Decisions A-D are settled. LIVE still uses `ingestionDBs/`, so `dbPaths.py` falls back to that name until step 12.
+Agreed 2026-10-21 (Al + Claude). Status: steps 1-6 done on DEV (2026-10-21); step 7 next. Decisions A-D are settled. LIVE still uses `ingestionDBs/`, so `dbPaths.py` falls back to that name until step 12.
 
 ## Conventions
 
@@ -102,10 +102,19 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-5 done on DEV (2026-10-21); ste
    - **Failures:** failed runs are recorded as failed.
    - **First DEV run:** 32,776 catalogue objects plus 108 recent decays, about 7 s, 12.5 MB. Space-Track's elements were newer than `orbitalObjects.db`'s for 26,839 objects, equal for 5,906 and never older.
    - **Deferred to step 11:** removing the Space-Track code from `ingestOrbitalData.py` and `ingestSatcat.py`. LIVE depends on it until the new pipeline takes over.
-6. **CelesTrak.** `ingestionCelesTrak.db`: group lists only (decision A), weekly.
-   - Keeps the etiquette rules and `CELESTRAK_ENABLED`.
-   - Stores each group's membership and the time of its last successful fetch.
-   - Fetches no elements.
+6. **CelesTrak.** DONE 2026-10-21: `scripts/ingestionCelesTrak.py` writes `ingestionCelesTrak.db`, with tests in `0_tests/test_ingestionCelesTrak.py`.
+   - **What it fetches:** membership of all 47 groups (they feed the ADD OBJ group filter), as CSV, keeping only the NORAD ID and name. No elements.
+   - **Tables:**
+     - `groupMembers` (groupName, noradID, objectName). Each successful fetch replaces that group's membership in one transaction.
+     - `groupFetches` (lastAttempt, lastSuccess, members, note) per group. The publish step uses `lastSuccess` to decide whether CelesTrak counts as available (decision A).
+   - **Etiquette:**
+     - `CELESTRAK_ENABLED=0` means no requests.
+     - At most one pass per `CELESTRAK_GROUPS_INTERVAL_HOURS`, default 168, counted from the last attempt.
+     - 3 s between groups, and a pass stops at the first connection failure.
+     - A "not updated" reply counts as a skip, not an error.
+   - **Changes and failures:** memberships added or removed count as changes (decision C1). A pass in which no group succeeds is recorded as failed. A group that fails keeps its previous membership.
+   - **First DEV run** (3 groups only): active 16,765, stations 21, starlink 11,121. Compared with LIVE's frozen August lists, 851 objects became active and 189 stopped being active.
+
 7. **SatNOGS.** `ingestionSatNOGS.db`: one script for TLEs and transmitters, replacing the SatNOGS parts of `ingestOrbitalData.py` and `ingestSatnogsRf.py`.
 8. **Renames and reference builders.**
    - `gcat.db` becomes `ingestionGCAT.db`; `gcatBrightness` moves out.
