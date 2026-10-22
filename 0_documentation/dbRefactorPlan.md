@@ -1,6 +1,6 @@
 # Database and source refactor plan
 
-Agreed 2026-10-21 (Al + Claude). Status: steps 1-13 done. LIVE migrated on 2026-10-21 at 23:04 UTC. Steps 14-15 remain; step 15's clean-up is due about two weeks after the migration. The step 9 questions are all settled. Decisions A-D are settled. LIVE still uses `ingestionDBs/` with the old file names, so `dbPaths.py` falls back to that folder and maps each new name to its old one until step 12.
+Agreed 2026-10-21 (Al + Claude). Status: steps 1-14 done. LIVE migrated on 2026-10-21 at 23:04 UTC and runs the new layout (`databases/`, `site<Type>.db`, `runIngestion.py` cron). Only step 15, the clean-up, remains, due about two weeks after the migration (diarised for 2026-11-04); until then the legacy fallbacks in `dbPaths.py` and `server.py` and the old scripts stay in place. Open from step 14: the freshness-label question and the live `.htaccess` gap (both under step 14). Decisions A-D and the step 9 questions are settled.
 
 ## Conventions
 
@@ -406,6 +406,39 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-13 done. LIVE migrated on 2026-
       - `buildSkyCatalogue.py`, which is rarely rebuilt and was checked by an identical rebuild.
     - **Regression note:** written 2026-10-22 as `0_testReports/261022_1130Z_dbRefactorRegression.md`. It covers the method, the results for each step against the baseline, every intended difference in the orbital data with its reason, LIVE's deploy, migration and first scheduled runs, and what isn't covered. **Step 13 DONE.**
 14. **Documentation.** Docstrings, `0_documentation`, freshness-table source labels (data-driven, "NORAD via Space-Track"), the bug log and fasLog.
+
+    **DONE 2026-10-22.** Each document got a rollback copy in `0_documentation/rollback/<name>.pre-dbRefactor.bak` first; the .docx files were edited with python-docx in their existing styles, and their cover-table version and date were raised.
+    - **`designAndArchitecture_0.4.docx`, 0.6 → 0.7.**
+      - **Server-Side Databases** rewritten: the three kinds, with a site-file table, decision B, `inboxBugReports.db`, `site_db()` and the legacy fallback.
+      - **New sections:**
+        - **Publish Step:** the checks, the atomic swap, `.prev` and the orbital stages.
+        - **Sources and Their Roles:** decisions A, C and D, the group rules and CelesTrak-only groups, the SatNOGS crosswalk, kept RCS, and the GCAT EIRP class fallback.
+      - **Scheduled Jobs:** `runIngestion.py`, a crontab table, and the freshness table with its rows.
+      - **Brought up to date:**
+        - In Orbit: sources, cadence, storage, data flow, ER, groups and object types;
+        - the On-Orbit storage and recalculation, the GS OPS sources, and the News, Launches and ground-segment database names;
+        - Security: credentials, committed DBs and the data-source terms table.
+    - **`installationAndStartupGuide_0.1.docx`, 0.2 → 0.3.**
+      - **Updated:** credentials and `.env`.
+      - **New sections:** DATABASES, REFERENCE DATABASES (BUILT ON THE LAPTOP), SCHEDULED JOBS (with the crontab, and `setupCron.sh` refusing before migration), PUBLISHING BY HAND (including running it under `flock`), MIGRATION AND ROLLBACK, and LOGS.
+      - **News maintenance:** moved to `ingestionNews.db`, with the publish afterwards.
+    - **`testPlan_0.1.docx`, 0.2 → 0.3.**
+      - **Coverage:** `0_tests` grouped by area with real counts (`pytest 0_tests` on 2026-10-22: 353 tests in 19 files, 352 passed, 1 skipped (fcntl)).
+      - **New sections:** API Regression Snapshots (`0_tools/apiSnapshot.py`) and Rehearsing Changes to the Live Server.
+    - **`satellite_link_budget_2.md`:**
+      - group matching (CelesTrak or our rules, CelesTrak-only groups);
+      - the GCAT class fallback (`enrichEirp.gcat_class`, used only while CelesTrak is unavailable);
+      - transmitter-to-NORAD linking (follow ID, then designator, then own number) and frequencies coming from the publish step.
+    - **`assets/onOrbitMethodology.md`** (public):
+      - data from "the NORAD satellite catalogue (via Space-Track)";
+      - how *active* and the Starlink and constellation groups are decided, including the 3-month rule;
+      - that some groups are absent while CelesTrak is unavailable.
+    - **Bug log:** bug 9 added (SatNOGS frequencies on 9xxxx placeholder rows; found and fixed 2026-10-21, status Fixed).
+    - **Open: freshness-table source labels.** They are static text in `server.py`'s `STATUS_SOURCES` (step 10), not data-driven as this step first said. The question went to Al on 2026-10-22: accept the static labels (doc note only), or a code change. Awaiting his answer; record it here.
+    - **Open: live `.htaccess` gap (found 2026-10-22).** The server-only rules block `*.db` and `ingestionDBs/`, but not `databases/`. `databases/siteOrbital.db` gives 403, but `siteOrbital.db.prev`, `siteNews.db.prev` and `.writers.lock` give 200. Reported to Al, nothing changed on the server, and recorded under Security in the design document.
+    - **Not done in this step:**
+      - **Docstrings (code, so out of this task's scope).** `buildSkyCatalogue.py` still says to run it once on the server (decision D replaced that). `server.py`'s `STATUS_SOURCES` comment still cites `runPipeline.sh`. The "Satellite groups" row's interval is 7 days, while cron runs CelesTrak every 3 days.
+      - **The fasLog session row.**
 15. **Clean-up.** After about two weeks on LIVE, remove the old DBs, the `.prev` files and the old scripts.
 
-All decisions are settled; steps 1-15 can proceed in order.
+All decisions are settled; steps 1-14 are done and step 15 remains.
