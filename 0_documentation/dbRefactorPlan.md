@@ -1,6 +1,6 @@
 # Database and source refactor plan
 
-Agreed 2026-10-21 (Al + Claude). Status: steps 1-12 done. LIVE migrated on 2026-10-21 at 23:04 UTC. Steps 13-15 remain; step 15's clean-up is due about two weeks after the migration. The step 9 questions are all settled. Decisions A-D are settled. LIVE still uses `ingestionDBs/` with the old file names, so `dbPaths.py` falls back to that folder and maps each new name to its old one until step 12.
+Agreed 2026-10-21 (Al + Claude). Status: steps 1-13 done. LIVE migrated on 2026-10-21 at 23:04 UTC. Steps 13-15 remain; step 15's clean-up is due about two weeks after the migration. The step 9 questions are all settled. Decisions A-D are settled. LIVE still uses `ingestionDBs/` with the old file names, so `dbPaths.py` falls back to that folder and maps each new name to its old one until step 12.
 
 ## Conventions
 
@@ -404,7 +404,7 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-12 done. LIVE migrated on 2026-
       - `migrateNewsDates.py`, a finished one-off and a step 15 candidate;
       - `ingestionGroundSegment.py`, which was checked by an identical rebuild;
       - `buildSkyCatalogue.py`, which is rarely rebuilt and was checked by an identical rebuild.
-    - **Still to do for step 13:** one regression note in `0_testReports/` bringing together the API comparisons made at steps 8–12.
+    - **Regression note:** written 2026-10-22 as `0_testReports/261022_1130Z_dbRefactorRegression.md`. It covers the method, the results for each step against the baseline, every intended difference in the orbital data with its reason, LIVE's deploy, migration and first scheduled runs, and what isn't covered. **Step 13 DONE.**
 14. **Documentation.** Docstrings, `0_documentation`, freshness-table source labels (data-driven, "NORAD via Space-Track"), the bug log and fasLog.
 15. **Clean-up.** After about two weeks on LIVE, remove the old DBs, the `.prev` files and the old scripts.
 
