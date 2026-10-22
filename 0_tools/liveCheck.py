@@ -8,7 +8,7 @@
 Makes only GET requests, the same as a visitor's browser (including the
 Accept-Encoding: gzip every browser sends), so it can never change
 anything on the server. Standalone: Python standard library only, 3.9+.
-Requests are spaced DELAY_SEC apart: a burst of scripted requests trips
+Requests are spaced a random DELAY_RANGE_SEC apart: a burst of scripted requests trips
 the host's bot protection, which then answers with a "please wait while
 your request is being verified" page -- recognised and reported as
 "not checked", never as a pass or a failure.
@@ -41,6 +41,7 @@ import hashlib
 import http.client
 import json
 import os
+import random
 import socket
 import sys
 import time
@@ -51,7 +52,9 @@ from datetime import datetime, timedelta, timezone
 DEFAULT_BASE = 'https://gaps2024.com/LCARS-FAS'
 USER_AGENT = 'LCARS-FAS liveCheck/1.1 (+https://github.com/ajg19/LCARS-FAS)'
 TIMEOUT_SEC = 60
-DELAY_SEC = 2.0   # human pace: faster bursts trip the host's bot screening
+# Human pace, with random variation between requests: regular or rapid
+# bursts trip the host's bot screening.
+DELAY_RANGE_SEC = (1.5, 4.5)
 # How late a source's next sync may be before it counts as overdue: cron
 # runs take minutes, and a run waits for the writers' lock.
 GRACE = timedelta(hours=1)
@@ -151,7 +154,7 @@ def fetch(base, path, extraHeaders=None, attempts=2, limit=None):
     """(status, body, seconds). HTTP errors come back as a status; a
     download cut off part-way is retried once, then raises CutOff; a site
     that can't be reached at all raises URLError."""
-    time.sleep(DELAY_SEC)
+    time.sleep(random.uniform(*DELAY_RANGE_SEC))
     for _ in range(attempts):
         try:
             return fetchOnce(base, path, extraHeaders, limit)
