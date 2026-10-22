@@ -20,32 +20,33 @@ from tagNews import retagAllArticles
 
 from dbPaths import NEWS_DB, dbPath
 
-# 1. Initialize local SQLite database
-db_path = dbPath(NEWS_DB)
-db = sqlite3.connect(db_path)
+# 1-2. The news database and its schema -- opened when the script runs, not
+# at import, so the feed parsing below can be imported (and tested)
+# without touching a database.
+def openDb(path=None):
+    db = sqlite3.connect(path or dbPath(NEWS_DB))
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS articles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source TEXT,
+            title TEXT,
+            url TEXT UNIQUE,
+            published_date TEXT,
+            fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    ''')
 
-# 2. Set up schema
-db.execute('''
-    CREATE TABLE IF NOT EXISTS articles (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        source TEXT,
-        title TEXT,
-        url TEXT UNIQUE,
-        published_date TEXT,
-        fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-''')
+    # Migration for databases created before the description column existed --
+    # CREATE TABLE IF NOT EXISTS above doesn't touch an already-existing table.
+    existing_columns = db.execute('PRAGMA table_info(articles)').fetchall()
+    if not any(col[1] == 'description' for col in existing_columns):
+        db.execute('ALTER TABLE articles ADD COLUMN description TEXT')
 
-# Migration for databases created before the description column existed --
-# CREATE TABLE IF NOT EXISTS above doesn't touch an already-existing table.
-existing_columns = db.execute('PRAGMA table_info(articles)').fetchall()
-if not any(col[1] == 'description' for col in existing_columns):
-    db.execute('ALTER TABLE articles ADD COLUMN description TEXT')
-
-# api/news always sorts on published_date -- without this, every request
-# sorts the whole table.
-db.execute('CREATE INDEX IF NOT EXISTS articlesByPublishedDate ON articles (published_date)')
-db.commit()
+    # api/news always sorts on published_date -- without this, every request
+    # sorts the whole table.
+    db.execute('CREATE INDEX IF NOT EXISTS articlesByPublishedDate ON articles (published_date)')
+    db.commit()
+    return db
 
 # 3. SQL to insert without duplication into the DB. The url UNIQUE
 # constraint catches a re-fetched article; DUPLICATE_TITLE_SQL catches the
@@ -172,7 +173,7 @@ def parse_rss_feed(xml_text):
 
 
 # 6. Sequential engine to parse and store items for each RSS feed
-def fetch_all_feeds():
+def fetch_all_feeds(db):
     """Returns the number of new articles stored, across every feed."""
     print(f'\n=== [{time.strftime("%H:%M:%S")}] Starting Space Feed Sync ===')
 
@@ -261,8 +262,9 @@ def fetch_all_feeds():
 if __name__ == '__main__':
     # Recorded in ingestionRuns for the landing page's data-freshness table;
     # "changes" is the number of new articles stored this run.
+    db = openDb()
     with trackRun(db, 'news') as run:
-        run.changes = fetch_all_feeds()
+        run.changes = fetch_all_feeds(db)
 
         # Housekeeping after every fetch: drop filler/duplicates/anything older
         # than six months, re-tag every article for the news filter buttons

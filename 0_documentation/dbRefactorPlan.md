@@ -392,6 +392,19 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-12 done. LIVE migrated on 2026-
 13. **Tests and regression.**
     - Tests: merge rules, group precedence, the atomic swap and the publish refusal, reconnect after a swap, and the source clients against recorded responses.
     - Regression: compare every endpoint with the step 2 baseline and explain each difference.
+
+    **Tests for previously untested scripts still in use, added 2026-10-22** (52 tests; 352 pass in all):
+    - **`test_rfSelection.py`** (15): frequency plausibility (20 MHz to 60 GHz), transponder centre and span, preferring confirmed over violating or unconfirmed records, then active, then baud, then newest, and the uplink chosen separately.
+    - **`test_estimateBrightness.py`** (15): Starlink generations by bus and launch date, including the date boundaries; `sizeMagnitude` checked against a hand calculation (1 m × 1 m comes out at 7.69); the span cap; and `brightnessRows` rules (station override, Starlink, size, defaults by type, debris and decayed objects excluded).
+    - **`test_common.py`** (12): the `.env` loader never overrides the environment; `httpGet` sends a User-Agent and timeout and returns HTTP errors as responses; the Space-Track client covers login, Cookie, logout, bad credentials, a missing cookie, HTTP 401, and a failed logout never failing a run. The real `spacetrack.env` is never read.
+    - **`test_readNews.py`** (10): RSS parsing of a sample feed (CDATA, entities, description preferred over `content:encoded`, items without a link skipped, a missing date), date normalisation, and the database set-up and its migration.
+    - **Refactor:** `readNews.py` no longer opens the database at import (`openDb()`, and `fetch_all_feeds(db)`). Checked with a real news run through `runIngestion.py` on DEV. Not yet deployed to LIVE, where the previous version keeps working.
+    - **Deliberately not tested:**
+      - `ingestOrbitalData.py`, `ingestSatcat.py`, `ingestSatnogsRf.py` and `runPipeline.sh`, which are retired at step 15;
+      - `migrateNewsDates.py`, a finished one-off and a step 15 candidate;
+      - `ingestionGroundSegment.py`, which was checked by an identical rebuild;
+      - `buildSkyCatalogue.py`, which is rarely rebuilt and was checked by an identical rebuild.
+    - **Still to do for step 13:** one regression note in `0_testReports/` bringing together the API comparisons made at steps 8–12.
 14. **Documentation.** Docstrings, `0_documentation`, freshness-table source labels (data-driven, "NORAD via Space-Track"), the bug log and fasLog.
 15. **Clean-up.** After about two weeks on LIVE, remove the old DBs, the `.prev` files and the old scripts.
 
