@@ -1,6 +1,6 @@
 # Database and source refactor plan
 
-Agreed 2026-10-21 (Al + Claude). Status: steps 1-14 done. LIVE migrated on 2026-10-21 at 23:04 UTC and runs the new layout (`databases/`, `site<Type>.db`, `runIngestion.py` cron). Only step 15, the clean-up, remains, due about two weeks after the migration (diarised for 2026-11-04); until then the legacy fallbacks in `dbPaths.py` and `server.py` and the old scripts stay in place. Open from step 14: the live `.htaccess` gap (under step 14). Decisions A-D and the step 9 questions are settled.
+Agreed 2026-10-21 (Al + Claude). Status: steps 1-14 done. LIVE migrated on 2026-10-21 at 23:04 UTC and runs the new layout (`databases/`, `site<Type>.db`, `runIngestion.py` cron). Only step 15, the clean-up, remains, due about two weeks after the migration (diarised for 2026-11-04); until then the legacy fallbacks in `dbPaths.py` and `server.py` and the old scripts stay in place. Decisions A-D and the step 9 questions are settled.
 
 ## Conventions
 
@@ -433,9 +433,15 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-14 done. LIVE migrated on 2026-
       - data from "the NORAD satellite catalogue (via Space-Track)";
       - how *active* and the Starlink and constellation groups are decided, including the 3-month rule;
       - that some groups are absent while CelesTrak is unavailable.
-    - **Bug log:** bug 9 added (SatNOGS frequencies on 9xxxx placeholder rows; found and fixed 2026-10-21, status Fixed).
+    - **Bug log:** bug 10 added (the `.htaccess` gap below). Bug 9 added (SatNOGS frequencies on 9xxxx placeholder rows; found and fixed 2026-10-21, status Fixed).
     - **Freshness-table source labels, DECIDED 2026-10-22 (Al): keep the static labels.** They are static text in `server.py`'s `STATUS_SOURCES` (step 10), not data-driven as this step first said. No code change is wanted; the documentation describes the static labels.
-    - **Open: live `.htaccess` gap (found 2026-10-22).** The server-only rules block `*.db` and `ingestionDBs/`, but not `databases/`. `databases/siteOrbital.db` gives 403, but `siteOrbital.db.prev`, `siteNews.db.prev` and `.writers.lock` give 200. Reported to Al, who is fixing it on the server; nothing changed here. Recorded under Security in the design document.
+    - **Live `.htaccess` gap: found and FIXED 2026-10-22 (bug 10, a bug 7 regression).** The server-only rules blocked `*.db` and `ingestionDBs/` but not `databases/`, so `siteOrbital.db.prev`, `siteNews.db.prev` and `.writers.lock` were served (200). Fixed on LIVE at about 11:55 UTC with Al's go-ahead:
+      - the rules now also refuse `databases/`, the extensions prev, tmp, new, lock and objects, and every dot-file and dot-folder;
+      - the backup is `~/backups/LCARS-FAS.htaccess.pre-dbRefactor-20261022-115511`;
+      - every private path now returns 403, and the site 200;
+      - `0_tools/liveCheck.py`'s privacy section guards against a repeat.
+
+      The fix and the process note (the `.htaccess` is a block list, so any new file type or folder must be added to it and to liveCheck's privacy list) are under Security in the design document, in green.
     - **Green marking for review (Al, 2026-10-22).** Added or changed text is green in the three .docx files (font colour) and in `satellite_link_budget_2.md` (`<span style="color:green">`); clear it once Al approves. `onOrbitMethodology.md` is public, so it isn't coloured.
     - **Not done in this step:**
       - **Docstrings (code, so out of this task's scope).** `buildSkyCatalogue.py` still says to run it once on the server (decision D replaced that). `server.py`'s `STATUS_SOURCES` comment still cites `runPipeline.sh`. The "Satellite groups" row's interval is 7 days, while cron runs CelesTrak every 3 days.
