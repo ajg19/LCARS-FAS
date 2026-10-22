@@ -2,13 +2,13 @@
 
 This page explains where the numbers in the ON-ORBIT section come from, what is and isn't counted, and how each category is defined. It is written for someone who wants to check or reuse the figures without knowing how the site is built.
 
-*Last reviewed: 10 October 2026.*
+*Last reviewed: 22 October 2026.*
 
 ---
 
 ## 1. In one paragraph
 
-We start from the NORAD satellite catalogue — every catalogued object in orbit, as distributed by CelesTrak and Space-Track — and keep the **payloads** (spacecraft, as opposed to rocket bodies and debris) that **have not re-entered**. For each one we take its **current orbit** from that catalogue, and its **owner and country** from Jonathan McDowell's General Catalog of Artificial Space Objects (GCAT), matching the two by **NORAD catalogue number**. Two filters then narrow the set: **active only or all**, and **satellites only or all spacecraft**.
+We start from the NORAD satellite catalogue (via Space-Track) — every catalogued object in orbit — and keep the **payloads** (spacecraft, as opposed to rocket bodies and debris) that **have not re-entered**. For each one we take its **current orbit** from that catalogue, and its **owner and country** from Jonathan McDowell's General Catalog of Artificial Space Objects (GCAT), matching the two by **NORAD catalogue number**. Two filters then narrow the set: **active only or all**, and **satellites only or all spacecraft**.
 
 ---
 
@@ -16,8 +16,9 @@ We start from the NORAD satellite catalogue — every catalogued object in orbit
 
 | Source | What we take from it | How often it is refreshed here |
 |---|---|---|
-| **The NORAD satellite catalogue**, via **CelesTrak** (primary) and **Space-Track** (official distribution, used to fill gaps) | The list of objects, their type (payload, rocket body, debris), whether they have decayed, and their **current orbit** (perigee and apogee). Also CelesTrak's *active* and *stations* lists. | Every 12 hours (catalogue details daily) |
-| **GCAT** — General Catalog of Artificial Space Objects, by Jonathan McDowell | Each object's **owner organisations**, **country (state)**, and **payload category** (e.g. communications, imaging, space station, calibration sphere) | Weekly |
+| **The NORAD satellite catalogue (via Space-Track)** | The list of objects, their type (payload, rocket body, debris), whether they have decayed, and their **current orbit** (perigee and apogee). This is our only source of orbits. | Every 12 hours (the full catalogue daily) |
+| **GCAT** — General Catalog of Artificial Space Objects, by Jonathan McDowell | Each object's **owner organisations**, **country (state)**, **payload category** (e.g. communications, imaging, space station, calibration sphere) and, where known, the date its **operations ended** | Weekly |
+| **CelesTrak** (Dr T.S. Kelso) | Lists of satellites by group — which are *active*, which are *Starlink*, which belong to each constellation, which are at the *space stations* — when CelesTrak is available to us (see §3, *Active*) | Every 3 days |
 
 The two are joined by the **NORAD catalogue number**, the unique number every tracked object receives. About 97% of payloads in the catalogue have a GCAT entry; the rest are usually very recent launches GCAT has not yet added.
 
@@ -33,12 +34,20 @@ Every **payload** in the NORAD catalogue that **has not decayed** (re-entered th
 ### Satellites
 All spacecraft **except**:
 
-- **Crewed space stations and the vehicles visiting them** — the modules of the International Space Station and China's Tiangong station, and docked crew and cargo ships such as Soyuz, Progress, Crew Dragon, Cygnus, Shenzhou and Tianzhou. These are identified by GCAT's *space station* category; a visiting vehicle so new that GCAT has not catalogued it yet is identified by CelesTrak's *stations* list instead.
+- **Crewed space stations and the vehicles visiting them** — the modules of the International Space Station and China's Tiangong station, and docked crew and cargo ships such as Soyuz, Progress, Crew Dragon, Cygnus, Shenzhou and Tianzhou. These are identified by GCAT's *space station* category; a visiting vehicle so new that GCAT has not catalogued it yet is identified by CelesTrak's *stations* list instead, when that list is available.
   - Small satellites recently released from the ISS also appear on CelesTrak's *stations* list. They are ordinary satellites in GCAT, so they **are** counted as satellites.
 - **Passive objects** that were launched as payloads but are not working spacecraft — **calibration spheres** (used to calibrate tracking radars) and **targets** (launched for anti-satellite tests).
 
 ### Active
-Objects on **CelesTrak's *active* satellite list**, which CelesTrak maintains from each object's operational status. Choosing *all* includes satellites that are no longer working — dead satellites remain in orbit, often for decades.
+Choosing *all* includes satellites that are no longer working — dead satellites remain in orbit, often for decades. Choosing *active* keeps only the working ones, decided in this order:
+
+1. **CelesTrak's *active* list, when it is available** — that is, when we have fetched it successfully within the last 14 days. CelesTrak maintains it from each object's operational status, and it is taken as definitive for every object launched before our latest copy of it.
+2. **Recent launches count as active.** A payload launched within the last **3 months** is treated as active unless shown otherwise (a later CelesTrak list leaves it out, or it has re-entered). Catalogues take weeks to record a new satellite's status, so new satellites are assumed to be working.
+3. **Otherwise, our own rule:** a payload in orbit counts as active unless GCAT records an end to its operations. This agreed with CelesTrak's list for about 92% of payloads in orbit when we compared them in October 2026.
+
+The same order decides the **Starlink** group (CelesTrak's list when available, otherwise GCAT listing Starlink's operator, SpaceX (Seattle), as owner, or a name beginning STARLINK for payloads GCAT has not yet catalogued) and the other **constellation groups** used elsewhere on the site, such as OneWeb, Kuiper, Iridium, GPS, Galileo and BeiDou.
+
+**While CelesTrak is unavailable to us, some groups are missing.** A few groups — the space stations, ORBCOMM, SES, Intelsat, Telesat, Spire, and the navigation-augmentation and search-and-rescue groups among them — could not be matched reliably by rules of our own, so we show them only from CelesTrak's lists. When CelesTrak cannot be reached for more than 14 days, those groups are absent from the site (for example from the ADD OBJ group filter) until it is back. The figures on this page are not affected, apart from the rare visiting vehicle that GCAT has not yet catalogued.
 
 ### The four combinations
 The two filters can be combined freely: *active satellites*, *active spacecraft*, *all satellites*, *all spacecraft*. Every figure in the section is calculated for all four.
@@ -55,7 +64,7 @@ The two filters can be combined freely: *active satellites*, *active spacecraft*
 - Country names are GCAT's short English names, written out in full where GCAT uses an abbreviation (e.g. "United Kingdom" rather than "UK").
 
 ### Excluding SpaceX ("EXCL SPACEX")
-A payload is excluded if **SpaceX is among its owners** in GCAT — under any of GCAT's SpaceX codes, which cover the company's sites including Starlink's operator, SpaceX (Seattle). This removes the Starlink constellation and a handful of other SpaceX-owned or co-owned satellites. For a payload GCAT has not yet catalogued, membership of CelesTrak's Starlink list is used instead.
+A payload is excluded if **SpaceX is among its owners** in GCAT — under any of GCAT's SpaceX codes, which cover the company's sites including Starlink's operator, SpaceX (Seattle). This removes the Starlink constellation and a handful of other SpaceX-owned or co-owned satellites. For a payload GCAT has not yet catalogued, membership of the Starlink group (above) is used instead.
 
 ---
 
@@ -96,7 +105,7 @@ A handful of payloads in the catalogue have no current orbit on file. They are *
 ## 7. Timing and limitations
 
 - **Snapshot.** The figures are recalculated after every catalogue refresh (every 12 hours) and every GCAT refresh (weekly). Orbits are therefore at most about 12 hours old, ownership at most about a week.
-- **"Active" is CelesTrak's judgement**, based on published operational status. It can lag reality for satellites that fail or are retired quietly.
+- **"Active" is a judgement**, CelesTrak's when its list is available and otherwise GCAT's record of when operations ended. Either can lag reality for satellites that fail or are retired quietly, and the 3-month rule counts a new satellite as working even if it failed on arrival.
 - **The 0.25 eccentricity threshold** is a common convention, not a standard. Orbits just below it are placed by mean altitude.
 - **About 3% of payloads have no GCAT entry yet**, so they have no country and are counted under *Other* in the nationality chart.
 - **Categories are GCAT's.** What counts as a space station, calibration sphere or target follows GCAT's own classification.
@@ -105,6 +114,7 @@ A handful of payloads in the catalogue have no current orbit on file. They are *
 
 ## 8. Sources and credits
 
-- **NORAD satellite catalogue** — distributed by **CelesTrak** (celestrak.org, Dr T.S. Kelso) and **Space-Track** (space-track.org).
+- **NORAD satellite catalogue** — via **Space-Track** (space-track.org).
+- **Satellite group lists** — **CelesTrak** (celestrak.org, Dr T.S. Kelso).
 - **GCAT** — General Catalog of Artificial Space Objects. *Data from GCAT (J. McDowell, planet4589.org/space/gcat)*, used under the CC-BY-4.0 licence.
 - VLEO definition: European Space Agency and DARPA (mean altitude below 450 km).
