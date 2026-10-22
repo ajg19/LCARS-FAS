@@ -23,6 +23,17 @@ The ENVIRONMENT toggle at the top picks the target:
                   spaced at human pace. Code tests are greyed out, since
                   they don't test the live site.
 
+PACE sets the pause between requests to a site, with random variation (a
+steady or rapid rhythm trips the host's bot screening). Fast (no pause) is
+for the local server only; LIVE offers Normal, Careful and Very careful, and
+never goes quicker than 1.5 s between requests.
+
+PRIVATE-FILE PROBES (the privacy rows: .env, spacetrack.env, server.py,
+databases, .git...) are locked. They are greyed out until you tick "Allow
+probes of private files", and the lock closes again after every run and at
+every start. Ask for them only after a deploy or an .htaccess change:
+scanners request exactly these paths, so a bot screen may take notice.
+
 After a run, rows turn green (passed), amber (warning, skipped or not
 checked) or red (failed); "Tick failed" re-selects just the failures.
 The tests are found afresh at every start, and a test with no row in UNITS
@@ -56,6 +67,13 @@ ENVIRONMENTS = {
              'note': f'Site checks go to {cld.DEFAULT_BASE}, read-only, at human pace. '
                      'Code tests are greyed out: they test this laptop\'s code, not the live site.'},
 }
+# Pause between requests, seconds (low, high); the actual gap is random in between.
+PACES = {'Fast (no pause)': (0, 0), 'Normal (1.5-4.5 s)': (1.5, 4.5), 'Careful (4-10 s)': (4, 10),
+         'Very careful (8-20 s)': (8, 20)}
+PACES_BY_ENV = {'DEV': list(PACES), 'LIVE': list(PACES)[1:]}
+DEFAULT_PACE = {'DEV': 'Fast (no pause)', 'LIVE': 'Careful (4-10 s)'}
+LIVE_MIN_DELAY = 1.5
+PROBE_PREFIX = 'privacy:'
 SETTINGS = os.path.join(os.path.expanduser('~'), '.lcarsFasTestHarness.json')
 
 SPINE, BACKEND, DEPLOYMENT = 'LCARS SPINE', 'SERVER-SIDE BACKEND', 'DEPLOYMENT'
@@ -252,11 +270,15 @@ def siteChecks(contents):
 
 # --- Running the site checks (a separate process, so Stop can end it) -------------------
 
-def runSiteChecks(base, ids):
-    """Run the chosen checkLiveDeployment checks. Prints a heading per phase so
-    the harness can tell freshness lines from the others."""
-    if base.startswith(('http://localhost', 'http://127.0.0.1')):
-        cld.DELAY_RANGE_SEC = (0, 0)
+def runSiteChecks(base, low, high, ids):
+    """Run the chosen checkLiveDeployment checks, pausing a random low-high
+    seconds before each request (never under LIVE_MIN_DELAY away from a
+    local server). Prints a heading per phase so the harness can tell
+    freshness lines from the others."""
+    if not base.startswith(('http://localhost', 'http://127.0.0.1')):
+        low = max(low, LIVE_MIN_DELAY)
+        high = max(high, low + 3)  # keep some random variation
+    cld.DELAY_RANGE_SEC = (low, high)
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(errors='replace')
     ids = set(ids)
@@ -317,6 +339,8 @@ class Harness:
         from tkinter import ttk, scrolledtext
         self.tk, self.root = tk, root
         self.environment = tk.StringVar(value='DEV')
+        self.pace = tk.StringVar(value=DEFAULT_PACE['DEV'])
+        self.unlocked = tk.BooleanVar(value=False)
         self.ticked, self.results = set(), {}
         self.leafOf = {}       # tree row -> test id ('code:<node id>' / 'site:<check id>'), leaves only
         self.kindOf = {}       # tree row -> 'code' / 'site' / 'none' / 'heading'
@@ -345,6 +369,13 @@ class Harness:
         for text, command in (('Tick all', self.tickAll), ('Tick none', self.tickNone), ('Tick failed', self.tickFailed),
                               ('Expand all', lambda: self.expand(True)), ('Collapse all', lambda: self.expand(False))):
             ttk.Button(bar, text=text, command=command).pack(side='left', padx=2)
+        tk.Label(bar, text='  Pace:').pack(side='left')
+        self.paceBox = ttk.Combobox(bar, textvariable=self.pace, state='readonly', width=20)
+        self.paceBox.pack(side='left')
+        self.paceBox.bind('<<ComboboxSelected>>', lambda e: self.paceChanged())
+        self.lockBox = tk.Checkbutton(bar, variable=self.unlocked, command=self.refresh, fg='#b00020',
+                                      text='Allow probes of private files (.env, .htaccess, server.py...)')
+        self.lockBox.pack(side='left', padx=14)
         self.stopButton = ttk.Button(bar, text='Stop', command=self.stop, state='disabled')
         self.stopButton.pack(side='right', padx=2)
         self.runButton = ttk.Button(bar, text='▶ Run ticked', command=self.run)
@@ -448,7 +479,9 @@ class Harness:
 
     def enabled(self, row):
         kind = self.kindOf[row]
-        return kind == 'site' or (kind == 'code' and self.environment.get() == 'DEV')
+        if kind == 'site':
+            return self.unlocked.get() or not self.leafOf.get(row, '').startswith('site:' + PROBE_PREFIX)
+        return kind == 'code' and self.environment.get() == 'DEV'
 
     def leaves(self, row):
         """The tickable rows at or under a row, in this environment."""
@@ -525,8 +558,14 @@ class Harness:
         self.bannerTitle.config(bg=env['colour'])
         self.bannerNote.config(bg=env['colour'], text=f"Target: {env['base']}\n{env['note']}")
         self.root.title(f"LCARS-FAS test harness: {env['label']}")
+        self.paceBox.config(values=PACES_BY_ENV[key])
+        self.pace.set(DEFAULT_PACE[key])
+        self.unlocked.set(False)
         self.results.clear()
         self.refresh()
+
+    def paceChanged(self):
+        self.status.config(text=f'Pace: {self.pace.get()}.')
 
     # --- Running ---
 
@@ -543,11 +582,16 @@ class Harness:
             self.status.config(text='Nothing ticked.')
             return
         env = ENVIRONMENTS[self.environment.get()]
+        low, high = PACES[self.pace.get()]
+        probes = sum(1 for s in site if s.startswith(PROBE_PREFIX))
         if self.environment.get() == 'LIVE':
-            minutes = len(site) * sum(cld.DELAY_RANGE_SEC) / 2 / 60
+            minutes = len(site) * (max(low, LIVE_MIN_DELAY) + high) / 2 / 60
+            probeNote = (f'\n\nIncluding {probes} probes of private files (.env, server.py, databases...): '
+                         'scanners request these same paths.' if probes else '')
             if not messagebox.askokcancel('Run against LIVE',
-                                          f"{len(site)} site checks against {env['base']}: read-only GET requests at "
-                                          f'human pace, about {max(1, round(minutes))} min.\n\nGo ahead?'):
+                                          f"{len(site)} site checks against {env['base']}: read-only GET requests, "
+                                          f'{self.pace.get()}, about {max(1, round(minutes))} min.{probeNote}'
+                                          '\n\nGo ahead?'):
                 return
         self.saveSettings()
         self.results = {t: r for t, r in self.results.items() if t not in ticked}
@@ -557,9 +601,10 @@ class Harness:
         self.stopButton.config(state='normal')
         self.stopping = False
         self.status.config(text=f"Running {len(code)} code tests and {len(site)} site checks ({env['label']})...")
-        threading.Thread(target=self.worker, args=(code, site, env['base']), daemon=True).start()
+        threading.Thread(target=self.worker, args=(code, site, env['base'], PACES[self.pace.get()]),
+                         daemon=True).start()
 
-    def worker(self, code, site, base):
+    def worker(self, code, site, base, pace):
         """Runs in the background; sends ('line', text) and ('result', id, level) to the window."""
         environment = {**os.environ, 'PYTHONIOENCODING': 'utf-8', 'PYTHONUNBUFFERED': '1'}
         if code:
@@ -572,7 +617,7 @@ class Harness:
             os.unlink(argsFile.name)
         if site and not self.stopping:
             phase = {'value': None, 'worst': {}}
-            self.stream([sys.executable, os.path.abspath(__file__), '--site-checks', base] + site, environment,
+            self.stream([sys.executable, os.path.abspath(__file__), '--site-checks', base, str(pace[0]), str(pace[1])] + site, environment,
                         lambda line: self.siteLine(line, phase, site), ['site:' + s for s in site])
         self.output.put(('done',))
 
@@ -649,6 +694,8 @@ class Harness:
     def finished(self):
         self.runButton.config(state='normal')
         self.stopButton.config(state='disabled')
+        self.unlocked.set(False)
+        self.refresh()
         counts = {level: sum(1 for r in self.results.values() if r == level) for level in SEVERITY}
         verdict = 'STOPPED' if self.stopping else 'FAILED' if counts['fail'] else 'PASSED'
         self.status.config(text=f"{verdict}: {counts['pass']} passed, {counts['warn']} warnings / skipped / not run, "
@@ -668,7 +715,7 @@ class Harness:
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ['--site-checks']:
-        return runSiteChecks(argv[1], argv[2:])
+        return runSiteChecks(argv[1], float(argv[2]), float(argv[3]), argv[4:])
     import tkinter as tk
     root = tk.Tk()
     Harness(root)
