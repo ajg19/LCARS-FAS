@@ -1,9 +1,9 @@
 """Read-only health check of the live LCARS-FAS site.
 
-    python 0_tools/liveCheck.py                       # check LIVE
-    python 0_tools/liveCheck.py --compare-assets      # ...and compare deployed frontend files with this working copy
-    python 0_tools/liveCheck.py --quick               # skip the large downloads (active list, sky satellites)
-    python 0_tools/liveCheck.py --base http://localhost:3000   # any other deployment
+    python 0_tools/checkLiveDeployment.py                       # check LIVE
+    python 0_tools/checkLiveDeployment.py --compare-assets      # ...and compare deployed frontend files with this working copy
+    python 0_tools/checkLiveDeployment.py --quick               # skip the large downloads (active list, sky satellites)
+    python 0_tools/checkLiveDeployment.py --base http://localhost:3000   # any other deployment
 
 Makes only GET requests, the same as a visitor's browser (including the
 Accept-Encoding: gzip every browser sends), so it can never change
@@ -50,7 +50,7 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 
 DEFAULT_BASE = 'https://gaps2024.com/LCARS-FAS'
-USER_AGENT = 'LCARS-FAS liveCheck/1.1 (+https://github.com/ajg19/LCARS-FAS)'
+USER_AGENT = 'LCARS-FAS checkLiveDeployment/1.1 (+https://github.com/ajg19/LCARS-FAS)'
 TIMEOUT_SEC = 60
 # Human pace, with random variation between requests: regular or rapid
 # bursts trip the host's bot screening.

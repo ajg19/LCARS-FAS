@@ -1,4 +1,4 @@
-"""Tests for 0_tools/liveCheck.py's judgements -- freshness, privacy and
+"""Tests for 0_tools/checkLiveDeployment.py's judgements -- freshness, privacy and
 response shapes -- on canned data. The tool itself is run against LIVE
 by hand; nothing here touches the network."""
 
@@ -7,7 +7,7 @@ import sys
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '0_tools'))
-import liveCheck as lc  # noqa: E402
+import checkLiveDeployment as lc  # noqa: E402
 
 NOW = datetime(2026, 10, 22, 12, 0, tzinfo=timezone.utc)
 BOT_PAGE = b'<html><body>One moment, please... Please wait while your request is being verified...</body></html>'

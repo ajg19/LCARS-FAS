@@ -439,9 +439,9 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-14 done. LIVE migrated on 2026-
       - the rules now also refuse `databases/`, the extensions prev, tmp, new, lock and objects, and every dot-file and dot-folder;
       - the backup is `~/backups/LCARS-FAS.htaccess.pre-dbRefactor-20261022-115511`;
       - every private path now returns 403, and the site 200;
-      - `0_tools/liveCheck.py`'s privacy section guards against a repeat.
+      - `0_tools/checkLiveDeployment.py`'s privacy section guards against a repeat.
 
-      The fix and the process note (the `.htaccess` is a block list, so any new file type or folder must be added to it and to liveCheck's privacy list) are under Security in the design document, in green.
+      The fix and the process note (the `.htaccess` is a block list, so any new file type or folder must be added to it and to checkLiveDeployment's privacy list) are under Security in the design document, in green.
     - **Green marking for review (Al, 2026-10-22).** Added or changed text is green in the three .docx files (font colour) and in `satellite_link_budget_2.md` (`<span style="color:green">`); clear it once Al approves. `onOrbitMethodology.md` is public, so it isn't coloured.
     - **Not done in this step:**
       - **Docstrings (code, so out of this task's scope).** `buildSkyCatalogue.py` still says to run it once on the server (decision D replaced that). `server.py`'s `STATUS_SOURCES` comment still cites `runPipeline.sh`. The "Satellite groups" row's interval is 7 days, while cron runs CelesTrak every 3 days.
