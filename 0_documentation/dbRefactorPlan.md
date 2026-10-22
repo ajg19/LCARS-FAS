@@ -1,6 +1,6 @@
 # Database and source refactor plan
 
-Agreed 2026-10-21 (Al + Claude). Status: steps 1-13 done. LIVE migrated on 2026-10-21 at 23:04 UTC. Steps 13-15 remain; step 15's clean-up is due about two weeks after the migration. The step 9 questions are all settled. Decisions A-D are settled. LIVE still uses `ingestionDBs/` with the old file names, so `dbPaths.py` falls back to that folder and maps each new name to its old one until step 12.
+Agreed 2026-10-21 (Al + Claude). Status: steps 1-13 done. LIVE migrated on 2026-10-21 at 23:04 UTC. Steps 14-15 remain; step 15's clean-up is due about two weeks after the migration. The step 9 questions are all settled. Decisions A-D are settled. LIVE still uses `ingestionDBs/` with the old file names, so `dbPaths.py` falls back to that folder and maps each new name to its old one until step 12.
 
 ## Conventions
 
