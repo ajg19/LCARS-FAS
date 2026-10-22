@@ -359,7 +359,7 @@ The recipe in §3 needs roughly two dozen numbers per direction. They come from 
 
 | Source | Parameters it provides |
 |---|---|
-| **Orbital catalogues** — Space-Track / CelesTrak (OMM elements + SATCAT) | orbital elements → altitude `h`, slant range `d`, elevation `E`, pass timing (all via SGP4); object type (Payload / R/B / Debris); radar cross-section `rcsSize`; period, apogee, perigee, inclination; owner, launch site, launch/decay dates |
+| **Orbital catalogues** — the NORAD catalogue via Space-Track (OMM elements + SATCAT, the only orbit source); CelesTrak for group lists and radar cross-sections | orbital elements → altitude `h`, slant range `d`, elevation `E`, pass timing (all via SGP4); object type (Payload / R/B / Debris); radar cross-section `rcsSize`; period, apogee, perigee, inclination; owner, launch site, launch/decay dates |
 | **Ground-station configuration** — the GRND STN form | dish `D`, `η`, antenna gain; `f_up`, `f_down`; Tx power / EIRP; `T_sys` / `G/T`; `L_o`; `E_min`; station altitude; bandwidth `B`; data rate `R_b`; required `Eb/N0` |
 | **Site climate data** — keyed to the station's lat/lon | rain-rate exceedance percentile, integrated cloud liquid water, gaseous-absorption baseline → `L_a` |
 | **Estimated for the satellite** — this appendix | downlink EIRP; downlink and uplink centre frequency; satellite receive-antenna gain; satellite noise temperature; satellite `G/T`; downlink bandwidth / data rate / required `Eb/N0` |
@@ -372,8 +372,9 @@ The method throughout is **two-tier with a confidence flag**, the same pattern t
 
 Two tiers, produced by the ingestion-pipeline enrichment step:
 
-- **`filing`** — a curated table keyed by constellation / operator, with values lifted from FCC Schedule S, ITU filings, GNSS ICDs and published footprint contours: Starlink Ku 38 dBW, OneWeb Ku 36, Kuiper Ka 38, GNSS L 27, Iridium-NEXT L 17, Globalstar S 20, ORBCOMM VHF 12, Planet X 13, GEO comms (SES / Intelsat / Eutelsat / Telesat) Ku ≈ 52. Matched by CelesTrak group membership, with a satellite-name-prefix fallback (`STARLINK-*`, `ONEWEB-*`, …) for objects that have drifted out of their group.
-- **`estimated`** — no constellation match: the band is inferred from the object's groups / type / orbit, and the EIRP read from a (band, mission-class) table — comms-GEO ≈ 50 dBW, EO-optical X-band ≈ 14, EO-radar X-band ≈ 18, weather-LEO ≈ 15, cubesat beacon ≈ 2, and so on.
+- **`filing`** — a curated table keyed by constellation / operator, with values lifted from FCC Schedule S, ITU filings, GNSS ICDs and published footprint contours: Starlink Ku 38 dBW, OneWeb Ku 36, Kuiper Ka 38, GNSS L 27, Iridium-NEXT L 17, Globalstar S 20, ORBCOMM VHF 12, Planet X 13, GEO comms (SES / Intelsat / Eutelsat / Telesat) Ku ≈ 52. Matched by group membership, with a satellite-name-prefix fallback (`STARLINK-*`, `ONEWEB-*`, …) for objects that have drifted out of their group. The groups are built by the publish step (`scripts/groupRules.py`): CelesTrak's lists while CelesTrak is available (a successful fetch within 14 days), otherwise our own rules from GCAT owner codes, programmes and name prefixes. Ten groups whose rules agreed poorly with CelesTrak (among them ses, intelsat, telesat and orbcomm) have no rule and are absent while CelesTrak is unavailable; their members then reach `filing` only through the name prefix, or drop to `estimated`.
+- **`estimated`** — no constellation match: the band is inferred from the object's mission class, and the EIRP read from a (band, mission-class) table — comms-GEO ≈ 50 dBW, EO-optical X-band ≈ 14, EO-radar X-band ≈ 18, weather-LEO ≈ 15, cubesat beacon ≈ 2, and so on. The class normally comes from CelesTrak's function groups (weather, cubesat, geo, …) and the orbit.
+  - **GCAT class fallback.** CelesTrak's function groups have no rules of our own, so they are absent while CelesTrak is unavailable (as on the live server, which CelesTrak blocks). Only then, the publish step passes each payload's class from its GCAT entry (`enrichEirp.gcat_class`), applied only to payloads the groups place in no class. Rules, first match wins: GCAT category SS → station; mass ≤ 30 kg → amateur (payload class A) or cubesat; MET → weather-geo or weather-leo by orbit; IMG-R → eo-radar; IMG or EOSCI → eo-optical; COM in GEO → military-comms (class D) or comms-geo; COM elsewhere → comms-leo-narrow; SCI, AST or TECH → science; anything else stays unknown. The publish log says which tier it used. On DEV data (payloads in orbit) it turns 4,102 unknown into 1,261, with 4,881 estimated instead of 1,874; with CelesTrak available it is never used.
 - Rocket bodies and debris are tagged `none` — they do not transmit.
 
 About three-quarters of active payloads get a value. The standing caveat: every figure is a **boresight / filed-maximum** number, not the EIRP toward the station's actual position in a shaped or spot beam — fine for triage, not for operations.
@@ -384,7 +385,14 @@ The budget needs a real frequency, not a band letter — both `L_fs` and rain at
 
 **Downlink:**
 
-1. **`filing`** — exact `downlink_low` / `downlink_high` from the SatNOGS DB (crowd-sourced transmitter records keyed by NORAD ID). Covers the amateur / cubesat / university-smallsat / weather-satellite segment.
+1. **`filing`** — exact `downlink_low` / `downlink_high` from the SatNOGS DB (crowd-sourced transmitter records). Covers the amateur / cubesat / university-smallsat / weather-satellite segment.
+
+   **Where the figures come from.** `scripts/ingestionSatNOGS.py` stores SatNOGS's transmitter records as they are (`ingestionSatNOGS.db`); the frequencies reach the site at the **publish step** (`scripts/publishSite.py orbital`), which rebuilds `siteOrbital.db` after every SatNOGS or Space-Track run that changed something. There each transmitter is linked to a NORAD object, trying in order:
+   1. its `norad_follow_id`, when that object is in the catalogue;
+   2. the international designator in the TLE SatNOGS publishes under the transmitter's own number, matched to Space-Track's `objectID` — the only link for satellites launched since NORAD's 5-digit numbers ran out in July 2026, which SatNOGS carries under its own 98xxx/99xxx placeholder numbers (e.g. SatNOGS 98193, JACK-007 → 2026-229K);
+   3. its own `norad_cat_id`, when that is a catalogued object.
+
+   Transmitters that match none are dropped. Per satellite, `scripts/rfSelection.py` (`choose_rf`) then picks the main downlink and uplink (plausible 20 MHz–60 GHz, confirmed records before violating or unconfirmed ones, then active, then highest baud, then newest), and fills `dlFreqHz`, `ulFreqHz`, `dlBandwidthHz`, `rfMode`, `rfBaud`, with `rfSource = 'satnogs'`. Before the 2026-10 database refactor the frequencies were attached by `norad_cat_id` alone, so they sat on SatNOGS's 9xxxx placeholder rows instead of the real objects (384 satellites on LIVE); none do now.
 2. **`convention`** — no SatNOGS record: take the mid-point of the enriched downlink band (S → 3.0 GHz, X → 10 GHz, …). Within-band error is ±1–3 dB on path loss, more on rain at Ka.
 3. **`unknown`** — no band either.
 
