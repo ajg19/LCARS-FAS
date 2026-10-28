@@ -2,7 +2,7 @@
 (table ground_segment_assets) from Al's master spreadsheet,
 grndSgmntAssets_master.xlsx.
 
-Moved into the repo at step 8 of 0_documentation/dbRefactorPlan.md, from
+Moved into the repo at step 8 of 0_documentation/plans/dbRefactorPlan.md, from
 DEV/LCARS/rschGrdSgmt/build_ground_segment_db.py. Under decision D this
 database is built on the laptop, committed, and carried to the live
 server by the deploy; the server never needs the spreadsheet or

@@ -1,7 +1,7 @@
 """Installs the reference databases a deploy uploaded, and publishes the
-site files built from them. Run on the server by deployToGoDaddy.sh.
+site files built from them. Run on the server by 0_tools/deployToGoDaddy.sh.
 
-Decision D of 0_documentation/dbRefactorPlan.md: ingestionGroundSegment.db
+Decision D of 0_documentation/plans/dbRefactorPlan.md: ingestionGroundSegment.db
 (from Al's master spreadsheet) and ingestionSkyCatalogue.db (from the
 star catalogues) are built on the laptop and committed; the deploy
 excludes databases/ from its sync, so the server's own data can never be

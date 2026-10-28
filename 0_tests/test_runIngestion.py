@@ -21,11 +21,11 @@ def dbDir(tmp_path, monkeypatch):
     return tmp_path
 
 
-def fakeIngestion(job, succeeded=True, changes=1, code=0, record=True):
+def fakeIngestion(job, succeeded=True, changes=1, code=0, record=True, dbFile=dbPaths.SATNOGS_DB):
     """A run() stand-in that records one run, as the real script would."""
     def run(argv):
         if record:
-            db = sqlite3.connect(dbPaths.dbPath(dbPaths.SATNOGS_DB))
+            db = sqlite3.connect(dbPaths.dbPath(dbFile))
             recordRun(db, job, '2099-01-01T00:00:00Z', succeeded, changes)
             db.close()
         return code
@@ -85,7 +85,56 @@ def test_refused_publish_makes_the_run_fail(dbDir):
 def test_every_source_maps_to_a_script_that_exists():
     for script, _, jobs, kinds in ri.SOURCES.values():
         assert os.path.exists(os.path.join(ri.SCRIPTS_DIR, script))
-        assert jobs and set(kinds) <= {'orbital', 'news', 'sky', 'groundSegment'}
+        assert jobs and set(kinds) <= {'orbital', 'news', 'sky', 'groundSegment', 'weather'}
+
+
+@pytest.mark.parametrize('source, dbFile', [('swpcFast', dbPaths.SWPC_DB), ('swpcSlow', dbPaths.SWPC_DB), ('swpcMaps', dbPaths.SWPC_DB),
+                                            ('gfz', dbPaths.GFZ_DB), ('donki', dbPaths.DONKI_DB),
+                                            ('tecCode', dbPaths.TEC_DB), ('tecGlotec', dbPaths.TEC_DB)])
+def test_a_changed_space_weather_run_publishes_the_weather_file(dbDir, source, dbFile):
+    assert ri.SOURCES[source][3] == ('weather',)
+    publish = Publisher()
+    assert ri.runSource(source, fakeIngestion(source, changes=5, dbFile=dbFile), publish) == 0
+    assert publish.kinds == ['weather']
+
+
+def test_the_prune_job_publishes_nothing(dbDir):
+    assert ri.SOURCES['swpcPrune'][3] == ()
+    publish = Publisher()
+    assert ri.runSource('swpcPrune', fakeIngestion('swpcPrune', changes=5, dbFile=dbPaths.SWPC_DB), publish) == 0
+    assert publish.kinds == []
+
+
+def test_a_failed_space_weather_run_reports_the_failure_and_publishes_nothing(dbDir):
+    publish = Publisher()
+    code = ri.runSource('gfz', fakeIngestion('gfz', succeeded=False, code=1, dbFile=dbPaths.GFZ_DB), publish)
+    assert code == 1 and publish.kinds == []
+
+
+def test_the_two_swpc_sources_run_one_script_with_their_own_job_argument(dbDir):
+    calls = []
+
+    def run(argv):
+        calls.append(argv[1:])
+        return 0
+
+    for source in ('swpcFast', 'swpcSlow', 'gfz'):
+        ri.runSource(source, run, Publisher())
+    scripts = [os.path.basename(c[0]) for c in calls]
+    assert scripts == ['ingestionSWPC.py', 'ingestionSWPC.py', 'ingestionGFZ.py']
+    assert calls[0][1:] == ['--job', 'swpcFast'] and calls[1][1:] == ['--job', 'swpcSlow'] and calls[2][1:] == []
+
+
+def test_each_sources_recorded_jobs_are_the_names_its_script_logs():
+    import ingestionDONKI
+    import ingestionGFZ
+    import ingestionSWPC
+    import ingestionTEC
+    assert ri.SOURCES['swpcFast'][2] == (ingestionSWPC.JOB_FAST,) and ri.SOURCES['swpcSlow'][2] == (ingestionSWPC.JOB_SLOW,)
+    assert ri.SOURCES['swpcPrune'][2] == (ingestionSWPC.JOB_PRUNE,) and ri.SOURCES['swpcMaps'][2] == (ingestionSWPC.JOB_MAPS,)
+    assert ri.SOURCES['gfz'][2] == (ingestionGFZ.JOB,) and ri.SOURCES['donki'][2] == (ingestionDONKI.JOB,)
+    assert ri.SOURCES['tecCode'][2] == (ingestionTEC.JOB_CODE,) and ri.SOURCES['tecGlotec'][2] == (ingestionTEC.JOB_GLOTEC,)
+    assert ri.SCRIPT_ARGS['tecCode'] == ('--job', 'tecCode') and ri.SCRIPT_ARGS['tecGlotec'] == ('--job', 'tecGlotec')
 
 
 def test_unknown_source_is_a_usage_error():

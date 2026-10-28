@@ -59,8 +59,11 @@ DELAY_RANGE_SEC = (1.5, 4.5)
 # runs take minutes, and a run waits for the writers' lock.
 GRACE = timedelta(hours=1)
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ASSETS = ('assets/lcars.js', 'assets/gsOpsPanel.js', 'assets/grdTrackPanel.js', 'assets/onOrbitPanel.js',
-          'assets/grdViewPanel.js', 'assets/groundSegmentPanel.js', 'assets/bugReport.js', 'index.html')
+ASSETS = ('assets/lcars.js', 'assets/chartCore.js', 'assets/launchesPanel.js', 'assets/gsOpsPanel.js', 'assets/grdTrackPanel.js', 'assets/onOrbitPanel.js',
+          'assets/grdViewPanel.js', 'assets/groundSegmentPanel.js', 'assets/bugReport.js', 'index.html',
+          # the WEATHER panel and its chart files (one per view, loaded lazily), the map component and the outline it draws
+          'assets/weatherPanel.js', 'assets/chartTime.js', 'assets/weatherCharts.js', 'assets/weatherEarth.js', 'assets/weatherGcr.js', 'assets/weatherHf.js',
+          'assets/weatherDrag.js', 'assets/weatherMap.js', 'assets/weatherCoast.json', 'assets/weatherTec.js', 'assets/weatherSat.js', 'assets/weatherAurora.js')
 BOT_CHECK_MARKER = b'being verified'
 
 
@@ -106,6 +109,11 @@ CHECKS = [
     ('LAUNCHES per-year chart', 'api/launches/per-year', dictWith(('rows',), 'rows', 50), 'years', False),
     ('ADD OBJ filter lists', 'api/orbital-objects/filter-options', dictWith(('owners', 'groups', 'launchSites'), 'groups', 5), 'groups', False),
     ('ADD OBJ search', 'api/orbital-objects/search?group=starlink&limit=5', dictWith(('objects', 'truncated'), 'objects', 1), 'objects', False),
+    ('WEATHER now', 'api/weather/now', dictWith(('generatedUtc', 'latest', 'maps'), 'latest', 20), 'series', False),
+    ('WEATHER solar wind speed', 'api/weather/series?name=l1WindSpeed&range=24h', dictWith(('t', 'v', 'unit'), 't', 100), 'readings', False),
+    ('WEATHER solar events', 'api/weather/events?type=CME&days=90', dictWith(('events',), 'events', 1), 'CMEs', False),
+    ('WEATHER aurora map', 'api/weather/map?name=ovation', dictWith(('tsUtc', 'map')), None, False),
+    ('WEATHER aurora at a place', 'api/weather/aurora-at?lat=64.1&lon=-21.9', dictWith(('lat', 'lon', 'aurora')), None, False),
     ('GS OPS satellite list', 'api/orbital-objects/active', nonEmptyList(10000, ('noradID', 'epoch', 'meanMotion')), 'satellites', True),
     ('GRD VIEW satellites', 'api/sky/satellites', nonEmptyList(1000), 'satellites', True),
 ]
@@ -119,6 +127,8 @@ PRIVATE = [
     ('databases/.writers.lock', 'writers lock file'),
     ('databases/ingestionSpaceTrack.db', 'Space-Track data'),
     ('databases/inboxBugReports.db', 'visitor bug reports'),
+    ('databases/siteWeather.db', 'weather site database'),
+    ('databases/ingestionSWPC.db', 'NOAA SWPC data'),
     ('ingestionDBs/gcat.db', 'old database folder'),
     ('spacetrack.env', 'Space-Track credentials'),
     ('.env', 'server settings'),

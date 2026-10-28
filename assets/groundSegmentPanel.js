@@ -94,18 +94,18 @@ let assetTypeLayers = {};
 // with shape distinguishing members within that family, and shade
 // distinguishing hue depth within the family.
 const INFRASTRUCTURE_ASSET_KEY = [
-    { label: 'LAUNCH', color: '#ffd27a', shape: 'circle', type: 'Launch Site' },
-    { label: 'MCC', color: '#ffb347', shape: 'square', type: 'MCC' },
-    { label: 'DWN RNGE', color: '#e8912a', shape: 'triangle', type: 'Downrange Infrastructure' },
-    { label: 'DSN', color: '#b8651a', shape: 'asterisk', type: 'DSN' },
-    { label: 'GSaaS', color: '#8ecbff', shape: 'circle', type: 'GSaaS' },
-    { label: 'TT&C', color: '#5b9bd8', shape: 'square', type: 'TT&C' },
-    { label: 'CONST GS', color: '#3a6fb0', shape: 'triangle', type: 'Constellation Gateway' },
-    { label: 'TELEPORT', color: '#1f4e8c', shape: 'asterisk', type: 'Teleport' },
-    { label: 'SPCE PARK', color: '#8fd19e', shape: 'circle', type: 'Space Park' },
-    { label: 'TST FACILITY', color: '#3f9e5c', shape: 'square', type: 'Space Test Facility' },
-    { label: 'SSA', color: '#c9a6e8', shape: 'triangle', type: 'SSA' },
-    { label: 'SLR', color: '#8654b0', shape: 'triangle-down', type: 'SLR' },
+    { label: 'LAUNCH', color: lcarsColour('--tng-sand'), shape: 'circle', type: 'Launch Site' },
+    { label: 'MCC', color: lcarsColour('--tng-amber'), shape: 'square', type: 'MCC' },
+    { label: 'DWN RNGE', color: lcarsColour('--tng-tan'), shape: 'triangle', type: 'Downrange Infrastructure' },
+    { label: 'DSN', color: lcarsColour('--tng-salmon'), shape: 'asterisk', type: 'DSN' },
+    { label: 'GSaaS', color: lcarsColour('--tng-ice'), shape: 'circle', type: 'GSaaS' },
+    { label: 'TT&C', color: lcarsColour('--tng-periwinkle'), shape: 'square', type: 'TT&C' },
+    { label: 'CONST GS', color: lcarsColour('--tng-lavender'), shape: 'triangle', type: 'Constellation Gateway' },
+    { label: 'TELEPORT', color: lcarsColour('--tng-violet'), shape: 'asterisk', type: 'Teleport' },
+    { label: 'SPCE PARK', color: lcarsColour('--tng-pink'), shape: 'circle', type: 'Space Park' },
+    { label: 'TST FACILITY', color: lcarsColour('--tng-mauve'), shape: 'square', type: 'Space Test Facility' },
+    { label: 'SSA', color: lcarsColour('--tng-terracotta'), shape: 'triangle', type: 'SSA' },
+    { label: 'SLR', color: lcarsColour('--tng-pink'), shape: 'triangle-down', type: 'SLR' },
 ];
 
 // Shape/colour lookup by canonical type, derived from

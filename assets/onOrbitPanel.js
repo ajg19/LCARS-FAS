@@ -43,12 +43,16 @@ function onOrbitQuery() {
 }
 
 // Main area: the charts, or (DEFINITIONS button) the static definitions
-// and "how it's built" panel in index.html, #on-orbit-definitions.
+// and "how it's built" panel, #on-orbit-definitions, whose contents are the
+// helper file assets/onOrbitDefs.html (fetched the first time it is shown).
 let onOrbitShowingDefinitions = false;
 
-function applyOnOrbitMainView() {
+async function applyOnOrbitMainView() {
     const charts = document.getElementById('on-orbit-charts');
     const definitions = document.getElementById('on-orbit-definitions');
+    if (onOrbitShowingDefinitions) {
+        await loadHelperHtml('assets/onOrbitDefs.html', 'on-orbit-definitions');
+    }
     if (charts && definitions) {
         charts.style.display = onOrbitShowingDefinitions ? 'none' : '';
         definitions.style.display = onOrbitShowingDefinitions ? '' : 'none';
@@ -290,120 +294,6 @@ registerPanelControls('on-orbit', {
 
 /* --- Charts ---------------------------------------------------------------- */
 
-// Log-scale axis: from 1 up to the next power of ten above the largest
-// value, one tick per power of ten (1, 10, 100 ...). Bars start at 1, so a
-// count of 1 is a stub, not a missing bar.
-function logAxisTop(maxValue) {
-    return 10 ** Math.max(1, Math.ceil(Math.log10(Math.max(maxValue, 1))));
-}
-
-function logAxisPercent(value, top) {
-    return value <= 1 ? 0 : (Math.log10(value) / Math.log10(top)) * 100;
-}
-
-// One LCARS chart panel: a header bar (title, with a total at its end), a
-// row per item -- label, bar and the exact count just past the bar's end --
-// and a numbered log axis under the bars, its title (axisTitle) just above
-// the axis at the right-hand end.
-function orbitBarChartHtml(title, totalText, rows, axisTitle) {
-    const top = logAxisTop(Math.max(...rows.map((row) => row.value)));
-    const ticks = [];
-    for (let value = 1; value <= top; value *= 10) {
-        ticks.push(value);
-    }
-    const format = (n) => n.toLocaleString('en-GB');
-    const barRows = rows.map((row) => `
-        <div class="orbit-chart-label">${row.label}</div>
-        <div class="orbit-chart-track">
-            <div class="orbit-chart-bar${row.muted ? ' orbit-chart-bar-muted' : ''}"
-                 style="width:${logAxisPercent(row.value, top)}%"></div>
-            <span class="orbit-chart-value">${format(row.value)}</span>
-        </div>`).join('');
-    const axis = `
-        <div></div>
-        <div class="orbit-chart-axis">
-            <span class="orbit-chart-axis-title">${axisTitle}</span>${ticks.map((value) => `
-            <span class="orbit-chart-tick" style="left:${logAxisPercent(value, top)}%">${format(value)}</span>`).join('')}
-        </div>`;
-    return `
-        <section class="orbit-chart">
-            <header class="orbit-chart-header"><span>${title}</span><span>${totalText}</span></header>
-            <div class="orbit-chart-grid">${barRows}${axis}</div>
-        </section>`;
-}
-
-// Pie chart: a disc (conic gradient, slices clockwise from 12 o'clock in
-// row order) beside a legend -- swatch, label, count and share for every
-// slice, including those too thin to see. totalTooltip as for the
-// histogram.
-function orbitPieChartHtml(title, totalText, slices, totalTooltip) {
-    const total = slices.reduce((sum, slice) => sum + slice.value, 0);
-    const format = (n) => n.toLocaleString('en-GB');
-    let start = 0;
-    const stops = slices.map((slice) => {
-        const end = start + (total ? (slice.value / total) * 100 : 0);
-        const stop = `${slice.color} ${start}% ${end}%`;
-        start = end;
-        return stop;
-    }).join(', ');
-    const legend = slices.map((slice) => `
-        <span class="orbit-pie-swatch" style="background:${slice.color}"></span>
-        <span class="orbit-pie-label">${slice.label}</span>
-        <span class="orbit-pie-value">${format(slice.value)}</span>
-        <span class="orbit-pie-value">${total ? ((slice.value / total) * 100).toFixed(1) : '0.0'}%</span>`).join('');
-    return `
-        <section class="orbit-chart">
-            <header class="orbit-chart-header"><span>${title}</span><span${totalTooltip
-                ? ` class="orbit-chart-total-tip" title="${totalTooltip}"` : ''}>${totalText}</span></header>
-            <div class="orbit-pie">
-                <div class="orbit-pie-disc" style="background: conic-gradient(${stops})"></div>
-                <div class="orbit-pie-legend">${legend}</div>
-            </div>
-        </section>`;
-}
-
-// Ranked vertical-bar chart (owners): log count axis on the left with
-// faint gridlines, one bar per item, largest first, its count above it, and
-// the item's name turned 90 degrees under the x axis (reading upwards).
-// Each bar's tooltip gives tooltipOf(row); a row's percentText, if given,
-// is written up the inside of its bar. Shares the histogram's styles.
-function orbitRankedColumnChartHtml(title, totalText, rows, yTitle, totalTooltip, tooltipOf) {
-    const top = logAxisTop(Math.max(...rows.map((row) => row.value)));
-    const yTicks = [];
-    for (let value = 1; value <= top; value *= 10) {
-        yTicks.push(value);
-    }
-    const format = (n) => n.toLocaleString('en-GB');
-    const escape = (text) => String(text).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-    const columns = rows.map((row) => {
-        const height = logAxisPercent(row.value, top);
-        return `
-            <div class="orbit-histogram-col" title="${escape(tooltipOf(row))}">
-                <div class="orbit-histogram-bar${row.muted ? ' orbit-chart-bar-muted' : ''}" style="height:${height}%">${row.percentText
-                    ? `<span class="orbit-bar-percent">${row.percentText}</span>` : ''}</div>
-                <span class="orbit-histogram-value" style="bottom:${height}%">${format(row.value)}</span>
-            </div>`;
-    }).join('');
-    const labels = rows.map((row) => `
-            <div class="orbit-ranked-label" title="${escape(tooltipOf(row))}"><span>${escape(row.label)}</span></div>`).join('');
-    return `
-        <section class="orbit-chart">
-            <header class="orbit-chart-header"><span>${title} · ${yTitle}</span><span${totalTooltip
-                ? ` class="orbit-chart-total-tip" title="${escape(totalTooltip)}"` : ''}>${totalText}</span></header>
-            <div class="orbit-histogram orbit-ranked">
-                <div class="orbit-histogram-yaxis">${yTicks.map((value) => `
-                    <span class="orbit-histogram-ytick" style="bottom:${logAxisPercent(value, top)}%">${format(value)}</span>`).join('')}
-                </div>
-                <div class="orbit-histogram-plot">${yTicks.map((value) => `
-                    <div class="orbit-histogram-grid" style="bottom:${logAxisPercent(value, top)}%"></div>`).join('')}
-                    ${columns}
-                </div>
-                <div></div>
-                <div class="orbit-ranked-labels">${labels}</div>
-            </div>
-        </section>`;
-}
-
 // Owners chart: the largest OWNERS_CHART_COUNT owners, then Other. A fixed
 // number, chosen (October 2026) so that D-Orbit, 38th for active
 // satellites, is on the chart; the bars share out the width between them.
@@ -423,56 +313,6 @@ const ORBIT_SECTORS = {
     D: { label: 'D – Defence', color: 'var(--sector-defence)' },
     unknown: { label: 'Unknown', color: 'var(--sector-unknown)' },
 };
-
-// Vertical-bar histogram (LCARS: flat bars, pill-rounded tops): a log
-// count axis on the left with faint gridlines (its title, yTitle, in the
-// header bar after the chart title), one column per bucket with its count just above the bar (blank when
-// zero), and an x axis numbered every xTickEvery units under the bucket
-// edges, its title (xTitle) just above the axis at the right-hand end.
-// totalTooltip, if given, is shown on hovering the total in the header bar.
-function orbitColumnChartHtml(title, totalText, buckets, xTitle, yTitle, xTickEvery, totalTooltip) {
-    const top = logAxisTop(Math.max(...buckets.map((bucket) => bucket.value)));
-    const yTicks = [];
-    for (let value = 1; value <= top; value *= 10) {
-        yTicks.push(value);
-    }
-    const format = (n) => n.toLocaleString('en-GB');
-    const xFrom = buckets[0].from;
-    const xTo = buckets[buckets.length - 1].to;
-    const xTicks = [];
-    for (let value = xFrom; value <= xTo; value += xTickEvery) {
-        xTicks.push(value);
-    }
-    const xPercent = (value) => ((value - xFrom) / (xTo - xFrom)) * 100;
-    const columns = buckets.map((bucket) => {
-        const height = logAxisPercent(bucket.value, top);
-        return `
-            <div class="orbit-histogram-col" title="${bucket.from}–${bucket.to}°: ${format(bucket.value)}">
-                ${bucket.value ? `
-                <div class="orbit-histogram-bar" style="height:${height}%"></div>
-                <span class="orbit-histogram-value" style="bottom:${height}%">${format(bucket.value)}</span>` : ''}
-            </div>`;
-    }).join('');
-    return `
-        <section class="orbit-chart">
-            <header class="orbit-chart-header"><span>${title} · ${yTitle}</span><span${totalTooltip
-                ? ` class="orbit-chart-total-tip" title="${totalTooltip}"` : ''}>${totalText}</span></header>
-            <div class="orbit-histogram">
-                <div class="orbit-histogram-yaxis">${yTicks.map((value) => `
-                    <span class="orbit-histogram-ytick" style="bottom:${logAxisPercent(value, top)}%">${format(value)}</span>`).join('')}
-                </div>
-                <div class="orbit-histogram-plot">${yTicks.map((value) => `
-                    <div class="orbit-histogram-grid" style="bottom:${logAxisPercent(value, top)}%"></div>`).join('')}
-                    ${columns}
-                </div>
-                <div></div>
-                <div class="orbit-chart-axis">
-                    <span class="orbit-chart-axis-title">${xTitle}</span>${xTicks.map((value) => `
-                    <span class="orbit-chart-tick" style="left:${xPercent(value)}%">${value}</span>`).join('')}
-                </div>
-            </div>
-        </section>`;
-}
 
 // What the current filters select, in words -- for chart titles.
 function onOrbitPopulationLabel() {
@@ -497,98 +337,6 @@ function selectOnOrbitGroup(group) {
 
 // --- SVG chart helpers (sized to their slot) ----------------------------------------
 const ORBIT_SVG_MARGIN = { top: 16, right: 24, bottom: 34, left: 60 };
-
-function orbitEscape(text) {
-    return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-}
-
-function orbitNiceStep(maxValue, targetTicks = 5) {
-    const rough = Math.max(maxValue, 1) / targetTicks;
-    const power = 10 ** Math.floor(Math.log10(rough));
-    return [1, 2, 2.5, 5, 10].map((m) => m * power).find((v) => v >= rough);
-}
-
-// Pill title bar (title · axis title, total with optional tooltip at the
-// right-hand end), an optional legend, then the body.
-function orbitFrameHtml({ title, yTitle, totalText, totalTooltip, legend, body }) {
-    const legendHtml = legend && legend.length ? `
-        <div class="lcars-chart-legend">${legend.map((item) => `
-            <span class="lcars-chart-legend-item"><span class="lcars-chart-swatch" style="background:${item.color}"></span>${orbitEscape(item.label)}</span>`).join('')}
-        </div>` : '';
-    return `
-        <section class="orbit-chart">
-            <header class="orbit-chart-header"><span>${title}${yTitle ? ` · ${yTitle}` : ''}</span><span${totalTooltip
-                ? ` class="orbit-chart-total-tip" title="${orbitEscape(totalTooltip)}"` : ''}>${totalText}</span></header>
-            ${legendHtml}
-            ${body}
-        </section>`;
-}
-
-// Stacked vertical bars over categories (bands), one segment per series,
-// linear scale -- or, with a single series, optionally log. Hover a bar for
-// its figures. labelOf(category, i) gives the x-axis label ('' for none).
-// centreLabels: each label under the middle of its bar -- for categories
-// (VLEO, Ku ...) and whole units (ages); otherwise at the bar's left edge,
-// as a band boundary (0°, 15°, 250 km ...).
-function orbitStackedColumnsSvg({ width, height = 300, categories, series, valueOf, labelOf, log = false,
-    tooltipOf, xTitle, centreLabels = false }) {
-    const m = ORBIT_SVG_MARGIN;
-    const plotW = width - m.left - m.right;
-    const plotH = height - m.top - m.bottom;
-    const totals = categories.map((c) => series.reduce((sum, s) => sum + (valueOf(c, s) || 0), 0));
-    const maxTotal = Math.max(...totals, 1);
-    let sy;
-    let ticks;
-    if (log) {
-        const top = 10 ** Math.max(1, Math.ceil(Math.log10(maxTotal)));
-        sy = (v) => m.top + plotH - (v <= 1 ? 0 : (Math.log10(v) / Math.log10(top)) * plotH);
-        ticks = [];
-        for (let v = 1; v <= top; v *= 10) {
-            ticks.push(v);
-        }
-    } else {
-        const step = orbitNiceStep(maxTotal);
-        const top = Math.ceil(maxTotal / step) * step;
-        sy = (v) => m.top + plotH - (v / top) * plotH;
-        ticks = [];
-        for (let v = 0; v <= top + 1e-9; v += step) {
-            ticks.push(v);
-        }
-    }
-    const format = (n) => n.toLocaleString('en-GB');
-    const slot = plotW / categories.length;
-    const barW = Math.max(1, slot * 0.8);
-    let svg = ticks.map((v) => `
-        <line class="lcars-line-grid" x1="${m.left}" x2="${m.left + plotW}" y1="${sy(v)}" y2="${sy(v)}"></line>
-        <text class="lcars-line-ytick" x="${m.left - 8}" y="${sy(v)}" dy="0.35em" text-anchor="end">${format(v)}</text>`).join('');
-    svg += `<line class="lcars-line-axis" x1="${m.left}" x2="${m.left + plotW}" y1="${m.top + plotH}" y2="${m.top + plotH}"></line>`;
-    categories.forEach((c, i) => {
-        const x = m.left + i * slot + (slot - barW) / 2;
-        let base = 0;
-        let segments = '';
-        series.forEach((s) => {
-            const v = valueOf(c, s) || 0;
-            if (!v) {
-                return;
-            }
-            const y0 = log ? sy(Math.max(base, 1)) : sy(base);
-            const y1 = log ? sy(base + v) : sy(base + v);
-            segments += `<rect x="${x}" y="${Math.min(y0, y1)}" width="${barW}" height="${Math.max(Math.abs(y0 - y1), log ? 2 : 0)}" fill="${s.color}"></rect>`;
-            base += v;
-        });
-        svg += `<g class="lcars-bar">${segments}<title>${orbitEscape(tooltipOf(c, i, totals[i]))}</title></g>`;
-        const label = labelOf(c, i);
-        if (label) {
-            const lx = m.left + (centreLabels ? (i + 0.5) * slot : i * slot);
-            svg += `<line class="lcars-line-xtick-mark" x1="${lx}" x2="${lx}" y1="${m.top + plotH}" y2="${m.top + plotH + 5}"></line>
-                <text class="lcars-line-xtick" x="${lx}" y="${m.top + plotH + 20}" text-anchor="middle">${label}</text>`;
-        }
-    });
-    if (xTitle) {
-        svg += `<text class="lcars-line-axis-title" x="${m.left + plotW}" y="${m.top + plotH - 8}" text-anchor="end">${xTitle}</text>`;
-    }
-    return `<svg class="lcars-line-chart" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img">${svg}</svg>`;
-}
 
 // Width available to a chart: its slot's width (a half-row slot is half).
 function orbitSlotWidth(slot) {
@@ -636,50 +384,6 @@ const ORBIT_BANDS = [
     { key: 'Ka', color: 'var(--tng-lavender)' },
 ];
 
-// Bars for one series on the left axis, a line for another on its own
-// right-hand axis (dots at each point), over a run of years. Hover a year
-// for both figures. Linear scales.
-function orbitBarsAndLineSvg({ width, height = 340, years, bars, line, tooltipOf }) {
-    const m = { ...ORBIT_SVG_MARGIN, right: 64 };
-    const plotW = width - m.left - m.right;
-    const plotH = height - m.top - m.bottom;
-    const scale = (values, ticks) => {
-        const step = orbitNiceStep(Math.max(...values, 1), ticks);
-        return { step, top: Math.ceil(Math.max(...values, 1) / step) * step };
-    };
-    const left = scale(bars.values);
-    const right = scale(line.values);
-    const slot = plotW / years.length;
-    const barW = Math.max(1, slot * 0.75);
-    const cx = (i) => m.left + (i + 0.5) * slot;
-    const syL = (v) => m.top + plotH - (v / left.top) * plotH;
-    const syR = (v) => m.top + plotH - (v / right.top) * plotH;
-    let svg = '';
-    for (let v = 0; v <= left.top + 1e-9; v += left.step) {
-        svg += `<line class="lcars-line-grid" x1="${m.left}" x2="${m.left + plotW}" y1="${syL(v)}" y2="${syL(v)}"></line>
-            <text class="lcars-line-ytick" x="${m.left - 8}" y="${syL(v)}" dy="0.35em" text-anchor="end">${orbitFormat(v)}</text>`;
-    }
-    for (let v = 0; v <= right.top + 1e-9; v += right.step) {
-        svg += `<text class="lcars-line-ytick" x="${m.left + plotW + 8}" y="${syR(v)}" dy="0.35em" text-anchor="start">${orbitFormat(v)}</text>`;
-    }
-    svg += `<line class="lcars-line-axis" x1="${m.left}" x2="${m.left + plotW}" y1="${m.top + plotH}" y2="${m.top + plotH}"></line>`;
-    years.forEach((y, i) => {
-        if (y % 10 === 0) {
-            svg += `<line class="lcars-line-xtick-mark" x1="${cx(i)}" x2="${cx(i)}" y1="${m.top + plotH}" y2="${m.top + plotH + 5}"></line>
-                <text class="lcars-line-xtick" x="${cx(i)}" y="${m.top + plotH + 20}" text-anchor="middle">${y}</text>`;
-        }
-        const v = bars.values[i];
-        if (v) {
-            svg += `<rect x="${cx(i) - barW / 2}" y="${syL(v)}" width="${barW}" height="${m.top + plotH - syL(v)}" fill="${bars.color}"></rect>`;
-        }
-    });
-    const path = years.map((y, i) => `${i ? 'L' : 'M'}${cx(i).toFixed(1)},${syR(line.values[i]).toFixed(1)}`).join(' ');
-    svg += `<path class="lcars-dual-line" d="${path}" stroke="${line.color}"></path>`;
-    svg += years.map((y, i) => `<rect class="lcars-hover-strip" x="${cx(i) - slot / 2}" y="${m.top}" width="${slot}" height="${plotH}">`
-        + `<title>${orbitEscape(tooltipOf(i))}</title></rect>`).join('');
-    return `<svg class="lcars-line-chart" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img">${svg}</svg>`;
-}
-
 // How a band is written: UHF and VHF on their own, the rest "X band" etc.;
 // Ku and Ka always with a lower-case u / a -- in HTML (asHtml) wrapped so
 // the uppercase LCARS styling can't capitalise them.
@@ -699,7 +403,7 @@ function onOrbitEverythingLabel() {
 // are click-to-open (<details>); the first three start open.
 function orbitTreeHtml({ rootLabel, rootTotal, countries, ownersShown = 6, countriesShown = 15 }) {
     const bar = (n) => `<span class="orbit-tree-bar" style="width:${Math.max(1, (n / rootTotal) * 100)}%"></span>`;
-    const line = (label, n, cls = '') => `<span class="orbit-tree-row ${cls}"><span class="orbit-tree-name">${orbitEscape(label)}</span>`
+    const line = (label, n, cls = '') => `<span class="orbit-tree-row ${cls}"><span class="orbit-tree-name">${escapeChartText(label)}</span>`
         + `<span class="orbit-tree-leader"></span><span class="orbit-tree-count">${orbitFormat(n)}</span>`
         + `<span class="orbit-tree-barbox">${bar(n)}</span></span>`;
     const shown = countries.slice(0, countriesShown);
@@ -748,8 +452,10 @@ const ON_ORBIT_CHARTS = [
                 ? `Excludes ${format(noOrbit)} ${onOrbitNoun()} with no current perigee or apogee on file, `
                     + 'which cannot be placed in a regime.'
                 : '';
-            return orbitPieChartHtml(`${onOrbitPopulationLabel()} by orbit type`,
-                `${format(total)} ${onOrbitNoun()}`, slices, tooltip);
+            return pieChartHtml({
+                title: `${onOrbitPopulationLabel()} by orbit type`,
+                totalText: `${format(total)} ${onOrbitNoun()}`, slices, totalTooltip: tooltip,
+            });
         },
     },
     {
@@ -774,14 +480,14 @@ const ON_ORBIT_CHARTS = [
             const all = data.rows.reduce((s, r) => s + r.n, 0);
             const kind = onOrbitNoun();
             const label = onOrbitFilters.spacex === 'with' ? `All ${kind}` : `All ${kind} excl SpaceX`;
-            return orbitFrameHtml({
+            return chartFrameHtml({
                 title: `${label}: active vs inactive by orbit type`,
                 yTitle: `# ${kind}`,
                 totalText: `${(all ? (dead / all) * 100 : 0).toFixed(1)}% INACTIVE`,
                 totalTooltip: `Active or not by CelesTrak's active list, for every ${kind.replace(/s$/, '')} in orbit `
                     + '(this chart ignores the ACT-ONLY button: it compares the two).',
                 legend: series,
-                body: orbitStackedColumnsSvg({
+                svg: stackedColumnsSvg({
                     width: orbitSlotWidth(slot), height: 300, categories: regimes, series,
                     valueOf: (g, s) => counts[`${g}|${s.key}`] || 0,
                     labelOf: (g) => g,
@@ -816,10 +522,14 @@ const ON_ORBIT_CHARTS = [
                     + 'routinely tracked (old GLONASS, Molniya, Cosmos and early US military satellites); '
                     + 'a few are recent launches not yet given elements.'
                 : '';
-            return orbitColumnChartHtml(
-                `${onOrbitPopulationLabel()} in orbit by inclination`,
-                `${format(plotted)} ${onOrbitNoun()}`,
-                buckets, 'INCLINATION (DEGREES)', `# ${onOrbitNoun()} (LOG SCALE)`, 15, tooltip);
+            return columnHistogramHtml({
+                title: `${onOrbitPopulationLabel()} in orbit by inclination`,
+                yTitle: `# ${onOrbitNoun()} (LOG SCALE)`,
+                xTitle: 'INCLINATION (DEGREES)',
+                totalText: `${format(plotted)} ${onOrbitNoun()}`,
+                totalTooltip: tooltip,
+                buckets, xTickEvery: 15, unit: '°',
+            });
         },
     },
     {
@@ -836,14 +546,14 @@ const ON_ORBIT_CHARTS = [
             const bands = Array.from({ length: 36 }, (_, i) => i * 5);
             const series = ORBIT_REGIME_ORDER.map((g) => ({ key: g, label: g, color: ORBIT_REGIME_COLOURS[g] }));
             const plotted = data.rows.reduce((s, r) => s + r.n, 0);
-            return orbitFrameHtml({
+            return chartFrameHtml({
                 title: `${onOrbitPopulationLabel()} by inclination and orbit type`,
                 yTitle: `# ${onOrbitNoun()}`,
                 totalText: `${orbitFormat(plotted)} ${onOrbitNoun()}`,
                 totalTooltip: 'Current inclination in 5° bands, each band stacked by orbit type. Objects with no '
                     + 'inclination or no current orbit on file are not included.',
                 legend: series,
-                body: orbitStackedColumnsSvg({
+                svg: stackedColumnsSvg({
                     width: orbitSlotWidth(slot), categories: bands, series,
                     valueOf: (b, s) => counts[`${b}|${s.key}`] || 0,
                     labelOf: (b) => (b % 15 === 0 ? `${b}°` : ''),
@@ -871,13 +581,13 @@ const ON_ORBIT_CHARTS = [
                 bands.push(b);
             }
             const plotted = data.rows.reduce((s, r) => s + r.n, 0);
-            return orbitFrameHtml({
+            return chartFrameHtml({
                 title: `${onOrbitPopulationLabel()} below 2,000 km by altitude`,
                 yTitle: `# ${onOrbitNoun()} (LOG SCALE)`,
                 totalText: `${orbitFormat(plotted)} ${onOrbitNoun()}`,
                 totalTooltip: 'Mean altitude ((perigee + apogee) / 2) in 25 km bands, for objects in VLEO and '
                     + 'LEO -- below 2,000 km. The tall bars are constellation shells.',
-                body: orbitStackedColumnsSvg({
+                svg: stackedColumnsSvg({
                     width: orbitSlotWidth(slot), categories: bands, log: true,
                     series: [{ key: 'n', color: 'var(--tng-periwinkle)' }],
                     valueOf: (b) => counts[b] || 0,
@@ -931,10 +641,10 @@ const ON_ORBIT_CHARTS = [
                 const top = Object.entries(c.bySector).sort((a, b) => b[1] - a[1])[0][0];
                 const tip = `${orbitFormat(c.alt)}–${orbitFormat(c.alt + 25)} km, ${c.inc}–${c.inc + 1}°: ${orbitFormat(c.n)}\n`
                     + ORBIT_SECTOR_ORDER.filter((k) => c.bySector[k]).map((k) => `${ORBIT_SECTOR_SHORT[k]}: ${orbitFormat(c.bySector[k])}`).join('\n');
-                svg += `<circle class="lcars-bubble" cx="${sx(c.inc + 0.5)}" cy="${sy(c.alt + 12.5)}" r="${radius(c.n)}" fill="${ORBIT_SECTORS[top].color}"><title>${orbitEscape(tip)}</title></circle>`;
+                svg += `<circle class="lcars-bubble" cx="${sx(c.inc + 0.5)}" cy="${sy(c.alt + 12.5)}" r="${radius(c.n)}" fill="${ORBIT_SECTORS[top].color}"><title>${escapeChartText(tip)}</title></circle>`;
             });
             const plotted = list.reduce((s, c) => s + c.n, 0);
-            return orbitFrameHtml({
+            return chartFrameHtml({
                 title: `${onOrbitPopulationLabel()} below 2,000 km: altitude vs inclination`,
                 yTitle: 'MEAN ALTITUDE (KM)',
                 totalText: `${orbitFormat(plotted)} ${onOrbitNoun()}`,
@@ -942,7 +652,7 @@ const ON_ORBIT_CHARTS = [
                     + 'coloured by the sector with most objects there. Constellation shells and sun-synchronous '
                     + 'orbits (about 97–99°) show up as clusters. Hover a dot for its figures.',
                 legend: ORBIT_SECTOR_ORDER.map((k) => ({ label: ORBIT_SECTORS[k].label, color: ORBIT_SECTORS[k].color })),
-                body: `<svg class="lcars-line-chart" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img">${svg}</svg>`,
+                svg: `<svg class="lcars-line-chart" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img">${svg}</svg>`,
             });
         },
     },
@@ -960,7 +670,7 @@ const ON_ORBIT_CHARTS = [
             const bands = Array.from({ length: 180 }, (_, i) => -180 + i * 2);
             const series = ORBIT_SECTOR_ORDER.map((k) => ({ key: k, label: ORBIT_SECTORS[k].label, color: ORBIT_SECTORS[k].color }));
             const plotted = data.rows.reduce((s, r) => s + r.n, 0);
-            return orbitFrameHtml({
+            return chartFrameHtml({
                 title: `${onOrbitPopulationLabel()} in GEO by longitude`,
                 yTitle: `# ${onOrbitNoun()}`,
                 totalText: `${orbitFormat(plotted)} ${onOrbitNoun()} IN GEO`,
@@ -968,7 +678,7 @@ const ON_ORBIT_CHARTS = [
                     + 'Longitude is worked out from each object\'s latest element set and carried forward to '
                     + 'today by its drift. Graveyard orbits above GEO are not included.',
                 legend: series,
-                body: orbitStackedColumnsSvg({
+                svg: stackedColumnsSvg({
                     width: orbitSlotWidth(slot), categories: bands, series,
                     valueOf: (b, s) => counts[`${b}|${s.key}`] || 0,
                     labelOf: (b) => (b % 30 === 0 ? orbitLongitudeLabel(b) : ''),
@@ -993,7 +703,7 @@ const ON_ORBIT_CHARTS = [
             const bands = Array.from({ length: 31 }, (_, i) => i);
             const series = ORBIT_REGIME_ORDER.map((g) => ({ key: g, label: g, color: ORBIT_REGIME_COLOURS[g] }));
             const plotted = data.rows.reduce((s, r) => s + r.n, 0);
-            return orbitFrameHtml({
+            return chartFrameHtml({
                 title: `${onOrbitPopulationLabel()} by age`,
                 yTitle: `# ${onOrbitNoun()}`,
                 totalText: `${orbitFormat(plotted)} ${onOrbitNoun()}`,
@@ -1001,7 +711,7 @@ const ON_ORBIT_CHARTS = [
                     + 'last bar is 30 years and over. Objects with no launch date or current orbit on file are '
                     + 'not included.',
                 legend: series,
-                body: orbitStackedColumnsSvg({
+                svg: stackedColumnsSvg({
                     width: orbitSlotWidth(slot), categories: bands, series,
                     valueOf: (b, s) => counts[`${b}|${s.key}`] || 0,
                     labelOf: (b) => (b === 30 ? '30+' : b % 5 === 0 ? `${b}` : ''),
@@ -1031,11 +741,13 @@ const ON_ORBIT_CHARTS = [
                 color: ORBIT_SECTORS[row.sector].color,
             }));
             const total = slices.reduce((sum, slice) => sum + slice.value, 0);
-            return orbitPieChartHtml(`${onOrbitPopulationLabel()} by sector (GCAT class)`,
-                `${total.toLocaleString('en-GB')} ${onOrbitNoun()}`, slices,
-                'GCAT classes each payload by sector: A academic / amateur / non-profit, B commercial, '
-                + 'C civil government, D defence. A payload with no class of its own takes its owner\'s. '
-                + 'Unknown: not yet in GCAT, or no class recorded.');
+            return pieChartHtml({
+                title: `${onOrbitPopulationLabel()} by sector (GCAT class)`,
+                totalText: `${total.toLocaleString('en-GB')} ${onOrbitNoun()}`, slices,
+                totalTooltip: 'GCAT classes each payload by sector: A academic / amateur / non-profit, B commercial, '
+                    + 'C civil government, D defence. A payload with no class of its own takes its owner\'s. '
+                    + 'Unknown: not yet in GCAT, or no class recorded.',
+            });
         },
     },
     {
@@ -1052,11 +764,13 @@ const ON_ORBIT_CHARTS = [
                 .map((k) => ({ k, n: (data.rows.find((r) => r.category === k) || {}).n || 0 }))
                 .filter((s) => s.n)
                 .map((s) => ({ label: ORBIT_MISSIONS[s.k].label, value: s.n, color: ORBIT_MISSIONS[s.k].color }));
-            return orbitPieChartHtml(`${onOrbitPopulationLabel()} by mission`,
-                `${orbitFormat(data.total)} ${onOrbitNoun()}`, slices,
-                'GCAT\'s mission category for each payload (its first, if it lists several), grouped: imaging '
-                + 'includes radar; signals & EW is signals intelligence and electronic warfare; weather & Earth '
-                + 'science includes geodesy. Rocket bodies and debris (ALL-OBJ) have no category.');
+            return pieChartHtml({
+                title: `${onOrbitPopulationLabel()} by mission`,
+                totalText: `${orbitFormat(data.total)} ${onOrbitNoun()}`, slices,
+                totalTooltip: 'GCAT\'s mission category for each payload (its first, if it lists several), grouped: imaging '
+                    + 'includes radar; signals & EW is signals intelligence and electronic warfare; weather & Earth '
+                    + 'science includes geodesy. Rocket bodies and debris (ALL-OBJ) have no category.',
+            });
         },
     },
     {
@@ -1073,10 +787,11 @@ const ON_ORBIT_CHARTS = [
                 value: row.payloads,
                 muted: row.stateCode === null,   // the "Other" row
             }));
-            return orbitBarChartHtml(
-                `${onOrbitPopulationLabel()} in orbit by nationality`,
-                `${data.totalPayloads.toLocaleString('en-GB')} ${onOrbitNoun()}`,
-                rows, `# ${onOrbitNoun()} (LOG SCALE)`);
+            return logBarChartHtml({
+                title: `${onOrbitPopulationLabel()} in orbit by nationality`,
+                totalText: `${data.totalPayloads.toLocaleString('en-GB')} ${onOrbitNoun()}`,
+                rows, axisTitle: `# ${onOrbitNoun()} (LOG SCALE)`,
+            });
         },
     },
     {
@@ -1110,13 +825,13 @@ const ON_ORBIT_CHARTS = [
                 const segments = ORBIT_SECTOR_ORDER.filter((k) => s.sectors[k]).map((k) => {
                     const pct = (s.sectors[k] / s.total) * 100;
                     return `<span class="orbit-share-seg" style="width:${pct}%;background:${ORBIT_SECTORS[k].color}"
-                        title="${orbitEscape(`${nameOf(s)} -- ${ORBIT_SECTOR_SHORT[k]}: ${orbitFormat(s.sectors[k])} (${pct.toFixed(1)}%)`)}">${pct >= 9 ? `${Math.round(pct)}%` : ''}</span>`;
+                        title="${escapeChartText(`${nameOf(s)} -- ${ORBIT_SECTOR_SHORT[k]}: ${orbitFormat(s.sectors[k])} (${pct.toFixed(1)}%)`)}">${pct >= 9 ? `${Math.round(pct)}%` : ''}</span>`;
                 }).join('');
-                return `<div class="orbit-chart-label">${orbitEscape(nameOf(s))}</div>
+                return `<div class="orbit-chart-label">${escapeChartText(nameOf(s))}</div>
                     <div class="orbit-share-bar">${segments}</div>
                     <div class="orbit-chart-value">${orbitFormat(s.total)}</div>`;
             }).join('');
-            return orbitFrameHtml({
+            return chartFrameHtml({
                 title: `${onOrbitPopulationLabel()}: sector mix by country`,
                 yTitle: '% OF EACH COUNTRY',
                 totalText: `${orbitFormat(data.total)} ${onOrbitNoun()}`,
@@ -1124,7 +839,7 @@ const ON_ORBIT_CHARTS = [
                     + 'total (shown at the right). The 12 countries with most objects, then everyone else, '
                     + 'including objects not yet in GCAT. Hover a segment for its count.',
                 legend: ORBIT_SECTOR_ORDER.map((k) => ({ label: ORBIT_SECTORS[k].label, color: ORBIT_SECTORS[k].color })),
-                body: `<div class="orbit-share-grid">${rowsHtml}</div>`,
+                svg: `<div class="orbit-share-grid">${rowsHtml}</div>`,
             });
         },
     },
@@ -1169,12 +884,15 @@ const ON_ORBIT_CHARTS = [
             bars.forEach((bar) => {
                 bar.percentText = `${(population ? (bar.value / population) * 100 : 0).toFixed(1)}%`;
             });
-            return orbitRankedColumnChartHtml(
-                `${onOrbitPopulationLabel()} by owner`,
-                `TOP ${owners.length} OF ${format(data.totalOwners)} OWNERS SHOWN`,
-                bars, `# ${noun} (LOG SCALE)`, tooltip,
-                (row) => (row.muted ? row.fullName
-                    : `${row.fullName || row.label}${row.stateCode ? ` (${row.stateCode})` : ''}: ${format(row.value)} ${noun}`));
+            return rankedColumnChartHtml({
+                title: `${onOrbitPopulationLabel()} by owner`,
+                yTitle: `# ${noun} (LOG SCALE)`,
+                totalText: `TOP ${owners.length} OF ${format(data.totalOwners)} OWNERS SHOWN`,
+                totalTooltip: tooltip,
+                rows: bars,
+                tooltipOf: (row) => (row.muted ? row.fullName
+                    : `${row.fullName || row.label}${row.stateCode ? ` (${row.stateCode})` : ''}: ${format(row.value)} ${noun}`),
+            });
         },
     },
     {
@@ -1188,8 +906,10 @@ const ON_ORBIT_CHARTS = [
                 return null;
             }
             const rows = data.rows.map((r) => ({ label: r.name || r.code, value: r.n }));
-            return orbitBarChartHtml(`${onOrbitPopulationLabel()}: top 20 manufacturers`,
-                `${orbitFormat(data.total)} ${onOrbitNoun()}`, rows, `# ${onOrbitNoun()} (LOG SCALE)`);
+            return logBarChartHtml({
+                title: `${onOrbitPopulationLabel()}: top 20 manufacturers`,
+                totalText: `${orbitFormat(data.total)} ${onOrbitNoun()}`, rows, axisTitle: `# ${onOrbitNoun()} (LOG SCALE)`,
+            });
         },
     },
     {
@@ -1203,8 +923,10 @@ const ON_ORBIT_CHARTS = [
                 return null;
             }
             const rows = data.rows.map((r) => ({ label: r.bus, value: r.n }));
-            return orbitBarChartHtml(`${onOrbitPopulationLabel()}: top 20 satellite buses`,
-                `${orbitFormat(data.total)} ${onOrbitNoun()}`, rows, `# ${onOrbitNoun()} (LOG SCALE)`);
+            return logBarChartHtml({
+                title: `${onOrbitPopulationLabel()}: top 20 satellite buses`,
+                totalText: `${orbitFormat(data.total)} ${onOrbitNoun()}`, rows, axisTitle: `# ${onOrbitNoun()} (LOG SCALE)`,
+            });
         },
     },
     {
@@ -1232,7 +954,7 @@ const ON_ORBIT_CHARTS = [
             const plotW = width - m.left - m.right;
             const plotH = height - m.top - m.bottom;
             const totals = years.map((y) => series.reduce((s, k) => s + (counts[`${y}|${k.key}`] || 0), 0));
-            const step = orbitNiceStep(Math.max(...totals));
+            const step = niceAxisStep(Math.max(...totals), 5);
             const top = Math.ceil(Math.max(...totals) / step) * step;
             const sx = (y) => m.left + ((y - years[0]) / (years[years.length - 1] - years[0] || 1)) * plotW;
             const sy = (v) => m.top + plotH - (v / top) * plotH;
@@ -1257,10 +979,10 @@ const ON_ORBIT_CHARTS = [
             });
             const half = plotW / Math.max(years.length - 1, 1) / 2;
             svg += years.map((y, i) => `<rect class="lcars-hover-strip" x="${sx(y) - half}" y="${m.top}" width="${half * 2}" height="${plotH}">`
-                + `<title>${orbitEscape(`${y}: ${orbitFormat(totals[i])} payloads\n`
+                + `<title>${escapeChartText(`${y}: ${orbitFormat(totals[i])} payloads\n`
                 + series.map((k) => `${k.label}: ${orbitFormat(counts[`${y}|${k.key}`] || 0)}`).join('\n'))}</title></rect>`).join('');
             const label = onOrbitFilters.spacex === 'with' ? 'Payloads' : 'Payloads excl SpaceX';
-            return orbitFrameHtml({
+            return chartFrameHtml({
                 title: `${label} in orbit by year`,
                 yTitle: '# PAYLOADS',
                 totalText: `${orbitFormat(totals[totals.length - 1])} IN ORBIT NOW`,
@@ -1268,7 +990,7 @@ const ON_ORBIT_CHARTS = [
                     + 'launch and decay dates, stacked by sector. Only the SpaceX button applies: GCAT has no '
                     + 'history of which satellites were active, and this counts payloads only.',
                 legend: series,
-                body: `<svg class="lcars-line-chart" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img">${svg}</svg>`,
+                svg: `<svg class="lcars-line-chart" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img">${svg}</svg>`,
             });
         },
     },
@@ -1293,7 +1015,7 @@ const ON_ORBIT_CHARTS = [
                 name: c.state ? ((data.stateNames || {})[c.state] || c.state) : 'Not yet in GCAT',
                 owners: c.owners.sort((a, b) => b.n - a.n),
             })).sort((a, b) => b.n - a.n);
-            return orbitFrameHtml({
+            return chartFrameHtml({
                 title: `${onOrbitPopulationLabel()}: country and owner tree`,
                 yTitle: `# ${onOrbitNoun()}`,
                 totalText: `${countries.length} COUNTRIES · ${orbitFormat(data.rows.length)} OWNERS`,
@@ -1301,7 +1023,7 @@ const ON_ORBIT_CHARTS = [
                     + 'listing. Click a country to open or close it. Each country shows its 6 largest owners and '
                     + 'the rest together; the 15 largest countries are listed, the rest together. Bars show the '
                     + 'share of the whole.',
-                body: orbitTreeHtml({ rootLabel: `${onOrbitPopulationLabel()} in orbit`, rootTotal: data.total, countries }),
+                svg: orbitTreeHtml({ rootLabel: `${onOrbitPopulationLabel()} in orbit`, rootTotal: data.total, countries }),
             });
         },
     },
@@ -1321,7 +1043,7 @@ const ON_ORBIT_CHARTS = [
             data.rows.forEach((r) => { counts[`${r.regime}|${r.objectType}`] = r.n; });
             const regimes = ORBIT_REGIME_ORDER.filter((g) => ORBIT_OBJECT_TYPES.some((t) => counts[`${g}|${t.key}`]));
             const debris = data.rows.filter((r) => r.objectType === 'DEB').reduce((a, r) => a + r.n, 0);
-            return orbitFrameHtml({
+            return chartFrameHtml({
                 title: `${onOrbitEverythingLabel()} in orbit by type and orbit`,
                 yTitle: '# OBJECTS',
                 totalText: `${orbitFormat(data.total)} OBJECTS · ${orbitFormat(debris)} DEBRIS`,
@@ -1329,7 +1051,7 @@ const ON_ORBIT_CHARTS = [
                     + 'debris and unknown. The DEBRIS charts ignore the status and kind buttons -- debris is never '
                     + 'active and isn\'t a payload -- but follow the SpaceX button.',
                 legend: ORBIT_OBJECT_TYPES,
-                body: orbitStackedColumnsSvg({
+                svg: stackedColumnsSvg({
                     width: orbitSlotWidth(slot), height: 300, categories: regimes, series: ORBIT_OBJECT_TYPES,
                     valueOf: (g, t) => counts[`${g}|${t.key}`] || 0,
                     labelOf: (g) => g,
@@ -1359,7 +1081,7 @@ const ON_ORBIT_CHARTS = [
                 { label: 'Pieces created that year', color: 'var(--tng-lavender)' },
                 { label: 'Pieces in orbit at year end (right axis)', color: 'var(--tng-amber)' },
             ];
-            return orbitFrameHtml({
+            return chartFrameHtml({
                 title: `${label}: pieces created per year and in orbit`,
                 yTitle: '# CREATED · # IN ORBIT (RIGHT)',
                 totalText: `${orbitFormat(inOrbit[inOrbit.length - 1])} IN ORBIT NOW`,
@@ -1370,7 +1092,7 @@ const ON_ORBIT_CHARTS = [
                     + 'only (roughly 10 cm and up in LEO); GCAT counts slightly more than the NORAD catalogue the '
                     + 'other charts use. This year: to date.',
                 legend,
-                body: orbitBarsAndLineSvg({
+                svg: barsAndLineSvg({
                     width: orbitSlotWidth(slot), years,
                     bars: { values: created, color: 'var(--tng-lavender)' },
                     line: { values: inOrbit, color: 'var(--tng-amber)' },
@@ -1397,7 +1119,7 @@ const ON_ORBIT_CHARTS = [
                 bands.push(b);
             }
             const plotted = data.rows.reduce((a, r) => a + r.n, 0);
-            return orbitFrameHtml({
+            return chartFrameHtml({
                 title: `${onOrbitEverythingLabel()} below 2,000 km by altitude`,
                 yTitle: '# OBJECTS',
                 totalText: `${orbitFormat(plotted)} OBJECTS`,
@@ -1405,7 +1127,7 @@ const ON_ORBIT_CHARTS = [
                     + 'split by type. The debris peaks around 750–900 km, where the largest break-ups happened '
                     + '(Fengyun-1C, Cosmos 2251 / Iridium 33).',
                 legend: ORBIT_OBJECT_TYPES,
-                body: orbitStackedColumnsSvg({
+                svg: stackedColumnsSvg({
                     width: orbitSlotWidth(slot), categories: bands, series: ORBIT_OBJECT_TYPES,
                     valueOf: (b, t) => counts[`${b}|${t.key}`] || 0,
                     labelOf: (b) => (b % 250 === 0 ? orbitFormat(b) : ''),
@@ -1429,14 +1151,14 @@ const ON_ORBIT_CHARTS = [
             data.rows.forEach((r) => { counts[r.band] = r.n; });
             const bands = Array.from({ length: 36 }, (_, i) => i * 5);
             const plotted = data.rows.reduce((a, r) => a + r.n, 0);
-            return orbitFrameHtml({
+            return chartFrameHtml({
                 title: `${onOrbitFilters.spacex === 'with' ? 'Debris' : 'Debris excl SpaceX'} in orbit by inclination`,
                 yTitle: '# DEBRIS (LOG SCALE)',
                 totalText: `${orbitFormat(plotted)} PIECES`,
                 totalTooltip: 'Catalogued debris by current inclination in 5° bands -- the same form as the LOCN '
                     + 'inclination chart. Clusters show where break-ups happened: about 74° (Cosmos), 82–83° '
                     + '(Cosmos 2251), 86° (Iridium 33), 98–99° (Fengyun-1C, sun-synchronous stages).',
-                body: orbitStackedColumnsSvg({
+                svg: stackedColumnsSvg({
                     width: orbitSlotWidth(slot), categories: bands, log: true,
                     series: [{ key: 'n', color: 'var(--tng-lavender)' }],
                     valueOf: (b) => counts[b] || 0,
@@ -1464,8 +1186,10 @@ const ON_ORBIT_CHARTS = [
                 rows.push({ label: 'Other & unknown', value: other, muted: true });
             }
             const total = rows.reduce((a, r) => a + r.value, 0);
-            return orbitBarChartHtml(`${onOrbitFilters.spacex === 'with' ? 'Rocket bodies' : 'Rocket bodies excl SpaceX'} in orbit by country`,
-                `${orbitFormat(total)} ROCKET BODIES`, rows, '# ROCKET BODIES (LOG SCALE)');
+            return logBarChartHtml({
+                title: `${onOrbitFilters.spacex === 'with' ? 'Rocket bodies' : 'Rocket bodies excl SpaceX'} in orbit by country`,
+                totalText: `${orbitFormat(total)} ROCKET BODIES`, rows, axisTitle: '# ROCKET BODIES (LOG SCALE)',
+            });
         },
     },
     {
@@ -1485,8 +1209,10 @@ const ON_ORBIT_CHARTS = [
                 rows.push({ label: 'Other & unknown', value: other, muted: true });
             }
             const total = rows.reduce((a, r) => a + r.value, 0);
-            return orbitBarChartHtml(`${onOrbitFilters.spacex === 'with' ? 'Rocket bodies' : 'Rocket bodies excl SpaceX'} by launch vehicle`,
-                `${orbitFormat(total)} ROCKET BODIES`, rows, '# ROCKET BODIES (LOG SCALE)');
+            return logBarChartHtml({
+                title: `${onOrbitFilters.spacex === 'with' ? 'Rocket bodies' : 'Rocket bodies excl SpaceX'} by launch vehicle`,
+                totalText: `${orbitFormat(total)} ROCKET BODIES`, rows, axisTitle: '# ROCKET BODIES (LOG SCALE)',
+            });
         },
     },
     {
@@ -1507,8 +1233,10 @@ const ON_ORBIT_CHARTS = [
             if (other) {
                 rows.push({ label: `Other & unidentified (${orbitFormat(data.rows.length - rows.length)} sources)`, value: other, muted: true });
             }
-            return orbitBarChartHtml(`${onOrbitFilters.spacex === 'with' ? 'Debris' : 'Debris excl SpaceX'} in orbit by the object it broke off`,
-                `${orbitFormat(total)} PIECES`, rows, '# PIECES IN ORBIT (LOG SCALE)');
+            return logBarChartHtml({
+                title: `${onOrbitFilters.spacex === 'with' ? 'Debris' : 'Debris excl SpaceX'} in orbit by the object it broke off`,
+                totalText: `${orbitFormat(total)} PIECES`, rows, axisTitle: '# PIECES IN ORBIT (LOG SCALE)',
+            });
         },
     },
 
@@ -1529,12 +1257,14 @@ const ON_ORBIT_CHARTS = [
             if (counts.none) {
                 slices.push({ label: 'No band on file', value: counts.none, color: 'var(--tng-mauve)' });
             }
-            return orbitPieChartHtml(`${onOrbitPopulationLabel()} by downlink band`,
-                `${orbitFormat(data.total)} ${onOrbitNoun()}`, slices,
-                'Each satellite\'s main downlink band. Mostly inferred, not measured: from the constellation it '
-                + 'belongs to (e.g. Starlink and OneWeb -> Ku, O3b -> Ka, Iridium -> L), or estimated from its type '
-                + 'and orbit; about 1,000 have an actual frequency from SatNOGS. One band per satellite, though '
-                + 'most use several. Try EX SPACEX: Starlink alone is three-quarters of Ku.');
+            return pieChartHtml({
+                title: `${onOrbitPopulationLabel()} by downlink band`,
+                totalText: `${orbitFormat(data.total)} ${onOrbitNoun()}`, slices,
+                totalTooltip: 'Each satellite\'s main downlink band. Mostly inferred, not measured: from the constellation it '
+                    + 'belongs to (e.g. Starlink and OneWeb -> Ku, O3b -> Ka, Iridium -> L), or estimated from its type '
+                    + 'and orbit; about 1,000 have an actual frequency from SatNOGS. One band per satellite, though '
+                    + 'most use several. Try EX SPACEX: Starlink alone is three-quarters of Ku.',
+            });
         },
     },
     {
@@ -1552,14 +1282,14 @@ const ON_ORBIT_CHARTS = [
             const series = Object.entries(ORBIT_MISSIONS).map(([key, v]) => ({ key, label: v.label, color: v.color }))
                 .filter((s) => data.rows.some((r) => r.category === s.key));
             const plotted = data.rows.reduce((a, r) => a + r.n, 0);
-            return orbitFrameHtml({
+            return chartFrameHtml({
                 title: `${onOrbitPopulationLabel()} by downlink band and mission`,
                 yTitle: `# ${onOrbitNoun()}`,
                 totalText: `${orbitFormat(plotted)} WITH A BAND`,
                 totalTooltip: 'Each downlink band\'s satellites split by mission category. Only those with a band on '
                     + 'file; bands are mostly inferred (see the pie).',
                 legend: series,
-                body: orbitStackedColumnsSvg({
+                svg: stackedColumnsSvg({
                     width: orbitSlotWidth(slot), height: 300, categories: bands, series,
                     valueOf: (b, s) => counts[`${b}|${s.key}`] || 0,
                     labelOf: (b) => b,
@@ -1586,13 +1316,13 @@ const ON_ORBIT_CHARTS = [
             const series = ORBIT_REGIME_ORDER.map((g) => ({ key: g, label: g, color: ORBIT_REGIME_COLOURS[g] }))
                 .filter((s) => data.rows.some((r) => r.regime === s.key));
             const plotted = data.rows.reduce((a, r) => a + r.n, 0);
-            return orbitFrameHtml({
+            return chartFrameHtml({
                 title: `${onOrbitPopulationLabel()} by downlink band and orbit type`,
                 yTitle: `# ${onOrbitNoun()}`,
                 totalText: `${orbitFormat(plotted)} WITH A BAND`,
                 totalTooltip: 'Each downlink band\'s satellites split by orbit type. Only those with a band on file.',
                 legend: series,
-                body: orbitStackedColumnsSvg({
+                svg: stackedColumnsSvg({
                     width: orbitSlotWidth(slot), height: 300, categories: bands, series,
                     valueOf: (b, s) => counts[`${b}|${s.key}`] || 0,
                     labelOf: (b) => b,

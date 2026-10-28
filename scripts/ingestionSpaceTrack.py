@@ -2,7 +2,7 @@
 what Space-Track -- the 18th Space Defense Squadron's publication of the
 NORAD catalogue -- currently says about every object in orbit.
 
-Step 5 of 0_documentation/dbRefactorPlan.md. Space-Track is the primary
+Step 5 of 0_documentation/plans/dbRefactorPlan.md. Space-Track is the primary
 orbital source (decision: the source closest to NORAD wins). This script
 only fetches and stores; it never decides what the website shows -- the
 publish step (publishSite.py, step 9) merges this with the other

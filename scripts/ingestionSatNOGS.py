@@ -3,7 +3,7 @@ SatNOGS DB's (db.satnogs.org, crowd-sourced, CC BY-SA) radio transmitter
 records, and the crosswalk from SatNOGS's own satellite numbers to
 NORAD's.
 
-Step 7 of 0_documentation/dbRefactorPlan.md. One script for both SatNOGS
+Step 7 of 0_documentation/plans/dbRefactorPlan.md. One script for both SatNOGS
 feeds, which used to be read by ingestOrbitalData.py (TLEs) and
 ingestSatnogsRf.py (transmitters). It only fetches and stores; the
 publish step (step 9) decides what reaches the website.

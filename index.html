@@ -4,12 +4,10 @@
 <head>
 	<meta charset="utf-8">
 	<title>LCARS - FOR ALL SPECIES</title>
-	<!-- Inline SVG favicon: a stylised Vulcan IDIC -- orange disc, a small
-	     black circle (1/5 radius) low-left holding a silver star, and a
-	     silver triangle whose apex is that star and whose base sits just
-	     past the opposite edge of the disc. A data URI so the browser
+	<!-- Inline SVG favicon (Vulcan IDIC). There is a data URI so the browser
 	     never fires a /favicon.ico request that server.py would 404. -->
 	<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><g transform='rotate(180 16 16)'><circle cx='16' cy='16' r='15' fill='%23f80'/><path d='M9.5 22.5 L30 7.66 L24.34 2 Z' fill='%23949eb0'/><circle cx='9.5' cy='22.5' r='3' fill='%23000'/><path d='M9.5 19.8 L10.12 21.65 L12.07 21.67 L10.5 22.82 L11.09 24.68 L9.5 23.55 L7.91 24.68 L8.5 22.82 L6.93 21.67 L8.88 21.65 Z' fill='%23949eb0'/></g></svg>">
+	
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 	<meta name="format-detection" content="telephone=no">
 	<meta name="format-detection" content="date=no">
@@ -37,7 +35,7 @@
 
 					<div class="control-area-groups" id="control-area-groups"></div>
 
-					<!-- Empty (and hidden) on the landing page; filled with a section's
+					<!-- Empty and hidden on first landing; filled with a section's
 					     own buttons when that section opens (renderControlAreaButtons() in lcars.js). -->
 					<nav></nav>
 					
@@ -66,11 +64,11 @@
 					<button class="panel-7 section-toggle" data-section="launches" onclick="openLaunchesSection()">LAUNCHES</button>
 					<button class="panel-8 section-toggle" data-section="infrastructure" onclick="openInfrastructureSection();">GRND SGMNT</button>
 					<button class="panel-9 section-toggle" data-section="organisations" onclick="showSection('organisations', 'ORGANISATIONS')">ORG<span class="hop">ANISATIONS</span></button>
-					<button class="panel-10 section-toggle" data-section="sw-drivers" onclick="showSection('sw-drivers', 'WEATHER'); fetchAndSortGST();">WEATHER</button>
+					<button class="panel-10 section-toggle" data-section="sw-drivers" onclick="openWeatherSection()">WEATHER</button>
 					<button class="panel-11 section-toggle" data-section="eo" onclick="openEoSection()">EO</button>
 				</div>
 				<div class="bottom-fixed-group">
-					<button class="panel-ack section-toggle" data-section="acknowledgments" onclick="openAcknowledgmentsSection('about')">ACK<span class="hop">NOWLEDGMENTS</span></button>
+					<button class="panel-ack section-toggle" data-section="acknowledgments" onclick="openAcknowledgmentsSection('about')">ABOUT</button>
 					<button class="panel-bug" onclick="openBugReport()" title="Report a bug or suggest a feature">BUG<span class="hop">&nbsp;REPORT</span></button>
 					<button onclick="topFunction(); playSoundAndRedirect('audio4', '#')" id="topBtn"><span class="hop">scrn</span> top</button>
 				</div>
@@ -117,14 +115,19 @@
 								</div>
 								<img class="landing-half" src="assets/laurelHalfRight.svg" alt="">
 							</div>
+							<!-- Sign-in boxes. Not connected to anything yet: with no submit button nothing can send them,
+							     and onsubmit stops Enter from navigating with the password in the address. -->
+							<form class="landing-login" autocomplete="on" onsubmit="return false" aria-label="Sign in">
+								<label class="landing-login-row"><span class="landing-login-label">User ID</span><input type="text" name="username" autocomplete="username" spellcheck="false" autocapitalize="off"></label>
+								<label class="landing-login-row landing-login-password"><span class="landing-login-label">Password</span><input type="password" name="password" autocomplete="current-password"></label>
+							</form>
 							<p class="about-byline landing-byline">FAS was conceived and built by <a href="https://www.linkedin.com/in/alasdairgill/">Dr Al Gill</a>, financier, physicist and co-founder of the Iceland Space Park (Geimgar&eth;ur).</p>
 						</div>
 					</div>
 
 					<div data-section="sw-drivers" style="display:none;">
-						<h2>Space Weather Drivers</h2>
-						<p class="go-big">Geomagnetic storm and solar driver data (NASA DONKI).</p>
-						<p>Check the browser console for fetched GST data after pressing this button.</p>
+						<!-- Filled by renderWeatherView() in assets/weatherPanel.js. -->
+						<div id="weather-view" class="weather-view"></div>
 					</div>
 
 					<div data-section="sw-fcst" style="display:none;">
@@ -152,131 +155,9 @@
 						<!-- Charts drawn by assets/onOrbitPanel.js (renderOnOrbitCharts()). -->
 						<div id="on-orbit-charts" class="orbit-charts"></div>
 						<!-- DEFINITIONS button (onOrbitPanel.js) shows this in place of the
-						     charts. Keep in step with assets/onOrbitMethodology.md and
-						     scripts/orbitStats.py. -->
-						<div id="on-orbit-definitions" class="orbit-defs-panel" style="display:none;">
-							<section class="orbit-chart">
-								<header class="orbit-chart-header"><span>Definitions</span></header>
-								<div class="orbit-defs">
-								<div class="orbit-defs-term">Payload</div>
-								<div class="orbit-defs-text">A catalogued object launched to do a job: a satellite, probe, crewed vehicle or station module. The catalogue's other objects, rocket bodies and debris, are never counted here.</div>
-								<div class="orbit-defs-term">All spacecraft</div>
-								<div class="orbit-defs-text">Every payload still in orbit (not yet re-entered).</div>
-								<div class="orbit-defs-term">Satellites</div>
-								<div class="orbit-defs-text">All spacecraft except crewed space stations and the vehicles that visit them, and passive objects. Small satellites released from a station count as satellites.</div>
-								<div class="orbit-defs-term">All objects</div>
-								<div class="orbit-defs-text">Every catalogued object still in orbit: all spacecraft, plus rocket bodies (spent upper stages), debris (fragments from break-ups, collisions and launches) and objects the catalogue lists as unknown or has not yet given a type. CelesTrak's active list is of working satellites, so ACT-ONLY with ALL-OBJ adds almost nothing to ACT-ONLY with ALL S-CRFT: only the odd active satellite the catalogue has not yet typed as a payload. For a rocket body or debris, country and owner are those GCAT records for that object.</div>
-								<div class="orbit-defs-term">Space station / visiting vehicle</div>
-								<div class="orbit-defs-text">GCAT category SS: ISS and Tiangong modules, Progress, Shenzhou, Tianzhou, Cygnus, Dragon and the like. A visitor GCAT has not catalogued yet is recognised by its membership of CelesTrak's stations list.</div>
-								<div class="orbit-defs-term">Passive object</div>
-								<div class="orbit-defs-text">A payload with no working systems by design: calibration spheres (GCAT category CAL) and anti-satellite test targets (TARG).</div>
-								<div class="orbit-defs-term">Active</div>
-								<div class="orbit-defs-text">In CelesTrak's list of active satellites, its judgement of which payloads are operational.</div>
-								<div class="orbit-defs-term">Active + inactive</div>
-								<div class="orbit-defs-text">Every payload in orbit regardless of operational status, including dead satellites.</div>
-								<div class="orbit-defs-term">Excl SpaceX</div>
-								<div class="orbit-defs-text">(Table row; the EX SPACEX button does the same for the charts.) Leaving out every payload with SpaceX among its owners in GCAT (any of its SpaceX codes, including Starlink's operator). For a payload not yet in GCAT, membership of CelesTrak's Starlink list is used instead.</div>
-								<div class="orbit-defs-term">Perigee / apogee</div>
-								<div class="orbit-defs-text">The lowest and highest points of an orbit, as altitudes above the Earth's surface.</div>
-								<div class="orbit-defs-term">Mean altitude</div>
-								<div class="orbit-defs-text">The average of perigee and apogee.</div>
-								<div class="orbit-defs-term">Eccentricity</div>
-								<div class="orbit-defs-text">How stretched an orbit is: 0 for a circle, approaching 1 for a long thin ellipse. Worked out here from perigee and apogee as (apogee radius − perigee radius) ÷ (apogee radius + perigee radius), radii measured from the Earth's centre.</div>
-								<div class="orbit-defs-term">Inclination</div>
-								<div class="orbit-defs-text">The angle between the orbit and the equator: 0° circles the equator, 90° passes over the poles, above 90° travels against the Earth's rotation (as sun-synchronous orbits do, at about 97°–99°).</div>
-								<div class="orbit-defs-term">VLEO</div>
-								<div class="orbit-defs-text">Very Low Earth Orbit: mean altitude below 450 km (ESA and DARPA's definition; some sources use 400 or 500 km). Orbits this low decay quickly without regular propulsion.</div>
-								<div class="orbit-defs-term">LEO</div>
-								<div class="orbit-defs-text">Low Earth Orbit: mean altitude 450 km to 2,000 km. Most satellites, including the broadband constellations and most Earth observation.</div>
-								<div class="orbit-defs-term">MEO</div>
-								<div class="orbit-defs-text">Medium Earth Orbit: mean altitude 2,000 km to 35,586 km. Navigation systems (GPS, Galileo, GLONASS, BeiDou) sit at about 19,000–23,000 km.</div>
-								<div class="orbit-defs-term">GEO</div>
-								<div class="orbit-defs-text">Geostationary orbit: mean altitude within ±200 km of 35,786 km, where an orbit takes one day, so a satellite over the equator appears fixed in the sky.</div>
-								<div class="orbit-defs-term">> GEO</div>
-								<div class="orbit-defs-text">Mean altitude more than 200 km above GEO: almost all retired GEO satellites moved up to "graveyard" orbits, plus a few science missions.</div>
-								<div class="orbit-defs-term">HEO</div>
-								<div class="orbit-defs-text">Highly Elliptical Orbit: eccentricity above 0.25, whatever the altitude. Molniya and Tundra orbits, transfer orbits and long looping science orbits.</div>
-								<div class="orbit-defs-term">Owner</div>
-								<div class="orbit-defs-text">The organisation GCAT records as owning a payload, as a legal entity rather than a parent group: SpaceX's Starlink satellites belong to SpaceX (Seattle), and one company can appear as more than one entity (OneWeb is two). Where GCAT lists several owners, the first is used, so each payload counts once. Owner is not operator: GCAT does not record who runs a satellite day to day.</div>
-								<div class="orbit-defs-term">Sector</div>
-								<div class="orbit-defs-text">GCAT's class for each payload: A academic, amateur or non-profit; B commercial; C civil government; D defence, military or intelligence. A payload with no class of its own takes its owner organisation's. A few are dual-class (e.g. TerraSAR-X, civil and commercial) and are counted under the first letter GCAT gives. Unknown: not yet in GCAT, or no class recorded.</div>
-								<div class="orbit-defs-term">Mission category</div>
-								<div class="orbit-defs-text">GCAT's category for what a payload is for, grouped: communications; imaging (optical and radar); navigation; signals & EW (signals intelligence and electronic warfare); weather & Earth science (including geodesy); science & astronomy; technology demo; crewed & stations; other. Where GCAT lists several, the first is used.</div>
-								<div class="orbit-defs-term">Manufacturer / bus</div>
-								<div class="orbit-defs-text">Who built a payload, as GCAT records it (the first maker listed, as a legal entity -- one company can appear under more than one), and the satellite platform ("bus") it is built on.</div>
-								<div class="orbit-defs-term">GEO longitude</div>
-								<div class="orbit-defs-text">Where a geostationary satellite sits over the equator, in degrees east or west, worked out from its latest element set and carried forward to today by its drift. Accurate to about a degree.</div>
-								<div class="orbit-defs-term">Age</div>
-								<div class="orbit-defs-text">Years since launch: this year minus the launch year.</div>
-								<div class="orbit-defs-term">Country</div>
-								<div class="orbit-defs-text">GCAT's state for the object: the country (or intergovernmental organisation, such as ESA or the EU) responsible for it, in practice where its owner is based. Not where it was built or launched from. Satellites launched by the Soviet Union keep that code (SU), separate from Russia (RU).</div>
-								<div class="orbit-defs-term">NORAD number</div>
-								<div class="orbit-defs-text">The NORAD catalogue number given to every tracked object. It links the catalogue to GCAT.</div>
-								<div class="orbit-defs-term">Log scale</div>
-								<div class="orbit-defs-text">An axis on which each step is ten times the last (1, 10, 100, 1,000 …), so very large and very small counts fit on one chart. Read the printed counts for exact values.</div>
-								</div>
-							</section>
-							<section class="orbit-chart">
-								<header class="orbit-chart-header"><span>How the table and charts are built</span></header>
-								<div class="orbit-defs">
-								<div class="orbit-defs-term">Chart groups</div>
-								<div class="orbit-defs-text"><p>The charts are in groups, chosen with the second set of buttons: <b>LOCN</b> (what is where -- orbit type, inclination, altitude, the GEO belt, age) and <b>COMMERCIAL</b> (who owns it -- sector, mission, country, owner, manufacturer). <b>DEBRIS</b> (where the debris is, what broke up, rocket bodies) and <b>COMMS</b> (downlink bands). The group showing is lit white; ON-ORBIT opens on LOCN.</p></div>
-								<div class="orbit-defs-term">Data sources</div>
-								<div class="orbit-defs-text"><p><b>Orbits and status:</b> the NORAD satellite catalogue, taken as OMM element sets from CelesTrak and Space-Track (a few from SatNOGS). It gives each object's current orbit, whether it is a payload, and whether it has re-entered. CelesTrak's lists supply which payloads are active, which are space stations and visitors, and which are Starlink. Refreshed every 12 hours.</p><p><b>Ownership, country and category:</b> GCAT, the General Catalog of Artificial Space Objects by Jonathan McDowell (planet4589.org), refreshed weekly. GCAT's own orbits are the orbit each object was first placed in (Starlinks at about 280 km before they raise to about 470 km), so they are never used.</p><p>The two are matched by NORAD number. All figures are recalculated after every refresh of either source.</p></div>
-								<div class="orbit-defs-term">Population</div>
-								<div class="orbit-defs-text"><p>Every object in the catalogue that has not re-entered; payloads only, unless ALL-OBJ is selected. The ACT-ONLY / ACT +DEAD and SAT ONLY / ALL S-CRFT / ALL-OBJ buttons then narrow or widen it (the second cycles through its three settings), and apply to the table and every chart alike. INC SPACEX / EX SPACEX applies to every chart; the table needs no such button, as it shows ALL and EXCL SPACEX side by side.</p></div>
-								<div class="orbit-defs-term">Pie charts</div>
-								<div class="orbit-defs-text"><p><b>Orbit regime pie:</b> the regime table's counts (its ALL row, or EXCL SPACEX with EX SPACEX on) as shares of the whole. Payloads with no current orbit are left out, as from the table.</p><p><b>Sector pie:</b> every payload in the population by GCAT sector class (see Sector, above), so its total is the nationality chart's. Thin slices are hard to see; the legend gives every count and share.</p></div>
-								<div class="orbit-defs-term">Orbit regime table</div>
-								<div class="orbit-defs-text"><p>Each payload is placed from its current orbit in two steps: <b>shape first</b>, so an eccentricity above 0.25 is HEO whatever its altitude; <b>then mean altitude</b> for every other orbit, into VLEO, LEO, MEO, GEO or > GEO.</p><p>ALL counts every payload in the population; EXCL SPACEX leaves out SpaceX's. Each % row is a share of its own row's TOTAL. A few payloads with no current orbit on file are not placed; their number is in the reconciliation below and in the orbit-type pie's tooltip.</p></div>
-								<div class="orbit-defs-term">Nationality chart</div>
-								<div class="orbit-defs-text"><p>Payloads counted by GCAT country. The 12 countries with the most are shown individually, plus the European Space Agency wherever it ranks; the rest are combined as Other, together with the payloads not yet in GCAT (about 3%), which have no country.</p><p>The United States is split into Starlink (CelesTrak's Starlink list, or a STARLINK name) and the rest. Copernicus satellites, such as the Sentinels, are GCAT's EU, not ESA. A jointly owned satellite counts once, under the single state GCAT gives it.</p><p>Log scale, because the largest bar is hundreds of times the smallest.</p></div>
-								<div class="orbit-defs-term">Inclination chart</div>
-								<div class="orbit-defs-text"><p>Payloads counted by current inclination, read directly from each one's latest element set, in 5° bands from 0° to 180°. Each band includes its lower edge but not its upper (50° is in 50–55°); 180° goes in the last band. Empty bands are kept, so the axis is the same whatever the filters.</p><p>Payloads with no published elements have no inclination and are left out; hover over the total in the chart's title bar for how many. Most are long-dead satellites in high orbits no longer routinely tracked.</p><p>Log scale on the count axis, because the busiest bands (Starlink's shells, sun-synchronous orbits) hold thousands and the quietest one or two.</p></div>
-								<div class="orbit-defs-term">Owners chart</div>
-								<div class="orbit-defs-text"><p>Payloads counted by owner, one bar per owner, largest first. The 40 largest owners are shown, with names at the same size as the axis numbers. A final Other bar holds every owner not shown, together with the payloads with no owner on file, so the bars add up to the whole population; the title bar gives how many owners are shown out of how many in all, and hovering over its total gives the share they hold. Each bar's share of the whole population is written inside it. Hover over a bar or name for the owner's full name, country and count.</p><p>Log scale on the count axis, because the largest owner (SpaceX, when included) holds thousands and the smallest shown a few dozen.</p></div>
-								<div class="orbit-defs-term">LOCN charts</div>
-								<div class="orbit-defs-text"><p><b>Active vs inactive by orbit type:</b> every object in orbit, active or not by CelesTrak's list, by regime -- this chart ignores ACT-ONLY, as it compares the two. <b>Inclination by orbit type:</b> the inclination histogram with each 5° band split by regime. <b>Altitude:</b> mean altitude in 25 km bands below 2,000 km, log scale, showing the constellation shells. <b>Altitude vs inclination:</b> one dot per 25 km × 1° cell, sized by count and coloured by the sector most common there. <b>GEO belt:</b> geostationary objects in 2° bands of longitude, by sector (graveyard orbits not included). <b>Age:</b> years since launch, 30 and over together, by regime.</p></div>
-								<div class="orbit-defs-term">COMMERCIAL charts</div>
-								<div class="orbit-defs-text"><p><b>Sector</b> and <b>mission</b> pies side by side. <b>Sector by country:</b> the 12 countries with most objects, each bar split 100% by sector, its total at the right. <b>Owners:</b> as before. <b>Manufacturers</b> and <b>satellite buses:</b> the 20 most common of each, log scale. <b>Payloads in orbit by year:</b> payloads in orbit at each year end since 1957, by sector, from GCAT's launch and decay dates -- only the SpaceX button applies, as there is no history of operational status.</p><p>These charts, apart from the pies, nationality and owners, are counted when shown, from one row per object in orbit recalculated after every catalogue or GCAT refresh.</p></div>
-								<div class="orbit-defs-term">Country and owner tree</div>
-								<div class="orbit-defs-text"><p>The COMMERCIAL group ends with a directory-style tree: countries with their owners beneath, largest first, click a country to open or close it. Each shows its 6 largest owners and the rest together; the 15 largest countries are listed.</p></div>
-								<div class="orbit-defs-term">DEBRIS charts</div>
-								<div class="orbit-defs-text"><p>Every object in orbit -- the status and kind buttons don't apply (debris is never active, and isn't a payload); the SpaceX button does. <b>By type and orbit:</b> payloads, rocket bodies, debris and unknown in each regime. <b>Altitude:</b> every object below 2,000 km in 25 km bands, by type -- where the debris is. <b>Debris history:</b> bars for the pieces created each year, by the date each broke off; a line, on its own right-hand axis, for the pieces in orbit at each year end (created so far less re-entered so far) -- from GCAT's record of all debris ever catalogued. <b>Debris by inclination:</b> 5° bands, log scale. <b>Rocket bodies</b> by country and by launch vehicle (top 15). <b>Debris by origin:</b> the 20 objects with most debris still in orbit, named from GCAT's record of which object each piece broke off (so a rocket stage that fragmented shows as the stage, not as the satellite it launched), with its launch year.</p></div>
-								<div class="orbit-defs-term">COMMS charts</div>
-								<div class="orbit-defs-text"><p>All three buttons apply. <b>Downlink band</b> pie, then each band split by <b>mission</b> and by <b>orbit type</b>. A satellite's band is mostly inferred -- from its constellation, or estimated from its type and orbit -- and only one is recorded, though most use several; about 1,000 have an actual frequency from SatNOGS.</p></div>
-								<div class="orbit-defs-term">Limitations</div>
-								<div class="orbit-defs-text"><p>Orbits are at most about 12 hours old, ownership at most about a week. "Active" is CelesTrak's judgement and can lag satellites that fail or retire quietly. The 0.25 eccentricity threshold for HEO and the 450 km VLEO ceiling are common conventions, not standards. Categories (stations, calibration spheres, targets) are GCAT's own.</p></div>
-								</div>
-							</section>
-							<section class="orbit-chart">
-								<header class="orbit-chart-header"><span>Reconciliation of numbers of spacecraft and satellites</span></header>
-								<div class="orbit-defs">
-								<div class="orbit-defs-term">Where totals appear</div>
-								<div class="orbit-defs-text"><p>Several places give a total, and they need not agree: the title bars of the <b>two pie charts</b>, the <b>nationality chart</b> and the <b>inclination chart</b>, and the <b>TOTAL</b> column of the orbit regime table; and the toggle buttons change what is counted. All of them start from the same population, every payload in the catalogue that has not re-entered, narrowed by the buttons; the differences come from what each one can place, and from the buttons themselves.</p></div>
-								<div class="orbit-defs-term">With the current buttons</div>
-								<div class="orbit-defs-text"><div id="orbit-reconciliation-live" class="orbit-recon-live">LOADING …</div></div>
-								<div class="orbit-defs-term">Nationality chart</div>
-								<div class="orbit-defs-text"><p>The full population. Every payload has a bar to go in: those not yet in GCAT (about 3%, mostly recent launches) have no country and are counted under Other rather than left out. So this is the largest of the chart and table totals, and the reference the others are measured against.</p></div>
-								<div class="orbit-defs-term">Regime table TOTAL</div>
-								<div class="orbit-defs-text"><p>The population less payloads with <b>no current perigee or apogee</b> on file, which cannot be placed in a regime; their number is given in the figures above. They are a handful of objects (at the last check, six) known only from a SatNOGS element set, which carries no perigee or apogee: mostly military reconnaissance satellites whose orbits the official catalogue does not publish, plus the Aditya-L1 solar observatory, which is not in Earth orbit at all.</p><p>With EX SPACEX selected, compare the charts with the table's EXCL SPACEX row: the table does not change with that button, as it always shows both.</p></div>
-								<div class="orbit-defs-term">Pie chart totals</div>
-								<div class="orbit-defs-text"><p>The orbit regime pie's total is the regime table's TOTAL; the sector pie's is the full population, the nationality chart's, with payloads not in GCAT as Unknown.</p></div>
-								<div class="orbit-defs-term">Inclination chart total</div>
-								<div class="orbit-defs-text"><p>The population less payloads with <b>no inclination</b> on file (hover over the chart's total for how many). The catalogue gives these a perigee and apogee but publishes no current orbital elements, so there is no inclination: mostly long-dead satellites in high orbits no longer routinely tracked, and some recent launches. It is a different, larger group from the one missing from the table: the few objects with no perigee or apogee do have an inclination, so they are in this chart but not the table.</p></div>
-								<div class="orbit-defs-term">Owners chart total</div>
-								<div class="orbit-defs-text"><p>The full population, the nationality chart's: the largest owners, then Other, which holds the remaining owners and the payloads with no owner on file (the same payloads counted as Unknown in the sector pie).</p></div>
-								<div class="orbit-defs-term">Satellites vs all spacecraft</div>
-								<div class="orbit-defs-text"><p>SATELLITES is ALL SPACECRAFT less crewed space stations and the vehicles visiting them, and passive objects. At the last check that was 65 payloads in all: 40 calibration spheres, 16 station modules and visiting vehicles, and 9 anti-satellite test targets. Only 35 of them are active, as most calibration spheres and targets are not.</p></div>
-								<div class="orbit-defs-term">Active vs active + inactive</div>
-								<div class="orbit-defs-text"><p>ACT-ONLY counts CelesTrak's list of operational payloads; ACT +DEAD adds every payload still in orbit that is not on it: about 3,100 dead or retired payloads, spread across every regime and including nearly all of those in the graveyard orbits above GEO.</p></div>
-								<div class="orbit-defs-term">With vs without SpaceX</div>
-								<div class="orbit-defs-text"><p>EX SPACEX removes every payload SpaceX owns, almost all Starlink, from both charts. The charts' totals then equal the table's EXCL SPACEX row (less any payloads with no current orbit), which applies the same rule.</p></div>
-								<div class="orbit-defs-term">Other published counts</div>
-								<div class="orbit-defs-text"><p>Counts elsewhere often differ from these, for reasons of definition rather than error: some count only satellites believed operational by their own research, some include rocket bodies or exclude cubesats, some count only satellites with a confirmed owner. Most are also snapshots taken at a different time. Classified satellites whose orbits are not published are missing from the public catalogue altogether, so no count based on it, including this one, includes them.</p></div>
-								</div>
-							</section>
-						</div>
+						     charts. Filled from assets/onOrbitDefs.html on first use; keep that
+						     in step with assets/onOrbitMethodology.md and scripts/orbitStats.py. -->
+						<div id="on-orbit-definitions" class="orbit-defs-panel" style="display:none;"></div>
 					</div>
 
 					<div data-section="gs-ops" style="display:none;">
@@ -299,57 +180,9 @@
 						<!-- Charts drawn by assets/launchesPanel.js (renderLaunchesPerYear()). -->
 						<div id="launches-charts" class="orbit-charts"></div>
 						<!-- DEFINITIONS button (launchesPanel.js) shows this in place of the
-						     charts. Keep in step with scripts/orbitStats.py and server.py. -->
-						<div id="launches-definitions" class="orbit-defs-panel" style="display:none;">
-							<section class="orbit-chart">
-								<header class="orbit-chart-header"><span>Definitions</span></header>
-								<div class="orbit-defs">
-								<div class="orbit-defs-term">Launch attempt</div>
-								<div class="orbit-defs-text">One rocket launch intended to reach orbit or beyond, counted once however many payloads it carried, whether it succeeded or failed.</div>
-								<div class="orbit-defs-term">Orbital / deep-space</div>
-								<div class="orbit-defs-text">GCAT's launch codes O (to Earth orbit) and D (beyond: the Moon, planets, the Sun's orbit). Suborbital tests (codes N and X) are not counted.</div>
-								<div class="orbit-defs-term">Failed launch</div>
-								<div class="orbit-defs-text">A launch GCAT records as a failure (second letter of its code F): the vehicle did not deliver its payloads to the intended orbit.</div>
-								<div class="orbit-defs-term">Payload</div>
-								<div class="orbit-defs-text">A catalogued object launched to do a job: a satellite, probe, crewed vehicle or station module. Not the rocket stages or debris a launch also leaves behind.</div>
-								<div class="orbit-defs-term">Payload launched</div>
-								<div class="orbit-defs-text">A payload that reached orbit (or beyond), counted in the year it was launched. Payloads lost in a launch failure (GCAT status N, never reached orbit) are not counted.</div>
-								<div class="orbit-defs-term">Sector</div>
-								<div class="orbit-defs-text">GCAT's class for each payload, in the same colours across the site: A academic, amateur or non-profit (blue); B commercial (earth); C civil government (amber); D defence, military or intelligence (red). A payload with no class of its own takes its owner organisation's.</div>
-								<div class="orbit-defs-term">Re-entry</div>
-								<div class="orbit-defs-text">A catalogued object coming back down: re-entering the atmosphere (GCAT status R), deliberately de-orbited (D) or landed (L: crew capsules, returned vehicles), counted in the year it came down.</div>
-								<div class="orbit-defs-term">Rocket body / debris / other</div>
-								<div class="orbit-defs-text">Rocket bodies are spent stages; debris is fragments from break-ups, collisions and launches; other is components such as fairings and adapters that were catalogued.</div>
-								<div class="orbit-defs-term">EX SPACEX</div>
-								<div class="orbit-defs-text">For launch attempts: launches carried out by SpaceX (Falcon 1, Falcon 9, Falcon Heavy, Starship) are left out. For payloads and re-entries: objects SpaceX owns are left out -- almost all Starlink satellites and Falcon upper stages.</div>
-								<div class="orbit-defs-term">Successful launches</div>
-								<div class="orbit-defs-text">The LCH-OK setting (LCH-ALL: every attempt) counts only launches GCAT records as successful (second letter of the launch code S). It applies to the launch-attempts, launches-and-payloads and by-country charts; the payloads-launched chart already counts only payloads that reached orbit, and re-entries are not launches.</div>
-								<div class="orbit-defs-term">Start and end year</div>
-								<div class="orbit-defs-text">The years shown on every chart, typed into the control panel; they default to the full range, from 1957 to this year. A new value is used when you press Enter or leave the field, if it is a year in that range and the start is no later than the end; otherwise the previous value is put back. Totals in the title bars cover the years shown.</div>
-								<div class="orbit-defs-term">Year to date</div>
-								<div class="orbit-defs-text">The current year is still running, so its figures are counts so far. In the launch-attempts chart its point is shown on its own, not joined to the line.</div>
-								</div>
-							</section>
-							<section class="orbit-chart">
-								<header class="orbit-chart-header"><span>How the charts are built</span></header>
-								<div class="orbit-defs">
-								<div class="orbit-defs-term">Data source</div>
-								<div class="orbit-defs-text"><p>GCAT, the General Catalog of Artificial Space Objects by Jonathan McDowell (planet4589.org), refreshed weekly: its launch log for launches, and its satellite catalogue for payloads and decays. The payload and re-entry figures are recalculated after every refresh; launch attempts are counted each time the chart is drawn.</p></div>
-								<div class="orbit-defs-term">Launch attempts chart</div>
-								<div class="orbit-defs-text"><p>Distinct launches per calendar year since 1957, from GCAT's launch log (one row per payload, so each launch is counted once), orbital and deep-space, successes and failures. Hover over a point for the year's count and how many failed.</p></div>
-								<div class="orbit-defs-term">Launches and payloads chart</div>
-								<div class="orbit-defs-text"><p>Launches and the payloads they carried per year on the left axis, and payloads per launch -- their ratio -- on the right axis (dashed line). All three come from GCAT's launch log, so they agree with one another; payloads here include any lost in a failed launch, so the count is slightly above the payloads-launched chart's. With EX SPACEX, SpaceX launches and everything they carried are left out.</p></div>
-								<div class="orbit-defs-term">Launches by country chart</div>
-								<div class="orbit-defs-text"><p>The launch attempts per year, stacked by the country GCAT gives each launch vehicle -- so each year's bar adds up to the launch-attempts chart's point. Europe combines France (Arianespace), ESA, ELDO, Italy, Germany and the UK. GCAT codes Rocket Lab's Electron as New Zealand, where it launches from, although the company is American. The Soviet Union and Russia are kept separate. Other: Iran, Israel, North and South Korea, Brazil, Australia and the Cayman Islands.</p></div>
-								<div class="orbit-defs-term">Payloads launched chart</div>
-								<div class="orbit-defs-text"><p>Payloads that reached orbit, by launch year, stacked by sector. Starlink is counted within commercial; EX SPACEX takes it out.</p></div>
-								<div class="orbit-defs-term">Re-entries chart</div>
-								<div class="orbit-defs-text"><p>Catalogued objects that came back down, by the year of their decay date, stacked by type. Objects that came down docked or attached to another (e.g. a cargo ship on a station) are not counted again, and departures to deep space are not re-entries. Debris too small to be catalogued is not included, and some decay dates are approximate (the year is normally right).</p></div>
-								<div class="orbit-defs-term">Limitations</div>
-								<div class="orbit-defs-text"><p>Every classification -- success or failure, sector, object type, how an object left orbit -- is GCAT's own. The current year is a count to date.</p></div>
-								</div>
-							</section>
-						</div>
+						     charts. Filled from assets/launchesDefs.html on first use; keep that
+						     in step with scripts/orbitStats.py and server.py. -->
+						<div id="launches-definitions" class="orbit-defs-panel" style="display:none;"></div>
 					</div>
 
 					<div data-section="infrastructure" style="display:none;">
@@ -364,8 +197,13 @@
 					</div>
 
 					<div data-section="eo" style="display:none;">
-						<div class="map-panel">
-							<div id="eo-map" class="leaflet-map"></div>
+						<!-- The parameters table (filled by selectEoParameters() in assets/eoPanel.js when SELECT
+						     is pressed; empty until then) sits to the left of the map. -->
+						<div class="eo-layout">
+							<div id="eo-params" class="eo-params"></div>
+							<div class="map-panel">
+								<div id="eo-map" class="leaflet-map"></div>
+							</div>
 						</div>
 					</div>
 
@@ -375,274 +213,9 @@
 					</div>
 
 					<!-- Four tabs, switched by the ABOUT / DATA SRCES / METHOD / CREDITS control-area buttons
-					     (openAcknowledgmentsSection() in lcars.js). -->
-					<div data-section="acknowledgments" style="display:none;">
-						<div id="ack-about" class="orbit-defs-panel">
-							<section class="orbit-chart">
-								<header class="orbit-chart-header"><span>What is FAS?</span></header>
-								<div class="about-text">
-									<p>FAS (For All Species) brings together open data about space from sources that were never designed to work together: the NORAD satellite catalogue (via Space-Track), CelesTrak, Jonathan McDowell's General Catalog of Artificial Space Objects (GCAT), SatNOGS, Launch Library 2 and space news feeds.</p>
-									<p>Each source answers part of a question. Combined, the whole is greater than the sum of its parts: matched object by object, reconciled and charted in one place, they answer questions none of them can answer alone. Who owns what is in orbit? Where is the debris, and what did it break off? Which satellites can a ground station hear? How is all of it changing?</p>
-									<p>FAS is a not-for-profit project, offered freely in the same spirit in which Tim Berners-Lee gave the World Wide Web away and Linus Torvalds released Linux. We hope it will be useful in education: for students, teachers and anyone curious about what is up there, who put it there and what it is doing.</p>
-									<p>The data refreshes automatically; the table on the landing page shows when each source last updated. The site is built to stay usable at 20&nbsp;Mbps with multi-second latency, so it works from anywhere, from a classroom on a slow connection to the ISS.</p>
-								</div>
-							</section>
-							<section class="orbit-chart">
-								<header class="orbit-chart-header"><span>What it covers</span></header>
-								<ul class="about-list">
-									<li><b>On orbit:</b> every catalogued object (payloads, rocket bodies and debris) by orbit, owner, country, sector, mission, manufacturer and radio band, with debris history and origins.</li>
-									<li><b>Ground tracks:</b> live positions, ground tracks and footprints for any catalogued object, computed in the browser.</li>
-									<li><b>Ground station operations:</b> the satellites in view from any location, with link-budget estimates in both directions.</li>
-									<li><b>Launches:</b> orbital launches since 1957 by year, country and outcome, and the payloads they carried.</li>
-									<li><b>Ground segment and news:</b> a map of ground infrastructure (deep-space networks, teleports, SSA sites, launch sites) and a categorised space-news feed.</li>
-								</ul>
-							</section>
-							<section class="orbit-chart">
-								<header class="orbit-chart-header"><span>Built by</span></header>
-								<div class="about-text">
-									<p><b>Dr Al Gill</b>: Natural Sciences at Cambridge (Churchill College), then a PhD in theoretical physics at Imperial College. Postdoctoral research at Los Alamos National Laboratory and in Geneva, including setting up a 13-nation research network. Then the commercial world: through the dot-com boom and 25 years in finance, across private equity, venture capital and investment banking.</p>
-									<p>Co-founder of Geimgar&eth;ur, the Iceland Space Park; runs GAPS (gaps2024.com), long-term monitoring of microplastics. <a href="https://www.linkedin.com/in/alasdairgill/">linkedin.com/in/alasdairgill</a></p>
-								</div>
-							</section>
-						</div>
-
-						<div id="ack-acknowledgments" style="display:none;">
-						<p class="go-big">This project draws on the work, data and tools of a number of individuals and organisations. Their contributions are gratefully acknowledged here.</p>
-						<table class="ack-table">
-							<thead>
-								<tr>
-									<th>Name</th>
-									<th>Contribution</th>
-									<th>URL</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr>
-									<td>CelesTrak (Dr T.S. Kelso)</td>
-									<td>Orbital elements and satellite catalogue data, and the active, station and Starlink satellite lists</td>
-									<td><a href="https://celestrak.org">celestrak.org</a></td>
-								</tr>
-								<tr>
-									<td>Claude (Anthropic)</td>
-									<td>LLM development partner &mdash; system design, implementation, testing and debugging</td>
-									<td><a href="https://claude.ai">claude.ai</a></td>
-								</tr>
-								<tr>
-									<td>Don Cross</td>
-									<td>Astronomy Engine, used to calculate the positions of the Sun, Moon and planets (MIT licence)</td>
-									<td><a href="https://github.com/cosinekitty/astronomy">github.com/cosinekitty/astronomy</a></td>
-								</tr>
-								<tr>
-									<td>E. Anderson &amp; C. Francis</td>
-									<td>XHIP: An Extended Hipparcos Compilation (2012), the source of the star positions, magnitudes and colours</td>
-									<td><a href="https://cdsarc.cds.unistra.fr/viz-bin/cat/V/137D">VizieR V/137D</a></td>
-								</tr>
-								<tr>
-									<td>FCC and ITU</td>
-									<td>Public filings used for satellite transmit-power (EIRP) estimates</td>
-									<td><a href="https://www.fcc.gov">fcc.gov</a></td>
-								</tr>
-								<tr>
-									<td>Gemini</td>
-									<td>Advice on datasources, libraries and APIs</td>
-									<td><a href="https://gemini.google.com">gemini.google.com</a></td>
-								</tr>
-								<tr>
-									<td>geojs.io</td>
-									<td>Approximate location from the visitor's internet address</td>
-									<td><a href="https://www.geojs.io">geojs.io</a></td>
-								</tr>
-								<tr>
-									<td>Jim Robertus</td>
-									<td>Creator of the LCARS Inspired Website Template used as the design foundation for this interface</td>
-									<td><a href="https://www.thelcars.com">www.thelcars.com</a></td>
-								</tr>
-								<tr>
-									<td>Jonathan C. McDowell</td>
-									<td>Decades of work building and maintaining the General Catalog of Artificial Space Objects (GCAT), used under CC&#8209;BY&#8209;4.0.</td>
-									<td><a href="https://planet4589.org/space/gcat">planet4589.org/space/gcat</a></td>
-								</tr>
-								<tr>
-									<td>J&ouml;rg Dietrich</td>
-									<td>Leaflet.Terminator, the day/night shading on the maps (MIT licence)</td>
-									<td><a href="https://github.com/joergdietrich/Leaflet.Terminator">github.com/joergdietrich/Leaflet.Terminator</a></td>
-								</tr>
-								<tr>
-									<td>Libre Space Foundation</td>
-									<td>The SatNOGS database of satellite radio frequencies, used under CC&#8209;BY&#8209;SA&#8209;4.0</td>
-									<td><a href="https://db.satnogs.org">db.satnogs.org</a></td>
-								</tr>
-								<tr>
-									<td>Mike Bostock</td>
-									<td>TopoJSON client, used to load the map outlines (ISC licence)</td>
-									<td><a href="https://github.com/topojson/topojson-client">github.com/topojson/topojson-client</a></td>
-								</tr>
-								<tr>
-									<td>NASA</td>
-									<td>DONKI space-weather event data</td>
-									<td><a href="https://api.nasa.gov">api.nasa.gov</a></td>
-								</tr>
-								<tr>
-									<td>Natural Earth</td>
-									<td>Country outlines for the maps, via the datasets/geo-countries project (public domain)</td>
-									<td><a href="https://www.naturalearthdata.com">naturalearthdata.com</a></td>
-								</tr>
-								<tr>
-									<td>Olaf Frohn</td>
-									<td>d3-celestial: the star, star-name, constellation, Milky Way and deep-sky object data used for the sky view, compiled from XHIP, the IAU constellation definitions, the Milky Way Outline Catalog and the Saguaro Astronomy Club database (BSD licence)</td>
-									<td><a href="https://github.com/ofrohn/d3-celestial">github.com/ofrohn/d3-celestial</a></td>
-								</tr>
-								<tr>
-									<td>Qwen</td>
-									<td>Industry research and translation</td>
-									<td><a href="https://qwen.ai/">qwen.ai</a></td>
-								</tr>
-								<tr>
-									<td>Shashwat Kandadai, UCSC</td>
-									<td>SGP4/SDP4 orbital propagation used for ground track computation (satellite.js)</td>
-									<td><a href="https://github.com/shashwatak/satellite-js">github.com/shashwatak/satellite-js</a></td>
-								</tr>
-								<tr>
-									<td>Space news publishers</td>
-									<td>Headlines from 18 feeds, including NASA, ESA, SpaceNews, Space.com, Ars Technica, Spaceflight Now and Universe Today; each links to its source</td>
-									<td>&mdash;</td>
-								</tr>
-								<tr>
-									<td>Space-Track.org</td>
-									<td>The official orbital data and satellite catalogue</td>
-									<td><a href="https://www.space-track.org">space-track.org</a></td>
-								</tr>
-								<tr>
-									<td>The Space Devs</td>
-									<td>The LL2 database covering launches, launch vehicles and agencies</td>
-									<td><a href="https://thespacedevs.com">thespacedevs.com</a></td>
-								</tr>
-								<tr>
-									<td>Vernon Adams</td>
-									<td>The Antonio typeface used throughout (SIL Open Font Licence)</td>
-									<td><a href="https://fonts.google.com/specimen/Antonio">fonts.google.com/specimen/Antonio</a></td>
-								</tr>
-								<tr>
-									<td>Volodymyr Agafonkin</td>
-									<td>Leaflet, the mapping library behind every map (BSD licence)</td>
-									<td><a href="https://leafletjs.com">leafletjs.com</a></td>
-								</tr>
-								<tr>
-									<td>Dr Al Gill</td>
-									<td>Project Lead</td>
-									<td><a href="https://www.linkedin.com/in/alasdairgill/">linkedin.com/in/alasdairgill</a></td>
-								</tr>
-							</tbody>
-						</table>
-						</div>
-
-						<div id="ack-datasources" style="display:none;">
-						<p class="go-big">FAS combines these open data sources. Each section's DEFS page explains how its figures are built from them.</p>
-						<table class="ack-table ack-sources-table">
-							<thead>
-								<tr>
-									<th>Source</th>
-									<th>What it provides</th>
-									<th>Licence type</th>
-									<th>Refreshed</th>
-									<th>URL</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr>
-									<td>NORAD catalogue</td>
-									<td>Orbital elements (OMM) for every tracked object, from which positions, ground tracks and passes are computed; each object's type and launch and decay dates. Taken from CelesTrak, with Space-Track.org filling gaps.</td>
-									<td>Space-Track User Agreement (CelesTrak states no licence)</td>
-									<td>Every 12 hours (catalogue details daily)</td>
-									<td><a href="https://celestrak.org">celestrak.org</a></td>
-								</tr>
-								<tr>
-									<td>CelesTrak lists</td>
-									<td>The groupings used to classify objects: active satellites (operational status), space stations and their visiting vehicles, and Starlink.</td>
-									<td>No licence stated; free public service</td>
-									<td>Every 12 hours</td>
-									<td><a href="https://celestrak.org">celestrak.org</a></td>
-								</tr>
-								<tr>
-									<td>GCAT</td>
-									<td>Ownership, country and sector (academic, commercial, civil, defence); mission category; manufacturer and satellite bus; the launch log; the parent object of each debris fragment, and the debris history.</td>
-									<td>CC BY 4.0</td>
-									<td>Weekly</td>
-									<td><a href="https://planet4589.org/space/gcat">planet4589.org/space/gcat</a></td>
-								</tr>
-								<tr>
-									<td>SatNOGS DB</td>
-									<td>Downlink and uplink frequencies, modes and data rates reported by the SatNOGS network of amateur ground stations, for about 1,000 satellites.</td>
-									<td>CC BY-SA 4.0</td>
-									<td>Every 12 hours</td>
-									<td><a href="https://db.satnogs.org">db.satnogs.org</a></td>
-								</tr>
-								<tr>
-									<td>FCC / ITU filings</td>
-									<td>Published transmit power (EIRP) for the large constellations; class-typical estimates by band and orbit for other satellites. Used in the GS OPS link budgets.</td>
-									<td>Public records</td>
-									<td>Static</td>
-									<td><a href="https://www.fcc.gov">fcc.gov</a></td>
-								</tr>
-								<tr>
-									<td>News feeds</td>
-									<td>Headlines and summaries from 18 RSS feeds (NASA, ESA, SpaceNews, Space.com, Ars Technica, Spaceflight Now, Universe Today and others), tagged by topic; each links to the full article.</td>
-									<td>Publishers' copyright (headlines and links only)</td>
-									<td>Every 30 minutes</td>
-									<td>&mdash;</td>
-								</tr>
-								<tr>
-									<td>d3-celestial</td>
-									<td>5,044 stars to magnitude 6 with their colours (B&minus;V), star names, the names and lines of the 88 constellations, the Milky Way outline and 31 bright deep-sky objects; compiled from XHIP, the IAU, the Milky Way Outline Catalog and the Saguaro Astronomy Club database.</td>
-									<td>BSD 3-Clause</td>
-									<td>Static</td>
-									<td><a href="https://github.com/ofrohn/d3-celestial">github.com/ofrohn/d3-celestial</a></td>
-								</tr>
-								<tr>
-									<td>Natural Earth</td>
-									<td>Country outlines for the maps, via the datasets/geo-countries project.</td>
-									<td>Public domain</td>
-									<td>Static</td>
-									<td><a href="https://www.naturalearthdata.com">naturalearthdata.com</a></td>
-								</tr>
-								<tr>
-									<td>NASA DONKI</td>
-									<td>Geomagnetic storm events from NASA's Space Weather Database Of Notifications, Knowledge, Information, for the WEATHER section.</td>
-									<td>US Government work (public domain)</td>
-									<td>On request</td>
-									<td><a href="https://api.nasa.gov">api.nasa.gov</a></td>
-								</tr>
-								<tr>
-									<td>geojs.io</td>
-									<td>Approximate latitude and longitude from the visitor's internet address, used only when no location has been set.</td>
-									<td>Free service (geojs.io terms of service; data from MaxMind GeoLite)</td>
-									<td>On request</td>
-									<td><a href="https://www.geojs.io">geojs.io</a></td>
-								</tr>
-							</tbody>
-						</table>
-						</div>
-
-						<div id="ack-methodology" class="orbit-defs-panel" style="display:none;">
-							<section class="orbit-chart">
-								<header class="orbit-chart-header"><span>How FAS was built</span></header>
-								<div class="orbit-defs">
-									<div class="orbit-defs-term">Data pipeline</div>
-									<div class="orbit-defs-text">Scheduled scripts on the server fetch each source and store it in its own SQLite database. Orbital elements for the NORAD catalogue (from Space-Track and CelesTrak, OMM JSON) are fetched twice a day, the NORAD satellite catalogue (SATCAT) daily, GCAT weekly and news every 30 minutes. Radio-frequency data from SatNOGS and estimated transmit power are added after each orbital refresh. Derived statistics are recomputed after every refresh, so charts are counted on request from current data.</div>
-									<div class="orbit-defs-term">Combining sources</div>
-									<div class="orbit-defs-text">Objects are matched across sources by NORAD catalogue number. GCAT supplies ownership, sector, mission and manufacturer; CelesTrak's active list supplies operational status. Where a value is estimated rather than published (transmit power, and most satellites' downlink band), it is marked as an estimate. Each section's DEFS page gives its definitions and how its numbers are counted.</div>
-									<div class="orbit-defs-term">Low-bandwidth design</div>
-									<div class="orbit-defs-text">Required to stay usable at 20&nbsp;Mbps with multi-second latency (for example, from the ISS via NASA's optical links). Plain JavaScript with no framework; one module per section, loaded only when opened; self-hosted libraries, no third-party CDNs; an initial load under 5&nbsp;MB. Orbits are propagated (SGP4) in the browser, not on the server.</div>
-									<div class="orbit-defs-term">Server</div>
-									<div class="orbit-defs-text">A single small Python web application serving the page and its data API, on ordinary shared hosting. It serves only the page and its assets, never the databases or scripts.</div>
-									<div class="orbit-defs-term">Process</div>
-									<div class="orbit-defs-text">A hybrid method. Traditional engineering where the requirements are clear: functional and software requirements, a design and architecture document, and a test plan. Agile iteration where they are not, with exploratory prototypes, and a working system at all times. An automated test suite, a bug log, and version control throughout.</div>
-									<div class="orbit-defs-term">Built with AI</div>
-									<div class="orbit-defs-text">Developed by Al Gill with Claude (Anthropic) as development partner. Al set the direction and requirements and tested the results; Claude co-wrote the design documents and implemented and tested the code.</div>
-								</div>
-							</section>
-						</div>
-					</div>
+					     (openAcknowledgmentsSection() in lcars.js). Filled from assets/acknowledgments.html
+					     on first open. -->
+					<div data-section="acknowledgments" id="acknowledgments-content" style="display:none;"></div>
 
 					</main>
 

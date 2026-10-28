@@ -12,6 +12,7 @@ Run with:  pytest 0_tests/ -v
 import io
 import json
 import os
+import sqlite3
 import sys
 
 import pytest
@@ -187,13 +188,18 @@ def test_launch_log_charts_take_the_outcome_filter(path):
                                   'buses', 'payloads-by-year', 'catalogue-by-type', 'debris-altitude',
                                   'debris-inclination', 'rocket-bodies-country', 'rocket-bodies-vehicle',
                                   'debris-origin', 'band', 'band-by-mission', 'band-by-regime', 'country-owner',
-                                  'debris-history'])
+                                  'debris-history', 'exposure'])
 def test_on_orbit_group_charts_answer(name):
     status, headers, body = call_app('/api/on-orbit/chart', f'name={name}&status=all&kind=objects&spacex=without')
     assert status == '200 OK'
     data = json.loads(body)
     assert (data['name'], data['kind'], data['spacex']) == (name, 'objects', 'without')
     assert isinstance(data['rows'], list) and isinstance(data['total'], int)
+
+
+def test_on_orbit_exposure_chart_counts_active_payloads_in_10_km_bands():
+    data = json.loads(call_app('/api/on-orbit/chart', 'name=exposure')[2])
+    assert all(r['band'] % 10 == 0 and 150 <= r['band'] < 700 and r['spacex'] in (0, 1) and r['n'] > 0 for r in data['rows'])
 
 
 def test_on_orbit_unknown_chart_is_404():
@@ -394,7 +400,7 @@ def test_nested_asset_is_served():
 @pytest.mark.parametrize('path', [
     '/server.py',
     '/setupCron.sh',
-    '/deployToGoDaddy.sh',
+    '/0_tools/deployToGoDaddy.sh',
     '/spacetrack.env.example',
     '/scripts/readNews.py',
     '/databases/ingestionGroundSegment.db',
@@ -513,7 +519,7 @@ def test_bug_report_records_the_server_role(bug_db, monkeypatch):
     assert row['dateFound'].endswith('+00:00') and 'T' in row['dateFound']  # full UTC DTG
 
 
-# --- Site databases (dbRefactorPlan.md step 10) --------------------------------
+# --- Site databases (0_documentation/plans/dbRefactorPlan.md step 10) --------------------------------
 # Against a temporary database folder, never the real databases/.
 
 @pytest.fixture
@@ -596,3 +602,72 @@ def test_status_takes_the_newest_of_several_job_names(monkeypatch):
     spec = next(s for s in server.STATUS_SOURCES if s['data'] == 'Orbital elements')
     row = server.status_row(spec)
     assert row['lastRefreshUtc'] == '2026-10-21T12:01:00Z' and row['changes'] == 500
+
+
+def test_format_dtg_makes_a_utc_date_time_group():
+    assert server.format_dtg('Sat, 24 Oct 2026 12:40:14 GMT') == '241240Z OCT 26'
+    assert server.format_dtg('Wed, 01 Jan 2025 00:05:00 GMT') == '010005Z JAN 25'
+    assert server.format_dtg('Sat, 24 Oct 2026 12:40:14 +0100') == '241140Z OCT 26'
+    assert server.format_dtg(None) is None
+    assert server.format_dtg('not a date') is None
+
+
+def test_sun_times_endpoint_is_cached_between_visitors(monkeypatch):
+    calls = []
+
+    def fake_fetch():
+        calls.append(1)
+        return {key: '241240Z OCT 26' for key in server.SUN_IMAGE_URLS}
+
+    monkeypatch.setattr(server, 'fetch_sun_times', fake_fetch)
+    monkeypatch.setitem(server.sun_times_cache, 'times', None)
+    for _ in range(3):
+        status, headers, body = call_app('/api/weather/sun-times')
+        assert status == '200 OK'
+        times = json.loads(body)['times']
+        assert set(times) == {'hmiIntensity', 'hmiMagnetogram', 'aia193', 'aia131', 'lascoC2', 'lascoC3'}
+    assert len(calls) == 1  # one set of header checks, not one per visitor
+
+
+def test_sun_times_are_fixed_addresses_and_ask_again_when_stale(monkeypatch):
+    assert all(url.startswith(('https://sdo.gsfc.nasa.gov/', 'https://services.swpc.noaa.gov/'))
+               for url in server.SUN_IMAGE_URLS.values())
+    calls = []
+    monkeypatch.setattr(server, 'fetch_sun_times', lambda: calls.append(1) or {})
+    monkeypatch.setitem(server.sun_times_cache, 'times', {})
+    monkeypatch.setitem(server.sun_times_cache, 'at', 0.0)  # long ago
+    server.sun_times()
+    assert len(calls) == 1
+
+
+def test_usage_is_empty_until_something_is_recorded(tmp_path, monkeypatch):
+    monkeypatch.setattr(server.dbPaths, 'DB_DIR', str(tmp_path))
+    status, headers, body = call_app('/api/usage')
+    assert status == '200 OK'
+    assert json.loads(body) == {'total': 0, 'cities': [], 'weeks': []}
+
+
+def test_usage_sums_logins_by_city_and_by_week(tmp_path, monkeypatch):
+    monkeypatch.setattr(server.dbPaths, 'DB_DIR', str(tmp_path))
+    conn = sqlite3.connect(str(tmp_path / server.dbPaths.USAGE_DB))
+    conn.execute('CREATE TABLE logins (day TEXT, city TEXT, country TEXT, latitude REAL, longitude REAL, logins INTEGER,'
+                 ' PRIMARY KEY (day, city, country))')
+    conn.executemany('INSERT INTO logins VALUES (?, ?, ?, ?, ?, ?)', [
+        ('2026-10-19', 'Reykjavik', 'IS', 64.15, -21.94, 3),   # a Monday
+        ('2026-10-25', 'Reykjavik', 'IS', 64.15, -21.94, 2),   # the Sunday of that week
+        ('2026-10-26', 'Reykjavik', 'IS', 64.15, -21.94, 1),   # the next Monday
+        ('2026-10-20', 'Geneva', 'CH', 46.20, 6.14, 4),
+    ])
+    conn.commit()
+    conn.close()
+    status, headers, body = call_app('/api/usage')
+    data = json.loads(body)
+    assert data['total'] == 10
+    assert [(c['city'], c['logins']) for c in data['cities']] == [('Reykjavik', 6), ('Geneva', 4)]
+    assert data['weeks'] == [{'weekStart': '2026-10-19', 'logins': 9}, {'weekStart': '2026-10-26', 'logins': 1}]
+
+
+def test_usage_ignores_a_database_without_the_table(tmp_path, monkeypatch):
+    monkeypatch.setattr(server.dbPaths, 'DB_DIR', str(tmp_path))
+    sqlite3.connect(str(tmp_path / server.dbPaths.USAGE_DB)).close()
+    assert json.loads(call_app('/api/usage')[2])['total'] == 0

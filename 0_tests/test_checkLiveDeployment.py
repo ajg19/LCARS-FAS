@@ -91,3 +91,12 @@ def test_sizes_and_durations_read_naturally():
 
 def test_asset_digest_ignores_line_endings():
     assert lc.digest(b'a\r\nb\r\n') == lc.digest(b'a\nb\n')
+
+
+def test_every_weather_chart_file_is_in_the_asset_list_and_exists():
+    import glob
+    listed = set(lc.ASSETS)
+    chartFiles = {'assets/' + os.path.basename(f) for f in glob.glob(os.path.join(lc.REPO, 'assets', 'weather*.js')) + glob.glob(os.path.join(lc.REPO, 'assets', 'chart*.js'))}
+    assert chartFiles <= listed, sorted(chartFiles - listed)
+    assert 'assets/weatherCoast.json' in listed
+    assert all(os.path.exists(os.path.join(lc.REPO, path)) for path in listed)

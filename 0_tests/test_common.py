@@ -2,6 +2,7 @@
 Space-Track client. urllib is replaced by stand-ins; nothing touches the
 network, and the real .env / spacetrack.env are never read."""
 
+import gzip
 import io
 import os
 import sys
@@ -82,6 +83,21 @@ def test_http_get_returns_status_and_text_with_user_agent_and_timeout(monkeypatc
     assert timeout == common.HTTP_TIMEOUT_SEC
 
 
+def test_a_gzipped_reply_is_unpacked_and_a_plain_one_is_left_alone(monkeypatch):
+    packed = FakeResponse(gzip.compress('héllo'.encode('utf-8')), headers={'Content-Encoding': 'gzip'})
+    fake = FakeUrlopen(packed, FakeResponse(b'plain'))
+    monkeypatch.setattr(common.urllib.request, 'urlopen', fake)
+    assert common.httpGet('https://example.test/x', {'Accept-Encoding': 'gzip'}) == (200, 'héllo')
+    assert fake.requests[0][0].get_header('Accept-encoding') == 'gzip'
+    assert common.httpGet('https://example.test/y') == (200, 'plain')
+
+
+def test_a_gzipped_error_body_is_unpacked_too(monkeypatch):
+    error = urllib.error.HTTPError('https://x', 503, 'busy', {'Content-Encoding': 'gzip'}, io.BytesIO(gzip.compress(b'busy')))
+    monkeypatch.setattr(common.urllib.request, 'urlopen', FakeUrlopen(error))
+    assert common.httpGet('https://example.test/x') == (503, 'busy')
+
+
 def test_http_errors_come_back_as_responses(monkeypatch):
     monkeypatch.setattr(common.urllib.request, 'urlopen', FakeUrlopen(httpError(503, b'busy')))
     assert common.httpGet('https://example.test/x') == (503, 'busy')
@@ -150,3 +166,18 @@ def test_failed_logout_never_fails_a_run(credentials, monkeypatch):
     with common.SpaceTrack():
         pass
     assert len(fake.requests) == 2
+
+
+# --- bodyText ----------------------------------------------------------------------
+
+def test_body_text_reads_utf8_and_falls_back_to_windows_1252():
+    assert common.bodyText('Uncertain – unknown'.encode('utf-8'), {}) == 'Uncertain – unknown'
+    # SWPC's radio-flux quality text: a lone 0x96 (cp1252 en dash) is not valid UTF-8
+    assert common.bodyText(b'Uncertain \x96 unknown cause', {}) == 'Uncertain – unknown cause'
+    assert '�' not in common.bodyText(b'Uncertain \x96 unknown cause', {})
+    assert common.bodyText(b'ok \x81', {}) == 'ok �'     # an undefined cp1252 byte is still replaced, never raised
+
+
+def test_body_text_unzips_before_decoding():
+    import gzip
+    assert common.bodyText(gzip.compress('é'.encode('utf-8')), {'Content-Encoding': 'gzip'}) == 'é'

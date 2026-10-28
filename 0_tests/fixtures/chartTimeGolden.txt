@@ -1,0 +1,603 @@
+
+        <svg class="lcars-line-chart" width="700" height="286" viewBox="0 0 700 286" role="img" aria-label="Test chart">
+            <defs>
+<pattern id="t1-hatch" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)">
+<line x1="0" y1="0" x2="0" y2="7" stroke="var(--tng-lavender)" stroke-width="1.2" stroke-opacity=".5">
+</line>
+</pattern>
+</defs>
+            <g class="chart-time-body">
+<line class="lcars-line-grid" x1="64.0" x2="64.0" y1="16" y2="136">
+</line>
+<line class="lcars-line-grid" x1="64.0" x2="64.0" y1="150" y2="250">
+</line>
+<line class="lcars-line-xtick-mark" x1="64.0" x2="64.0" y1="250" y2="255">
+</line>
+<text class="lcars-line-xtick" x="64.0" y="270" text-anchor="middle">12:00</text>
+<line class="lcars-line-grid" x1="159.3" x2="159.3" y1="16" y2="136">
+</line>
+<line class="lcars-line-grid" x1="159.3" x2="159.3" y1="150" y2="250">
+</line>
+<line class="lcars-line-xtick-mark" x1="159.3" x2="159.3" y1="250" y2="255">
+</line>
+<text class="lcars-line-xtick" x="159.3" y="270" text-anchor="middle">22 Oct</text>
+<line class="lcars-line-grid" x1="254.7" x2="254.7" y1="16" y2="136">
+</line>
+<line class="lcars-line-grid" x1="254.7" x2="254.7" y1="150" y2="250">
+</line>
+<line class="lcars-line-xtick-mark" x1="254.7" x2="254.7" y1="250" y2="255">
+</line>
+<text class="lcars-line-xtick" x="254.7" y="270" text-anchor="middle">12:00</text>
+<line class="lcars-line-grid" x1="350.0" x2="350.0" y1="16" y2="136">
+</line>
+<line class="lcars-line-grid" x1="350.0" x2="350.0" y1="150" y2="250">
+</line>
+<line class="lcars-line-xtick-mark" x1="350.0" x2="350.0" y1="250" y2="255">
+</line>
+<text class="lcars-line-xtick" x="350.0" y="270" text-anchor="middle">23 Oct</text>
+<line class="lcars-line-grid" x1="445.3" x2="445.3" y1="16" y2="136">
+</line>
+<line class="lcars-line-grid" x1="445.3" x2="445.3" y1="150" y2="250">
+</line>
+<line class="lcars-line-xtick-mark" x1="445.3" x2="445.3" y1="250" y2="255">
+</line>
+<text class="lcars-line-xtick" x="445.3" y="270" text-anchor="middle">12:00</text>
+<line class="lcars-line-grid" x1="540.7" x2="540.7" y1="16" y2="136">
+</line>
+<line class="lcars-line-grid" x1="540.7" x2="540.7" y1="150" y2="250">
+</line>
+<line class="lcars-line-xtick-mark" x1="540.7" x2="540.7" y1="250" y2="255">
+</line>
+<text class="lcars-line-xtick" x="540.7" y="270" text-anchor="middle">24 Oct</text>
+<line class="lcars-line-grid" x1="636.0" x2="636.0" y1="16" y2="136">
+</line>
+<line class="lcars-line-grid" x1="636.0" x2="636.0" y1="150" y2="250">
+</line>
+<line class="lcars-line-xtick-mark" x1="636.0" x2="636.0" y1="250" y2="255">
+</line>
+<text class="lcars-line-xtick" x="636.0" y="270" text-anchor="middle">12:00</text>
+<text class="lcars-line-axis-title" x="636" y="282" text-anchor="end">UTC</text>
+<rect class="lcars-hover-strip" x="64.0" y="16" width="5.0" height="234">
+<title>2026-10-21 12:18 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="69.0" y="16" width="5.0" height="234">
+<title>2026-10-21 12:56 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="74.0" y="16" width="5.0" height="234">
+<title>2026-10-21 13:34 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="79.1" y="16" width="5.0" height="234">
+<title>2026-10-21 14:12 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="84.1" y="16" width="5.0" height="234">
+<title>2026-10-21 14:50 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="89.1" y="16" width="5.0" height="234">
+<title>2026-10-21 15:28 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="94.1" y="16" width="5.0" height="234">
+<title>2026-10-21 16:06 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="99.1" y="16" width="5.0" height="234">
+<title>2026-10-21 16:44 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="104.1" y="16" width="5.0" height="234">
+<title>2026-10-21 17:22 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="109.2" y="16" width="5.0" height="234">
+<title>2026-10-21 18:00 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="114.2" y="16" width="5.0" height="234">
+<title>2026-10-21 18:37 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="119.2" y="16" width="5.0" height="234">
+<title>2026-10-21 19:15 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="124.2" y="16" width="5.0" height="234">
+<title>2026-10-21 19:53 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="129.2" y="16" width="5.0" height="234">
+<title>2026-10-21 20:31 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="134.2" y="16" width="5.0" height="234">
+<title>2026-10-21 21:09 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="139.3" y="16" width="5.0" height="234">
+<title>2026-10-21 21:47 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="144.3" y="16" width="5.0" height="234">
+<title>2026-10-21 22:25 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="149.3" y="16" width="5.0" height="234">
+<title>2026-10-21 23:03 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="154.3" y="16" width="5.0" height="234">
+<title>2026-10-21 23:41 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="159.3" y="16" width="5.0" height="234">
+<title>2026-10-22 00:18 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="164.4" y="16" width="5.0" height="234">
+<title>2026-10-22 00:56 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="169.4" y="16" width="5.0" height="234">
+<title>2026-10-22 01:34 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="174.4" y="16" width="5.0" height="234">
+<title>2026-10-22 02:12 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="179.4" y="16" width="5.0" height="234">
+<title>2026-10-22 02:50 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="184.4" y="16" width="5.0" height="234">
+<title>2026-10-22 03:28 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="189.4" y="16" width="5.0" height="234">
+<title>2026-10-22 04:06 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="194.5" y="16" width="5.0" height="234">
+<title>2026-10-22 04:44 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="199.5" y="16" width="5.0" height="234">
+<title>2026-10-22 05:22 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="204.5" y="16" width="5.0" height="234">
+<title>2026-10-22 06:00 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="209.5" y="16" width="5.0" height="234">
+<title>2026-10-22 06:37 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="214.5" y="16" width="5.0" height="234">
+<title>2026-10-22 07:15 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="219.5" y="16" width="5.0" height="234">
+<title>2026-10-22 07:53 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="224.6" y="16" width="5.0" height="234">
+<title>2026-10-22 08:31 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="229.6" y="16" width="5.0" height="234">
+<title>2026-10-22 09:09 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="234.6" y="16" width="5.0" height="234">
+<title>2026-10-22 09:47 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="239.6" y="16" width="5.0" height="234">
+<title>2026-10-22 10:25 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="244.6" y="16" width="5.0" height="234">
+<title>2026-10-22 11:03 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="249.6" y="16" width="5.0" height="234">
+<title>2026-10-22 11:41 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="254.7" y="16" width="5.0" height="234">
+<title>2026-10-22 12:18 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="259.7" y="16" width="5.0" height="234">
+<title>2026-10-22 12:56 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="264.7" y="16" width="5.0" height="234">
+<title>2026-10-22 13:34 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="269.7" y="16" width="5.0" height="234">
+<title>2026-10-22 14:12 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="274.7" y="16" width="5.0" height="234">
+<title>2026-10-22 14:50 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="279.8" y="16" width="5.0" height="234">
+<title>2026-10-22 15:28 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="284.8" y="16" width="5.0" height="234">
+<title>2026-10-22 16:06 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="289.8" y="16" width="5.0" height="234">
+<title>2026-10-22 16:44 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="294.8" y="16" width="5.0" height="234">
+<title>2026-10-22 17:22 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="299.8" y="16" width="5.0" height="234">
+<title>2026-10-22 18:00 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="304.8" y="16" width="5.0" height="234">
+<title>2026-10-22 18:37 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="309.9" y="16" width="5.0" height="234">
+<title>2026-10-22 19:15 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="314.9" y="16" width="5.0" height="234">
+<title>2026-10-22 19:53 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="319.9" y="16" width="5.0" height="234">
+<title>2026-10-22 20:31 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="324.9" y="16" width="5.0" height="234">
+<title>2026-10-22 21:09 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="329.9" y="16" width="5.0" height="234">
+<title>2026-10-22 21:47 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="334.9" y="16" width="5.0" height="234">
+<title>2026-10-22 22:25 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="340.0" y="16" width="5.0" height="234">
+<title>2026-10-22 23:03 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="345.0" y="16" width="5.0" height="234">
+<title>2026-10-22 23:41 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="350.0" y="16" width="5.0" height="234">
+<title>2026-10-23 00:18 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="355.0" y="16" width="5.0" height="234">
+<title>2026-10-23 00:56 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="360.0" y="16" width="5.0" height="234">
+<title>2026-10-23 01:34 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="365.1" y="16" width="5.0" height="234">
+<title>2026-10-23 02:12 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="370.1" y="16" width="5.0" height="234">
+<title>2026-10-23 02:50 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="375.1" y="16" width="5.0" height="234">
+<title>2026-10-23 03:28 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="380.1" y="16" width="5.0" height="234">
+<title>2026-10-23 04:06 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="385.1" y="16" width="5.0" height="234">
+<title>2026-10-23 04:44 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="390.1" y="16" width="5.0" height="234">
+<title>2026-10-23 05:22 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="395.2" y="16" width="5.0" height="234">
+<title>2026-10-23 06:00 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="400.2" y="16" width="5.0" height="234">
+<title>2026-10-23 06:37 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="405.2" y="16" width="5.0" height="234">
+<title>2026-10-23 07:15 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="410.2" y="16" width="5.0" height="234">
+<title>2026-10-23 07:53 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="415.2" y="16" width="5.0" height="234">
+<title>2026-10-23 08:31 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="420.2" y="16" width="5.0" height="234">
+<title>2026-10-23 09:09 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="425.3" y="16" width="5.0" height="234">
+<title>2026-10-23 09:47 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="430.3" y="16" width="5.0" height="234">
+<title>2026-10-23 10:25 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="435.3" y="16" width="5.0" height="234">
+<title>2026-10-23 11:03 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="440.3" y="16" width="5.0" height="234">
+<title>2026-10-23 11:41 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="445.3" y="16" width="5.0" height="234">
+<title>2026-10-23 12:18 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="450.4" y="16" width="5.0" height="234">
+<title>2026-10-23 12:56 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="455.4" y="16" width="5.0" height="234">
+<title>2026-10-23 13:34 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="460.4" y="16" width="5.0" height="234">
+<title>2026-10-23 14:12 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="465.4" y="16" width="5.0" height="234">
+<title>2026-10-23 14:50 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="470.4" y="16" width="5.0" height="234">
+<title>2026-10-23 15:28 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="475.4" y="16" width="5.0" height="234">
+<title>2026-10-23 16:06 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="480.5" y="16" width="5.0" height="234">
+<title>2026-10-23 16:44 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="485.5" y="16" width="5.0" height="234">
+<title>2026-10-23 17:22 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="490.5" y="16" width="5.0" height="234">
+<title>2026-10-23 18:00 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="495.5" y="16" width="5.0" height="234">
+<title>2026-10-23 18:37 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="500.5" y="16" width="5.0" height="234">
+<title>2026-10-23 19:15 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="505.5" y="16" width="5.0" height="234">
+<title>2026-10-23 19:53 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="510.6" y="16" width="5.0" height="234">
+<title>2026-10-23 20:31 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="515.6" y="16" width="5.0" height="234">
+<title>2026-10-23 21:09 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="520.6" y="16" width="5.0" height="234">
+<title>2026-10-23 21:47 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="525.6" y="16" width="5.0" height="234">
+<title>2026-10-23 22:25 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="530.6" y="16" width="5.0" height="234">
+<title>2026-10-23 23:03 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="535.6" y="16" width="5.0" height="234">
+<title>2026-10-23 23:41 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="540.7" y="16" width="5.0" height="234">
+<title>2026-10-24 00:18 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="545.7" y="16" width="5.0" height="234">
+<title>2026-10-24 00:56 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="550.7" y="16" width="5.0" height="234">
+<title>2026-10-24 01:34 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="555.7" y="16" width="5.0" height="234">
+<title>2026-10-24 02:12 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="560.7" y="16" width="5.0" height="234">
+<title>2026-10-24 02:50 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="565.8" y="16" width="5.0" height="234">
+<title>2026-10-24 03:28 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="570.8" y="16" width="5.0" height="234">
+<title>2026-10-24 04:06 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="575.8" y="16" width="5.0" height="234">
+<title>2026-10-24 04:44 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="580.8" y="16" width="5.0" height="234">
+<title>2026-10-24 05:22 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="585.8" y="16" width="5.0" height="234">
+<title>2026-10-24 06:00 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="590.8" y="16" width="5.0" height="234">
+<title>2026-10-24 06:37 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="595.9" y="16" width="5.0" height="234">
+<title>2026-10-24 07:15 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="600.9" y="16" width="5.0" height="234">
+<title>2026-10-24 07:53 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="605.9" y="16" width="5.0" height="234">
+<title>2026-10-24 08:31 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="610.9" y="16" width="5.0" height="234">
+<title>2026-10-24 09:09 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="615.9" y="16" width="5.0" height="234">
+<title>2026-10-24 09:47 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="620.9" y="16" width="5.0" height="234">
+<title>2026-10-24 10:25 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="626.0" y="16" width="5.0" height="234">
+<title>2026-10-24 11:03 UTC
+reading</title>
+</rect>
+<rect class="lcars-hover-strip" x="631.0" y="16" width="5.0" height="234">
+<title>2026-10-24 11:41 UTC
+reading</title>
+</rect>
+<rect class="chart-forecast-band" x="540.7" y="16" width="95.3" height="120" fill="url(#t1-hatch)">
+</rect>
+<rect class="chart-class-band" x="64" y="96.0" width="572" height="20.0">
+</rect>
+<text class="lcars-line-ytick chart-class-letter" x="630" y="106.0" dy="0.35em" text-anchor="end">A</text>
+<text class="lcars-line-ytick chart-class-letter" x="630" y="86.0" dy="0.35em" text-anchor="end">B</text>
+<rect class="chart-class-band" x="64" y="56.0" width="572" height="20.0">
+</rect>
+<text class="lcars-line-ytick chart-class-letter" x="630" y="66.0" dy="0.35em" text-anchor="end">C</text>
+<line class="lcars-line-grid" x1="64" x2="636" y1="136.0" y2="136.0">
+</line>
+<text class="lcars-line-ytick" style="fill:var(--tng-sand)" x="56" y="136.0" dy="0.35em" text-anchor="end">1e-9</text>
+<line class="lcars-line-grid" x1="64" x2="636" y1="116.0" y2="116.0">
+</line>
+<text class="lcars-line-ytick" style="fill:var(--tng-sand)" x="56" y="116.0" dy="0.35em" text-anchor="end">1e-8</text>
+<line class="lcars-line-grid" x1="64" x2="636" y1="96.0" y2="96.0">
+</line>
+<text class="lcars-line-ytick" style="fill:var(--tng-sand)" x="56" y="96.0" dy="0.35em" text-anchor="end">1e-7</text>
+<line class="lcars-line-grid" x1="64" x2="636" y1="76.0" y2="76.0">
+</line>
+<text class="lcars-line-ytick" style="fill:var(--tng-sand)" x="56" y="76.0" dy="0.35em" text-anchor="end">1e-6</text>
+<line class="lcars-line-grid" x1="64" x2="636" y1="56.0" y2="56.0">
+</line>
+<text class="lcars-line-ytick" style="fill:var(--tng-sand)" x="56" y="56.0" dy="0.35em" text-anchor="end">1e-5</text>
+<line class="lcars-line-grid" x1="64" x2="636" y1="36.0" y2="36.0">
+</line>
+<text class="lcars-line-ytick" style="fill:var(--tng-sand)" x="56" y="36.0" dy="0.35em" text-anchor="end">1e-4</text>
+<line class="lcars-line-grid" x1="64" x2="636" y1="16.0" y2="16.0">
+</line>
+<text class="lcars-line-ytick" style="fill:var(--tng-sand)" x="56" y="16.0" dy="0.35em" text-anchor="end">1e-3</text>
+<text class="lcars-line-axis-title" style="fill:var(--tng-sand)" x="70" y="29" text-anchor="start">X-RAY</text>
+<line class="lcars-line-axis" x1="64" x2="636" y1="136" y2="136">
+</line>
+<line class="chart-threshold" x1="64" x2="636" y1="56.0" y2="56.0" stroke="var(--tng-salmon)" stroke-dasharray="5 4">
+</line>
+<text class="lcars-line-ytick chart-threshold-label" x="68" y="53" text-anchor="start">M1</text>
+<path class="lcars-dual-line" d="M64.0,96.0 L64.2,90.0 L64.3,86.5" stroke="var(--tng-sand)">
+</path>
+<path class="lcars-dual-line" d="M143.4,76.0 L143.6,70.0" stroke="var(--tng-sand)">
+</path>
+<path class="lcars-dual-line chart-forecast-line" d="M620.1,76.0 L620.3,66.5" stroke="var(--tng-sand)">
+</path>
+<rect class="chart-shade" x="222.9" y="150" width="31.8" height="100" fill="var(--tng-salmon)">
+</rect>
+<line class="lcars-line-grid" x1="64" x2="636" y1="250.0" y2="250.0">
+</line>
+<text class="lcars-line-ytick" x="56" y="250.0" dy="0.35em" text-anchor="end">-10</text>
+<line class="lcars-line-grid" x1="64" x2="636" y1="200.0" y2="200.0">
+</line>
+<text class="lcars-line-ytick" x="56" y="200.0" dy="0.35em" text-anchor="end">0</text>
+<line class="lcars-line-grid" x1="64" x2="636" y1="150.0" y2="150.0">
+</line>
+<text class="lcars-line-ytick" x="56" y="150.0" dy="0.35em" text-anchor="end">10</text>
+<text class="lcars-line-axis-title" x="70" y="163" text-anchor="start">BZ</text>
+<text class="lcars-line-ytick" style="fill:var(--tng-amber)" x="644" y="150.0" dy="0.35em" text-anchor="start">-100</text>
+<text class="lcars-line-ytick" style="fill:var(--tng-amber)" x="644" y="183.3" dy="0.35em" text-anchor="start">-50</text>
+<text class="lcars-line-ytick" style="fill:var(--tng-amber)" x="644" y="216.7" dy="0.35em" text-anchor="start">0</text>
+<text class="lcars-line-ytick" style="fill:var(--tng-amber)" x="644" y="250.0" dy="0.35em" text-anchor="start">50</text>
+<text class="lcars-line-axis-title" style="fill:var(--tng-amber)" x="630" y="163" text-anchor="end">DST</text>
+<line class="lcars-line-axis" x1="64" x2="636" y1="250" y2="250">
+</line>
+<polygon class="lcars-area-band" points="64.0,200.0 64.0,180.0 67.2,200.0 67.2,200.0" fill="var(--tng-periwinkle)">
+</polygon>
+<polygon class="lcars-area-band" points="82.2,200.0 82.2,200.0 87.8,175.0 87.8,200.0" fill="var(--tng-periwinkle)">
+</polygon>
+<polygon class="lcars-area-band" points="67.2,200.0 67.2,200.0 71.9,230.0 79.9,210.0 82.2,200.0 82.2,200.0" fill="var(--tng-salmon)">
+</polygon>
+<line class="chart-zero" x1="64" x2="636" y1="200.0" y2="200.0">
+</line>
+<path class="lcars-dual-line" d="M64.0,210.0 L79.9,163.3" stroke="var(--tng-amber)" stroke-dasharray="6 4">
+</path>
+<g class="chart-event">
+<line x1="302.3" x2="302.3" y1="12" y2="250" stroke="var(--tng-salmon)">
+</line>
+<circle class="chart-hit" cx="302.3" cy="8" r="5" stroke="var(--tng-salmon)" fill="var(--tng-salmon)">
+</circle>
+<title>CME shock &quot;arrived&quot; &amp; &lt;seen>
+</title>
+</g>
+<g class="chart-event">
+<line x1="381.8" x2="381.8" y1="12" y2="250" stroke="var(--tng-salmon)">
+</line>
+<circle class="chart-hit" cx="381.8" cy="8" r="5" stroke="var(--tng-salmon)" fill="#000">
+</circle>
+<title>Reported only</title>
+</g>
+</g>
+        </svg>

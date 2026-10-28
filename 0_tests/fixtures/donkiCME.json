@@ -1,0 +1,94 @@
+[
+ {
+  "activityID": "2026-10-23T16:36:00-CME-001",
+  "catalog": "M2M_CATALOG",
+  "startTime": "2026-10-23T16:36Z",
+  "instruments": [
+   {
+    "displayName": "SOHO: LASCO/C2"
+   },
+   {
+    "displayName": "SOHO: LASCO/C3"
+   },
+   {
+    "displayName": "GOES: CCOR-1"
+   }
+  ],
+  "sourceLocation": "",
+  "activeRegionNum": null,
+  "note": "A super faint CME visible to the NE in SOHO LASCO C2/C3 and GOES CCOR-1 and not seen in STEREO A COR2. No source seen in EUV imagery, so this outflow is possibly far-sided.",
+  "cmeAnalyses": [
+   {
+    "isMostAccurate": true,
+    "levelOfData": 0,
+    "time21_5": "2026-10-24T06:18Z",
+    "latitude": 34.0,
+    "longitude": null,
+    "halfAngle": 15.0,
+    "speed": 255.0,
+    "type": "S",
+    "featureCode": "LE",
+    "imageType": "running difference",
+    "measurementTechnique": "Plane-of-sky",
+    "note": "Plane-of-sky analysis with SOHO LASCO and GOES CCOR-1. The CME is not seen in STEREO A COR2 and no source for it has been found in EUV imagery.",
+    "minorHalfWidth": null,
+    "speedMeasuredAtHeight": null,
+    "tilt": null,
+    "submissionTime": "2026-10-24T00:29Z",
+    "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/CMEAnalysis/49221/-1",
+    "enlilList": []
+   }
+  ],
+  "linkedEvents": null,
+  "sentNotifications": null,
+  "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/CME/49220/-1",
+  "submissionTime": "2026-10-24T00:26Z",
+  "versionId": 1
+ },
+ {
+  "activityID": "2026-10-17T18:12:00-CME-001",
+  "catalog": "M2M_CATALOG",
+  "startTime": "2026-10-17T18:12Z",
+  "instruments": [
+   {
+    "displayName": "SOHO: LASCO/C2"
+   },
+   {
+    "displayName": "SOHO: LASCO/C3"
+   },
+   {
+    "displayName": "GOES: CCOR-1"
+   }
+  ],
+  "sourceLocation": "",
+  "activeRegionNum": null,
+  "note": "Narrow CME/outflow to the E seen in SOHO LASCO C2. The CME is not seen in STEREO A COR2 imagery. This CME/outflow is following the 2026-10-17T17:00Z CME. No clear source was found in EUV imagery.",
+  "cmeAnalyses": [
+   {
+    "isMostAccurate": true,
+    "levelOfData": 0,
+    "time21_5": "2026-10-18T02:28Z",
+    "latitude": 4.0,
+    "longitude": null,
+    "halfAngle": 21.0,
+    "speed": 427.0,
+    "type": "S",
+    "featureCode": "LE",
+    "imageType": "running difference",
+    "measurementTechnique": "Plane-of-sky",
+    "note": "The CME is not seen in STEREO A COR2 coronagraph and its source has not been found (possibly far-sided), so only plane-of-sky analysis is possible.",
+    "minorHalfWidth": null,
+    "speedMeasuredAtHeight": 9.0,
+    "tilt": null,
+    "submissionTime": "2026-10-17T21:52Z",
+    "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/CMEAnalysis/49158/-1",
+    "enlilList": []
+   }
+  ],
+  "linkedEvents": null,
+  "sentNotifications": null,
+  "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/CME/49157/-1",
+  "submissionTime": "2026-10-17T21:55Z",
+  "versionId": 2
+ }
+]

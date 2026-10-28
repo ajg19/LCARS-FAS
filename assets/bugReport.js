@@ -16,7 +16,7 @@ const BUG_FIELDS = [
       tip: 'Low: cosmetic or minor. Medium: a feature is hard to use or gives wrong results. High: a section will not load, data is clearly wrong, or the page breaks.' },
     { name: 'component', label: 'SECTION', kind: 'select', required: true,
       options: ['Home page', 'NEWS', 'GRD-TRACK', 'ON-ORBIT', 'GS OPS', 'GRD VIEW', 'LAUNCHES', 'GRND SGMNT',
-                'ORGANISATIONS', 'WEATHER', 'EO', 'ACKNOWLEDGMENTS', 'Whole site / other'].map(v => [v, v]),
+                'ORGANISATIONS', 'WEATHER', 'EO', 'ABOUT', 'Whole site / other'].map(v => [v, v]),
       tip: 'Where you were when it happened. Filled in with the section you have open; change it if needed.' },
     { name: 'description', label: 'DESCRIPTION', kind: 'textarea', rows: 4, required: true, min: 10, max: 2000,
       tip: 'What happened, in your own words. Anything that seems relevant helps.' },

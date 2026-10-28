@@ -1,5 +1,5 @@
 """One-off migration of a server to the refactored database layout
-(step 12 of 0_documentation/dbRefactorPlan.md). Run ON the server, from
+(step 12 of 0_documentation/plans/dbRefactorPlan.md). Run ON the server, from
 the app folder, after deploying the refactored code:
 
     python scripts/migrateLive.py              # dry run: checks, prints the plan, changes nothing

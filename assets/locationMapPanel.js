@@ -29,7 +29,12 @@ const LOCATION_MAP_DEFAULT_ZOOM = 3;
 const LOCATION_MAP_CITY_LABEL_MIN_ZOOM = 3;
 const LOCATION_MAP_CITY_LABEL_MAX = 60;
 
-function registerLocationMapPanel({ sectionId, containerId, buttonLabel, extraButtons = [] }) {
+// renderRestingArea(wrapper), optional: draws a section's own resting content into #default
+// whenever the location form is closed or the section opens (EO's data selectors).
+// locationFormRows(), optional: returns extra label + control pairs (HTML) for the shared TGT LOCN form, below PLACE.
+// leadingButtons: optional buttons placed before TGT LOCN and CITY LBL (EO puts SELECT first, so the
+// 2 x 2 grid reads SELECT, TGT LOCN / CITY LBL, TGT FOCUS).
+function registerLocationMapPanel({ sectionId, containerId, buttonLabel, leadingButtons = [], extraButtons = [], renderRestingArea = null, locationFormRows = null }) {
     // One closure set of per-panel state per call -- the maps and their
     // terminator layers/intervals are independent between sections.
     let map = null;
@@ -55,7 +60,7 @@ function registerLocationMapPanel({ sectionId, containerId, buttonLabel, extraBu
         }
         userLocationMarker = L.circleMarker(
             [observerLocation.latitude, observerLocation.longitude],
-            { radius: 4, color: '#fff', weight: 1, fillColor: '#fff', fillOpacity: 1 }
+            { radius: 4, color: lcarsColour('--space-white'), weight: 1, fillColor: lcarsColour('--space-white'), fillOpacity: 1 }
         ).addTo(map);
     }
 
@@ -109,7 +114,7 @@ function registerLocationMapPanel({ sectionId, containerId, buttonLabel, extraBu
             .slice(0, LOCATION_MAP_CITY_LABEL_MAX)
             .map((c) => {
                 const dot = L.circleMarker([c.lat, c.lon], {
-                    radius: 2, color: '#fc9', weight: 1, fillColor: '#fc9', fillOpacity: 0.9, interactive: false,
+                    radius: 2, color: lcarsColour('--peach'), weight: 1, fillColor: lcarsColour('--peach'), fillOpacity: 0.9, interactive: false,
                 });
                 dot.bindTooltip(c.name.toUpperCase(), {
                     permanent: true, direction: 'right', offset: [4, 0],
@@ -167,10 +172,10 @@ function registerLocationMapPanel({ sectionId, containerId, buttonLabel, extraBu
             // of longitude per minute.
             await loadScriptOnce('assets/leaflet/L.Terminator.js');
             terminatorLayer = L.terminator({
-                color: '#3a5a7a',
+                color: lcarsColour('--tng-periwinkle', 0.5),
                 weight: 1,
                 opacity: 0.6,
-                fillColor: '#050a12',
+                fillColor: lcarsColour('--tng-periwinkle', 0.05),
                 fillOpacity: 0.45,
                 longitudeRange: 360,
             }).addTo(map);
@@ -208,6 +213,9 @@ function registerLocationMapPanel({ sectionId, containerId, buttonLabel, extraBu
         const wrapper = document.getElementById('default');
         if (wrapper) {
             wrapper.innerHTML = '';
+            if (renderRestingArea) {
+                renderRestingArea(wrapper);
+            }
         }
         if (map) {
             centreOnObserver(false);
@@ -224,10 +232,11 @@ function registerLocationMapPanel({ sectionId, containerId, buttonLabel, extraBu
     // to exactly four with inert numbered placeholders (a button with no
     // onClick renders inert -- see renderControlAreaButtons() in lcars.js).
     const buttons = [
+        ...leadingButtons,
         {
             label: buttonLabel,
             color: 'var(--peach)',
-            onClick: () => toggleUserLocationForm(renderDefaultArea),
+            onClick: () => toggleUserLocationForm(renderDefaultArea, locationFormRows ? locationFormRows() : ''),
         },
         {
             label: 'CITY LBL',

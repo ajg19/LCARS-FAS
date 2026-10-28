@@ -1,0 +1,18 @@
+{
+ "SN": [
+  45.0,
+  38.0
+ ],
+ "SNstatus": [
+  "pre",
+  "pre"
+ ],
+ "datetime": [
+  "2026-10-22T00:00:00Z",
+  "2026-10-23T00:00:00Z"
+ ],
+ "meta": {
+  "license": "CC BY 4.0",
+  "source": "GFZ Potsdam"
+ }
+}

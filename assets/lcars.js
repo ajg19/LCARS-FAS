@@ -85,6 +85,75 @@ let currentNewsArticleUrl = null;
 // baked into lcars.js itself.
 const panelControlRegistry = {};
 
+// HELPER HTML FILES -- the default architecture for static page content.
+// Definitions pages, credits and similar blocks of fixed markup live in
+// their own files under assets/ and are fetched the first time they are
+// shown, so index.html stays small (it is on every visitor's first load).
+// index.html holds only an empty container with an id; loadHelperHtml()
+// fills it. Each file starts with a comment saying which container and
+// code use it. New static content goes in a helper file, not in index.html.
+// Resolves true when the container holds the content, false (with a message
+// in the container) if the file could not be fetched; a loaded container is
+// never fetched again.
+const helperHtmlRequests = new Map();
+
+async function loadHelperHtml(url, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) {
+        return false;
+    }
+    if (container.dataset.helperLoaded === 'true') {
+        return true;
+    }
+    if (!helperHtmlRequests.has(url)) {
+        helperHtmlRequests.set(url, fetch(url).then((response) => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.text();
+        }));
+    }
+    try {
+        container.innerHTML = await helperHtmlRequests.get(url);
+        container.dataset.helperLoaded = 'true';
+        return true;
+    } catch (error) {
+        helperHtmlRequests.delete(url);
+        console.error(`Error loading ${url}:`, error);
+        container.innerHTML = '<p class="weather-status">This page could not be loaded.</p>';
+        return false;
+    }
+}
+
+// LCARS colours for scripts. Canvas drawing and Leaflet styles need real colour
+// strings, not CSS var() names, so this resolves one of the stylesheet's custom
+// properties (the --tng-* palette and its aliases, for example '--tng-amber',
+// '--peach', '--space-white') to its colour, optionally darkened to a fraction
+// of its brightness (shade 0.2 = 20%). The palette lives only in classic.css;
+// scripts name colours from it and never hard-code hex values.
+const lcarsColourCache = new Map();
+
+function lcarsColour(name, shade = 1) {
+    const key = `${name}|${shade}`;
+    if (lcarsColourCache.has(key)) {
+        return lcarsColourCache.get(key);
+    }
+    let value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    if (value.startsWith('var(') && value.endsWith(')')) {
+        return lcarsColour(value.slice(4, -1).trim(), shade);   // an alias of another property
+    }
+    if (value.startsWith('#') && (value.length === 4 || value.length === 7)) {
+        const digits = value.length === 4 ? value.slice(1).split('').map((d) => d + d).join('') : value.slice(1);
+        const channels = [0, 2, 4].map((i) => parseInt(digits.slice(i, i + 2), 16));
+        value = shade === 1 ? `#${digits}` : `rgb(${channels.map((c) => Math.round(c * shade)).join(', ')})`;
+    }
+    if (!value) {
+        return '#888888';   // the stylesheet has no such property: visible, not silent
+    }
+    lcarsColourCache.set(key, value);
+    return value;
+}
+
 // Panels call this once, at load time, to declare their own control-area
 // buttons instead of updateControlArea() needing a hardcoded branch per
 // section (the pattern the old CONTROL_AREA_BUTTON_LABELS/
@@ -189,6 +258,10 @@ function showSection(sectionId, label) {
             btn.classList.toggle('is-hidden', !['infrastructure', 'grd-track', 'eo', 'gs-ops'].includes(sectionId));
         }
     });
+
+    // A spine click always lands at the top of the page, so the control panel is in view whatever
+    // scroll position the previous section left (bug 11).
+    topFunction();
 
     updateEoAckGap();
 }
@@ -390,6 +463,8 @@ async function openGrdTrackSection() {
 // (nationality, sector, inclination, altitude). Same load-before-show
 // reasoning as above -- the panel module registers its control area.
 async function openOnOrbitSection() {
+    // The chart code (assets/chartCore.js) first: the panel's functions use it.
+    await loadScriptOnce('assets/chartCore.js');
     await loadScriptOnce('assets/onOrbitPanel.js');
     // Always opens on the charts, even if the definitions were showing --
     // before showSection(), so the DEFINITIONS/CHARTS button is drawn with
@@ -405,7 +480,7 @@ async function openOnOrbitSection() {
 // ACKNOWLEDGMENTS section: four tabs in main (#ack-about, #ack-datasources,
 // #ack-acknowledgments, #ack-methodology), switched by the control area's
 // ABOUT / DATA SRCES / METHOD / CREDITS buttons. Opens on ABOUT from the left-menu button.
-const ACKNOWLEDGMENTS_TABS = ['about', 'datasources', 'acknowledgments', 'methodology'];
+const ACKNOWLEDGMENTS_TABS = ['about', 'datasources', 'acknowledgments', 'methodology', 'usage'];
 let acknowledgmentsTab = 'about';
 
 function applyAcknowledgmentsTab() {
@@ -425,10 +500,32 @@ function renderAcknowledgmentsAbout() {
     if (!wrapper) {
         return;
     }
+    // On the USAGE tab the control area shows the usage table and graph instead.
+    if (acknowledgmentsTab === 'usage' && typeof renderUsageControlArea === 'function') {
+        renderUsageControlArea();
+        return;
+    }
     wrapper.innerHTML = `<div class="control-area-about">
-        <p>FAS (For All Species) combines open space data never designed to work together: the NORAD satellite catalogue, CelesTrak, GCAT, SatNOGS, Launch Library 2 and news feeds. The whole is greater than the sum of its parts: together they show who owns what is in orbit, where the debris is and what it broke off, what a ground station can hear, and how it is all changing.</p>
+        <p>FAS (For All Species) combines open space data never designed to work together: the NORAD satellite catalogue, CelesTrak, GCAT, SatNOGS, Launch Library 2 and news feeds, and for space weather NOAA SWPC, NASA DONKI, GFZ Potsdam, CODE (Bern), the Oulu cosmic ray station and SILSO. The whole is greater than the sum of its parts: together they show who owns what is in orbit, where the debris is and what it broke off, what a ground station can hear, what the Sun is doing to all of it, and how it is all changing.</p>
         <p>A not-for-profit project, offered freely in the spirit of the World Wide Web and Linux, and intended to be useful in education.</p>
     </div>`;
+}
+
+// What a tab needs beyond showing its panel. USAGE is a map (assets/usagePanel.js,
+// loaded on first use, with mapCore.js) and fills the control area with its own
+// summary and shows the map zoom buttons; every other tab hides those buttons and
+// shows the About text in the control area.
+async function showAcknowledgmentsTabExtras() {
+    const zoomButtons = ['map-zoom-in-btn', 'map-zoom-out-btn'].map((id) => document.getElementById(id));
+    if (acknowledgmentsTab === 'usage') {
+        await loadScriptOnce('assets/mapCore.js');
+        await loadScriptOnce('assets/usagePanel.js');
+        zoomButtons.forEach((button) => button && button.classList.remove('is-hidden'));
+        await showUsage();
+    } else {
+        zoomButtons.forEach((button) => button && button.classList.add('is-hidden'));
+        renderAcknowledgmentsAbout();
+    }
 }
 
 function acknowledgmentsTabButton(tab, label, color) {
@@ -436,9 +533,10 @@ function acknowledgmentsTabButton(tab, label, color) {
         label,
         color,
         isSelected: () => acknowledgmentsTab === tab,
-        onClick: () => {
+        onClick: async () => {
             acknowledgmentsTab = tab;
             applyAcknowledgmentsTab();
+            await showAcknowledgmentsTabExtras();
         },
     };
 }
@@ -453,15 +551,18 @@ registerPanelControls('acknowledgments', {
         acknowledgmentsTabButton('datasources', 'DATA SRCES', 'var(--tng-sand)'),
         acknowledgmentsTabButton('methodology', 'METHOD', 'var(--tng-periwinkle)'),
         acknowledgmentsTabButton('acknowledgments', 'CREDITS', 'var(--tng-pink)'),
+        acknowledgmentsTabButton('usage', 'USAGE', 'var(--tng-lavender)'),
     ],
 });
 
 // tab: one of ACKNOWLEDGMENTS_TABS. Set before showSection() so the buttons
 // are drawn with the right one selected.
-function openAcknowledgmentsSection(tab) {
+async function openAcknowledgmentsSection(tab) {
     acknowledgmentsTab = tab;
+    // The four tabs live in assets/acknowledgments.html (a helper file).
+    await loadHelperHtml('assets/acknowledgments.html', 'acknowledgments-content');
     applyAcknowledgmentsTab();
-    showSection('acknowledgments', 'ACKNOWLEDGMENTS');
+    showSection('acknowledgments', 'ABOUT');
     topFunction();
 }
 
@@ -474,6 +575,8 @@ async function openBugReport() {
 
 // Wired to the LAUNCHES left-menu button: launch charts (assets/launchesPanel.js).
 async function openLaunchesSection() {
+    // The chart code (assets/chartCore.js) first: the panel's functions use it.
+    await loadScriptOnce('assets/chartCore.js');
     await loadScriptOnce('assets/launchesPanel.js');
     // Always opens on the charts -- before showSection(), so the
     // DEFINITIONS/CHARTS button is drawn with the right label.
@@ -497,9 +600,27 @@ async function openEoSection() {
         loadScriptOnce('assets/grdTrackPanel.js'),
         loadScriptOnce('assets/locationMapPanel.js'),
     ]);
+    await loadScriptOnce('assets/eoOptions.js');   // the selector lists eoPanel.js reads when it loads
     await loadScriptOnce('assets/eoPanel.js');
     showSection('eo', 'EO');
     initEoMap();
+}
+
+// Wired to the WEATHER left-menu button. Loads the shared location form
+// and store (grdTrackPanel.js) before weatherPanel.js, so the panel's
+// registerPanelControls() call has run before showSection() looks it up.
+async function openWeatherSection() {
+    await Promise.all([
+        loadScriptOnce('assets/mapCore.js'),
+        loadScriptOnce('assets/grdTrackPanel.js'),
+    ]);
+    await loadScriptOnce('assets/weatherPanel.js');
+    weatherView = 'sun';   // WEATHER always opens on SUN NOW (before the buttons are drawn)
+    showSection('sw-drivers', 'WEATHER');
+    renderWeatherView();
+    // Location from the saved one, else IP geolocation (as GRD VIEW does).
+    await ensureObserverLocation();
+    renderWeatherDefaultArea();
 }
 
 // Wired to the GRD VIEW left-menu button: what is in the sky from the
@@ -1216,3 +1337,18 @@ registerPanelControls('landing', {
 window.addEventListener('DOMContentLoaded', () => renderControlAreaButtons('landing'));
 
 window.addEventListener('DOMContentLoaded', fetchAndRenderStatusTable);
+
+// Tell the server once per browser session that the site was opened, so it can count visits
+// by city. It keeps no address (scripts/visitCounter.py); nothing is stored in the browser
+// beyond a flag that ends with the tab.
+window.addEventListener('DOMContentLoaded', () => {
+    try {
+        if (sessionStorage.getItem('fasVisitCounted')) {
+            return;
+        }
+        sessionStorage.setItem('fasVisitCounted', '1');
+        fetch('api/visit', { method: 'POST', keepalive: true });
+    } catch (error) {
+        // Storage blocked: this visit is not counted.
+    }
+});

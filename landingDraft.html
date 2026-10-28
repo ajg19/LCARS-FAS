@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<title>LCARS - FOR ALL SPECIES</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+	<!-- Fonts, colours, bar height, the wreath, the text ellipse and the sign-in boxes all
+	     come from the site's own stylesheet. The rules below only lay the page out. -->
+	<link rel="stylesheet" type="text/css" href="assets/classic.css">
+	<style>
+		/* The site's body is a two-column frame; here it is a column: top bar, centre, bottom bar.
+		   The edges keep the site's own 10px top and 5px left. */
+		body {
+			flex-direction: column;
+			padding: 10px 5px;
+		}
+
+		/* The pill bars are the theme's own .lcars-text-bar (classic.css): 4vh tall (16 to 41px),
+		   end caps as wide as the bar is tall, black slits, the label in 4.5vh type. Only the
+		   colours (set to the lilac bar and periwinkle caps of the reference), the margins
+		   (the bars hug the edges) and the room below the bottom label are changed here. */
+		body {
+			--lcars-bar-color: var(--lilac);
+			--lcars-bar-start-color: var(--bluey);
+			--lcars-bar-end-color: var(--bluey);
+			--lcars-bar-text-color: var(--banner-color);
+			padding-bottom: calc(10px + 1.5vh);   /* the label hangs 1.5vh below the bar */
+		}
+
+		.lcars-text-bar {
+			margin-block: 0;
+			flex: none;
+		}
+
+		/* Everything between the bars is centred both ways. margin:auto on the group
+		   keeps it centred, and lets the page grow instead of clipping on a short window. */
+		main#default-content {
+			flex: 1;
+			display: flex;
+			padding: 0;
+		}
+
+		/* The site's group size (the control buttons' size, or what fits the width), also
+		   capped to what fits the height: the group is about 33em tall. */
+		main#default-content > .landing-group {   /* beats the site's main > :first-child margin-top: 0 */
+			margin: auto;
+			padding-block: 0;
+			font-size: min(var(--status-font-size), 1.656cqi, calc((100vh - 14vh - 2rem) / 33));
+			font-size: min(var(--status-font-size), 1.656cqi, calc((100dvh - 14vh - 2rem) / 33));
+		}
+
+		@media (max-width: 780px) {
+			main#default-content > .landing-group {
+				font-size: var(--status-font-size);
+				padding-block: 1.5rem;
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<div class="lcars-text-bar the-end" aria-hidden="true"><span>LCARS-FAS</span></div>
+
+	<main id="default-content">
+		<div class="landing-group">
+			<div class="landing-wreath">
+				<img class="landing-half" src="assets/laurelHalfLeft.svg" alt="">
+				<div class="landing-ellipse">
+					<span class="ellipse-shape ellipse-shape-left"></span>
+					<span class="ellipse-shape ellipse-shape-right"></span>
+					<div class="about-text landing-ellipse-text">
+						<p>FAS joins sources never designed to work together (the NORAD catalogue, CelesTrak, GCAT, SatNOGS, Launch Library 2 and the space press) and reconciles them in one place.</p>
+						<p>Together they answer what none can alone. Who owns what on orbit? How are the launch and LEO markets trending? Where is everything? When can I see a given satellite?</p>
+						<p>Free and not-for-profit, in the spirit of Linux and the Web. For journalists, investors, students, educators and the industry.</p>
+						<p>Refreshed automatically. Designed for low bandwidth and high latency, from the ISS to Antarctica over Starlink.</p>
+					</div>
+				</div>
+				<img class="landing-half" src="assets/laurelHalfRight.svg" alt="">
+			</div>
+
+			<!-- Not connected to anything yet: no submit button, and onsubmit stops Enter
+			     from putting the password in the address. -->
+			<form class="landing-login" autocomplete="on" onsubmit="return false" aria-label="Sign in">
+				<label class="landing-login-row"><span class="landing-login-label">User ID</span><input type="text" name="username" autocomplete="username" spellcheck="false" autocapitalize="off"></label>
+				<label class="landing-login-row landing-login-password"><span class="landing-login-label">Password</span><input type="password" name="password" autocomplete="current-password"></label>
+			</form>
+
+			<p class="about-byline landing-byline">FAS was conceived and built by <a href="https://www.linkedin.com/in/alasdairgill/">Dr Al Gill</a>, financier, physicist and co-founder of the Iceland Space Park (Geimgar&eth;ur).</p>
+		</div>
+	</main>
+
+	<div class="lcars-text-bar" aria-hidden="true"><span>FOR ALL SPECIES</span></div>
+</body>
+
+</html>

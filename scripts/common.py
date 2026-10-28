@@ -2,10 +2,11 @@
 that always returns (status, body), and one Space-Track client.
 
 Replaces the copies each ingestion script used to carry
-(0_documentation/dbRefactorPlan.md, step 3). Standard library only,
+(0_documentation/plans/dbRefactorPlan.md, step 3). Standard library only,
 matching the rest of the Python side.
 """
 
+import gzip
 import os
 import urllib.error
 import urllib.parse
@@ -41,17 +42,31 @@ def loadProjectEnv():
     loadDotenv(os.path.join(ROOT, 'spacetrack.env'))
 
 
+def bodyText(raw, headers):
+    """The body as text, un-gzipped if the server compressed it (it only
+    does so when the caller sent Accept-Encoding: gzip)."""
+    if headers and headers.get('Content-Encoding') == 'gzip':
+        raw = gzip.decompress(raw)
+    try:
+        return raw.decode('utf-8')
+    except UnicodeDecodeError:
+        # Some feeds (SWPC's radio-flux quality text) send Windows-1252, not UTF-8: a lone 0x96 en dash would
+        # otherwise become U+FFFD. cp1252 leaves five bytes undefined; those are replaced.
+        return raw.decode('cp1252', errors='replace')
+
+
 def httpGet(url, headers=None, timeout=HTTP_TIMEOUT_SEC):
     """(status_code, body_text). urllib raises on 4xx/5xx; this returns
     those like any other response, so callers check the status (and can
     read an error body). Connection-level failures (refused, timed out,
-    DNS) still raise urllib.error.URLError / socket.timeout."""
+    DNS) still raise urllib.error.URLError / socket.timeout. Pass
+    {'Accept-Encoding': 'gzip'} to save the source's bandwidth."""
     request = urllib.request.Request(url, headers={'User-Agent': USER_AGENT, **(headers or {})})
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
-            return response.status, response.read().decode('utf-8', errors='replace')
+            return response.status, bodyText(response.read(), response.headers)
     except urllib.error.HTTPError as e:
-        return e.code, e.read().decode('utf-8', errors='replace')
+        return e.code, bodyText(e.read(), e.headers)
 
 
 SPACETRACK_BASE_URL = 'https://www.space-track.org'

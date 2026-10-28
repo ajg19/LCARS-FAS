@@ -1,6 +1,6 @@
 # Regression Report: Database and Source Refactor, 2026-10-22 11:30 UTC
 
-**Scope:** steps 1–12 of `0_documentation/dbRefactorPlan.md`, from the step 2 baseline to LIVE's first scheduled runs after migration.
+**Scope:** steps 1–12 of `0_documentation/plans/dbRefactorPlan.md`, from the step 2 baseline to LIVE's first scheduled runs after migration.
 **Result:** ✔ PASS. Every API endpoint still answers as before; every difference in content is intended and explained below.
 **Test suite:** `pytest 0_tests`: 352 passed, 1 skipped (fcntl locking, Linux-only), 0 failed.
 

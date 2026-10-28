@@ -479,7 +479,7 @@ function drawGrdViewSatellites() {
             ctx.arc(p[0], p[1], Math.max(1.5, radiusForMagnitude(magnitude)), 0, 2 * Math.PI);
             ctx.fill();
             if (magnitude <= 3 || row[0] === 25544 || row[0] === 48274) {
-                ctx.fillStyle = '#ffcc99';   // LCARS peach
+                ctx.fillStyle = lcarsColour('--peach');   // LCARS peach
                 ctx.fillText(`${grdViewSatName(row[0])} ${magnitude.toFixed(1)}`, p[0] + 6, p[1] - 6);
             }
         } else {
@@ -488,7 +488,7 @@ function drawGrdViewSatellites() {
             ctx.fill();
         }
     });
-    ctx.fillStyle = '#ffcc99';
+    ctx.fillStyle = lcarsColour('--peach');
     ctx.fillText(`SATELLITES: ${visible} VISIBLE \u00b7 ${aboveHorizon} ABOVE HORIZON`, 12, 22);
 
     ctx.restore();
@@ -513,14 +513,14 @@ let grdViewRefreshTimer = null;
 // The Sun, Moon and naked-eye planets (Uranus is at the limit, about
 // magnitude 5.7). Disc colours are display choices.
 const GRD_VIEW_BODIES = [
-    { body: 'Sun', label: 'SUN', color: '#ffd75e' },
-    { body: 'Moon', label: 'MOON', color: '#e8e8e8' },
-    { body: 'Mercury', label: 'MERCURY', color: '#c8bfb3' },
-    { body: 'Venus', label: 'VENUS', color: '#fff2c4' },
-    { body: 'Mars', label: 'MARS', color: '#ff8f5a' },
-    { body: 'Jupiter', label: 'JUPITER', color: '#f0d9b0' },
-    { body: 'Saturn', label: 'SATURN', color: '#ead28a' },
-    { body: 'Uranus', label: 'URANUS', color: '#a8e4ef' },
+    { body: 'Sun', label: 'SUN', color: lcarsColour('--tng-sand') },
+    { body: 'Moon', label: 'MOON', color: lcarsColour('--space-white') },
+    { body: 'Mercury', label: 'MERCURY', color: lcarsColour('--tng-ice') },
+    { body: 'Venus', label: 'VENUS', color: lcarsColour('--tng-lavender') },
+    { body: 'Mars', label: 'MARS', color: lcarsColour('--tng-salmon') },
+    { body: 'Jupiter', label: 'JUPITER', color: lcarsColour('--tng-tan') },
+    { body: 'Saturn', label: 'SATURN', color: lcarsColour('--tng-amber') },
+    { body: 'Uranus', label: 'URANUS', color: lcarsColour('--tng-periwinkle') },
 ];
 
 // J2000 unit vector for a right ascension and declination in degrees.
@@ -656,11 +656,11 @@ function computeGrdViewBodies(time, observer) {
 // Sky colour and star visibility follow the Sun: black at night, deepening
 // blues through twilight, blue by day, when stars are faint ghosts.
 function skyStateForSun(sunAltitude) {
-    if (sunAltitude > 0) return { sky: '#14365c', starAlpha: 0.15 };
-    if (sunAltitude > -6) return { sky: '#0c2440', starAlpha: 0.4 };    // civil twilight
-    if (sunAltitude > -12) return { sky: '#071628', starAlpha: 0.75 };  // nautical
-    if (sunAltitude > -18) return { sky: '#030b14', starAlpha: 0.95 };  // astronomical
-    return { sky: '#000000', starAlpha: 1 };
+    if (sunAltitude > 0) return { sky: lcarsColour('--tng-periwinkle', 0.35), starAlpha: 0.15 };
+    if (sunAltitude > -6) return { sky: lcarsColour('--tng-periwinkle', 0.22), starAlpha: 0.4 };    // civil twilight
+    if (sunAltitude > -12) return { sky: lcarsColour('--tng-periwinkle', 0.1), starAlpha: 0.75 };  // nautical
+    if (sunAltitude > -18) return { sky: lcarsColour('--tng-periwinkle', 0.04), starAlpha: 0.95 };  // astronomical
+    return { sky: 'black', starAlpha: 1 };
 }
 
 // Draws a polyline of horizontal-frame vectors, lifting the pen where a
@@ -684,7 +684,7 @@ function strokeProjectedPath(ctx, project, vectors) {
 // and right whatever the view direction -- then the horizon line.
 function drawGrdViewGround(ctx, camera, project, width, height) {
     const step = 6;
-    ctx.fillStyle = '#050505';
+    ctx.fillStyle = 'black';
     for (let y = 0; y < height; y += step) {
         for (let x = 0; x < width; x += step) {
             if (grdViewBelowHorizon(camera, x + step / 2, y + step / 2, width, height)) {
@@ -912,7 +912,7 @@ function drawGrdViewMoon(ctx, project, p, radius, moon, sun) {
     ctx.save();
     ctx.translate(p[0], p[1]);
     ctx.rotate(angle);   // the Sun now lies along +x
-    ctx.fillStyle = '#2a2a2a';   // the unlit Moon, just visible
+    ctx.fillStyle = lcarsColour('--tng-plum', 0.5);   // the unlit Moon, just visible
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, 2 * Math.PI);
     ctx.fill();
@@ -1019,7 +1019,7 @@ function drawGrdViewSky() {
 
     // Ground over everything below the horizon, then compass points.
     drawGrdViewGround(ctx, camera, project, width, height);
-    ctx.fillStyle = '#ea9e41';
+    ctx.fillStyle = lcarsColour('--tng-amber');
     ctx.font = '14px Antonio, sans-serif';
     ctx.textAlign = 'center';
     ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'].forEach((name, i) => {
@@ -1046,7 +1046,7 @@ function drawGrdViewSky() {
             ctx.arc(p[0], p[1], radius, 0, 2 * Math.PI);
             ctx.fill();
         }
-        ctx.fillStyle = '#ffcc99';   // LCARS peach
+        ctx.fillStyle = lcarsColour('--peach');   // LCARS peach
         ctx.fillText(b.label, p[0] + radius + 4, p[1] + 4);
     });
 

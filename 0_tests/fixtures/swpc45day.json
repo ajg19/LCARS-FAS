@@ -1,0 +1,53 @@
+{
+ "type": "SWPC-Forecast",
+ "issued": "2026-10-24T00:00:00Z",
+ "product": "45 Day Forecast",
+ "source": "DOC NOAA NWS NCEP Space Weather Prediction Center",
+ "version": 1.0,
+ "contact": "swpc.customersupport@noaa.gov",
+ "issuance": "regular",
+ "metadata": {
+  "description": "45-day forecast of daily geomagnetic Ap index and solar radio flux F10.7.",
+  "fields": {
+   "time": "The date of the forecast",
+   "ap": "Forecasted geomagnetic Ap index.",
+   "f107": "Forecasted solar radio flux F10.7."
+  }
+ },
+ "units": {
+  "ap": "nT",
+  "f107": "sfu"
+ },
+ "data": [
+  {
+   "time": "2026-10-24T00:00:00Z",
+   "metric": "ap",
+   "value": 9
+  },
+  {
+   "time": "2026-10-24T00:00:00Z",
+   "metric": "f107",
+   "value": 100
+  },
+  {
+   "time": "2026-10-25T00:00:00Z",
+   "metric": "ap",
+   "value": 18
+  },
+  {
+   "time": "2026-10-25T00:00:00Z",
+   "metric": "f107",
+   "value": 95
+  },
+  {
+   "time": "2026-10-26T00:00:00Z",
+   "metric": "ap",
+   "value": 8
+  },
+  {
+   "time": "2026-10-26T00:00:00Z",
+   "metric": "f107",
+   "value": 95
+  }
+ ]
+}

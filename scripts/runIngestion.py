@@ -1,13 +1,13 @@
 """Runs one source's ingestion, then publishes the site files built from
 that source if the run changed anything. What cron calls (setupCron.sh).
 
-Step 11 of 0_documentation/dbRefactorPlan.md, decision C:
+Step 11 of 0_documentation/plans/dbRefactorPlan.md, decision C:
   C1  each ingestion that changed something publishes the site files
       that depend on it -- and only then;
   C2  a failed or skipped run publishes nothing, so the site keeps the
       last good data; a stale source shows in the freshness table.
 
-    python scripts/runIngestion.py spaceTrack|satnogs|celesTrak|gcat|news
+    python scripts/runIngestion.py spaceTrack|satnogs|celesTrak|gcat|news|swpcFast|swpcSlow|swpcMaps|swpcPrune|gfz|donki|gcr|gcrMonthly|silso|tecCode|tecGlotec
 
 ONE RUN:
   1. Take the shared lock (LOCK_NAME in the database folder), waiting up
@@ -29,7 +29,8 @@ import sys
 import time
 from datetime import datetime, timezone
 
-from dbPaths import CELESTRAK_DB, DB_DIR, GCAT_DB, NEWS_DB, SATNOGS_DB, SPACETRACK_DB, dbPath
+from dbPaths import (CELESTRAK_DB, DB_DIR, DONKI_DB, GCAT_DB, GCR_DB, GFZ_DB, NEWS_DB, SATNOGS_DB, SILSO_DB,
+                     SPACETRACK_DB, SWPC_DB, TEC_DB, dbPath)
 
 SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
 LOCK_NAME = '.writers.lock'
@@ -42,6 +43,30 @@ SOURCES = {
     'celesTrak':  ('ingestionCelesTrak.py', CELESTRAK_DB, ('celesTrakGroups',), ('orbital',)),
     'gcat':       ('ingestGcat.py', GCAT_DB, ('gcat',), ('orbital',)),
     'news':       ('readNews.py', NEWS_DB, ('news',), ('news',)),
+    # Space weather: every changing run republishes siteWeather.db. swpcPrune
+    # only deletes old rows from the ingestion database, so it publishes nothing.
+    'swpcFast':   ('ingestionSWPC.py', SWPC_DB, ('swpcFast',), ('weather',)),
+    'swpcSlow':   ('ingestionSWPC.py', SWPC_DB, ('swpcSlow',), ('weather',)),
+    'swpcMaps':   ('ingestionSWPC.py', SWPC_DB, ('swpcMaps',), ('weather',)),
+    'swpcPrune':  ('ingestionSWPC.py', SWPC_DB, ('swpcPrune',), ()),   # daily: deletes 1-minute rows past 90 days
+    'gfz':        ('ingestionGFZ.py', GFZ_DB, ('gfz',), ('weather',)),
+    'donki':      ('ingestionDONKI.py', DONKI_DB, ('donki',), ('weather',)),
+    'gcr':        ('ingestionGCR.py', GCR_DB, ('gcr',), ('weather',)),
+    'gcrMonthly': ('ingestionGCR.py', GCR_DB, ('gcrMonthly',), ('weather',)),
+    'silso':      ('ingestionSILSO.py', SILSO_DB, ('silso',), ('weather',)),
+    'tecCode':    ('ingestionTEC.py', TEC_DB, ('tecCode',), ('weather',)),     # daily: CODE (Bern) observed and predicted TEC maps
+    'tecGlotec':  ('ingestionTEC.py', TEC_DB, ('tecGlotec',), ('weather',)),   # 3-hourly: NOAA GloTEC, newest map
+}
+
+# Sources whose script takes arguments (one script, several jobs).
+SCRIPT_ARGS = {
+    'swpcFast': ('--job', 'swpcFast'),
+    'swpcSlow': ('--job', 'swpcSlow'),
+    'swpcMaps': ('--job', 'swpcMaps'),
+    'swpcPrune': ('--job', 'swpcPrune'),
+    'gcrMonthly': ('--monthly',),
+    'tecCode': ('--job', 'tecCode'),
+    'tecGlotec': ('--job', 'tecGlotec'),
 }
 
 
@@ -102,7 +127,7 @@ def runSource(source, run=subprocess.call, publish=None):
     script, dbFile, jobs, kinds = SOURCES[source]
     started = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
     print(f'\n##### [{time.strftime("%Y-%m-%d %H:%M:%S")}] {source}: {script}', flush=True)
-    code = run([sys.executable, os.path.join(SCRIPTS_DIR, script)])
+    code = run([sys.executable, os.path.join(SCRIPTS_DIR, script), *SCRIPT_ARGS.get(source, ())])
     recorded = recordedRun(dbFile, jobs, started)
     if recorded is None:
         print(f'  {source}: no run recorded -- nothing to publish')

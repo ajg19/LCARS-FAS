@@ -2,7 +2,7 @@
 
 Calls server.py's WSGI application in-process (no running server
 needed), against whatever databases the working copy has. Written for
-the database refactor (0_documentation/dbRefactorPlan.md): step 2 takes
+the database refactor (0_documentation/plans/dbRefactorPlan.md): step 2 takes
 the baseline, step 13 compares the refactored site against it.
 
     python 0_tools/apiSnapshot.py take LABEL      -> 0_testReports/apiSnapshots/LABEL/

@@ -1,9 +1,9 @@
 """Publish step: builds the databases the website reads (site<Type>.db)
 from the ingestion databases, and swaps each one into place whole.
 
-Step 9 of 0_documentation/dbRefactorPlan.md.
+Step 9 of 0_documentation/plans/dbRefactorPlan.md.
 
-    python scripts/publishSite.py orbital|news|sky|groundSegment|all
+    python scripts/publishSite.py orbital|news|sky|groundSegment|weather|all
         [--no-celestrak]  build groups as if CelesTrak were unavailable
                           (our own rules only -- what the live server
                           gets while CelesTrak blocks it)
@@ -49,6 +49,26 @@ own; its tables are then copied into the site file.
 
 NEWS, SKY, GROUND SEGMENT: copies of the tables the website reads.
 
+WEATHER (siteWeather.db; plan: 0_documentation/plans/spaceWeatherIngestionPlan.md,
+section 6), from ingestionSWPC.db (required) and ingestionGFZ.db,
+ingestionDONKI.db, ingestionGCR.db, ingestionSILSO.db and ingestionTEC.db (used if present):
+  - samples: every series in full, except the high-rate ones (L1, GOES
+    X-ray, GOES protons, 1-minute Kp), which keep only the last
+    WEATHER_NATIVE_DAYS days at native resolution;
+  - samplesHourly: hourly means of the high-rate series for the last
+    WEATHER_HOURLY_DAYS days (they are 90 days in the ingestion database
+    anyway);
+  - events: DONKI and SWPC events; latestMaps: the newest map of each kind;
+  - derived series in samples: derivedF107A81 (trailing 81-day mean of
+    GFZ's adjusted F10.7) and derivedStormG (G-scale of each day's highest
+    GFZ Kp);
+  - ingestionRuns of the sources, for the freshness table.
+  The neutron-monitor (gcr) and SILSO (silso) series are copied whole: hourly
+  cosmic-ray data are small, the monthly records are kept for good.
+  - tecMaps (ingestionTEC.db): every held CODE and GloTEC total-electron-content map
+    (7 days; each a gzipped compact JSON map the server hands out as it is); the TEC
+    summary series come across with the other samples.
+
 EST. SIZE (rcsSize) is CelesTrak's radar cross-section in m^2, kept for
 good once known (ingestionCelesTrak.db satcatRcs; decided 2026-10-21:
 satellites don't change size). Space-Track's SMALL / MEDIUM / LARGE is
@@ -56,7 +76,9 @@ published alongside as rcsCategory.
 """
 
 import argparse
+import json
 import os
+import re
 import shutil
 import sqlite3
 import sys
@@ -68,8 +90,10 @@ import enrichEirp
 import estimateBrightness
 import groupRules
 import orbitStats
+import weatherDerived
 from dbPaths import (CELESTRAK_DB, GCAT_DB, GROUND_SEGMENT_DB, NEWS_DB, SATNOGS_DB, SITE_GROUND_SEGMENT_DB,
-                     SITE_NEWS_DB, SITE_ORBITAL_DB, SITE_SKY_DB, SKY_DB, SPACETRACK_DB, dbPath)
+                     SITE_NEWS_DB, SITE_ORBITAL_DB, SITE_SKY_DB, SITE_WEATHER_DB, SKY_DB, SPACETRACK_DB, SWPC_DB, GFZ_DB,
+                     DONKI_DB, GCR_DB, SILSO_DB, TEC_DB, dbPath)
 from rfSelection import choose_rf
 
 MAX_ELEMENT_AGE_DAYS = 30
@@ -107,7 +131,13 @@ SANITY_TABLES = {
     'news': ('articles',),
     'sky': ('skyStars',),
     'groundSegment': ('ground_segment_assets',),
+    'weather': ('samples',),
 }
+
+WEATHER_NATIVE_DAYS = 3
+WEATHER_HOURLY_DAYS = 90
+HIGH_RATE_PREFIXES = ('l1', 'goesXray', 'goesProton')   # series sampled every 1 to 5 minutes
+HOURLY_MIN_READINGS = (('goesProton', 6), ('', 30))     # an hourly mean needs half an hour of data (6 of 12 5-minute readings)
 
 
 class PublishRefused(Exception):
@@ -372,6 +402,167 @@ def publishOrbital(tmpPath, now, useCelestrak=True):
         freshFile(stagePath)
 
 
+# --- Weather ------------------------------------------------------------------------
+
+def stormScale(kpMax):
+    """NOAA G level (0 to 5) of a Kp value, thirds included (weatherDerived.gLevel): G1 is 4.67 to 5.33, G5 is 9."""
+    return weatherDerived.gLevel(kpMax)
+
+
+def addDerivedWeather(db):
+    """derivedF107ObsClean, derivedF107A81 and derivedStormG, from series already in samples."""
+    wd = weatherDerived
+    obs = {r[0]: r[1] for r in db.execute("SELECT substr(tsUtc, 1, 10), value FROM samples WHERE series = 'gfzF107Obs'")}
+    trios = {}
+    for day, quality, value in db.execute(
+            "SELECT substr(tsUtc, 1, 10), quality, value FROM swpc.samples WHERE series = 'swpcF107'"):
+        trios.setdefault(day, {})[(quality or '').split(' ')[0]] = value
+    readings = {day: (t.get('Morning'), t.get('Noon'), t.get('Afternoon')) for day, t in trios.items() if len(t) == 3}
+    flagged = wd.f107Bursts(obs, readings)
+    for day in flagged:       # the daily value, observed and adjusted, keeps its value and says 'burst?' in the quality column
+        db.execute("UPDATE samples SET quality = 'burst?' WHERE series IN ('gfzF107Obs', 'gfzF107Adj') AND tsUtc = ?",
+                   (day + 'T00:00:00Z',))
+    clean = wd.f107Clean(obs, flagged, readings)
+    out = [('derivedF107ObsClean', day + 'T00:00:00Z', value, 'sfu', how) for day, (value, how) in sorted(clean.items())]
+    forecast = {r[0]: r[1] for r in db.execute("SELECT substr(tsUtc, 1, 10), value FROM samples WHERE series = 'swpcForecastF107'")}
+    for day, (mean, kind) in sorted(wd.f107Centred({d: v for d, (v, _) in clean.items()}, forecast).items()):
+        out.append(('derivedF107A81', day + 'T00:00:00Z', mean, 'sfu',
+                    'centred 81-day mean of the cleaned observed flux' if kind == 'observed' else
+                    'centred 81-day mean, includes the SWPC 45-day forecast'))
+    kpTop = db.execute("SELECT substr(tsUtc, 1, 10), MAX(value) FROM samples WHERE series = 'gfzKp' "
+                       "AND value IS NOT NULL GROUP BY 1").fetchall()
+    out += [('derivedStormG', day + 'T00:00:00Z', float(stormScale(top)), 'G', 'from gfzKp') for day, top in kpTop]
+    db.executemany('INSERT OR REPLACE INTO samples VALUES (?, ?, ?, ?, ?)', out)
+
+
+def addScienceDerived(db, nativeCut, hourlyCut):
+    """The derived series and events of scripts/weatherDerived.py, from the attached ingestion databases (the
+    `swpc` schema) and the tables already copied into the site file."""
+    wd = weatherDerived
+    # item 3: the Newell function, per minute for the native window, hourly (>= 30 minutes) for the long one
+    rows = db.execute("""SELECT v.tsUtc, v.value, y.value, z.value FROM swpc.samples v
+        JOIN swpc.samples y ON y.series = 'l1MagByGSM' AND y.tsUtc = v.tsUtc
+        JOIN swpc.samples z ON z.series = 'l1MagBzGSM' AND z.tsUtc = v.tsUtc
+        WHERE v.series = 'l1WindSpeed' AND v.tsUtc >= ? ORDER BY v.tsUtc""", (hourlyCut,)).fetchall()
+    minutes, hourly = wd.newellSeries(rows)
+    db.executemany('INSERT OR REPLACE INTO samples VALUES (?, ?, ?, ?, ?)',
+                   [('derivedNewell', ts, rate, wd.NEWELL_UNIT, 'L1 minute') for ts, rate in minutes if ts >= nativeCut])
+    db.executemany('INSERT OR REPLACE INTO samplesHourly VALUES (?, ?, ?, ?, ?)',
+                   [('derivedNewell', hour, mean, wd.NEWELL_UNIT, n) for hour, mean, n in hourly])
+    events = []
+    # item 11: the storm list from GFZ Kp, with DONKI's causal links
+    kp = db.execute("SELECT tsUtc, value, quality FROM samples WHERE series = 'gfzKp' ORDER BY tsUtc").fetchall()
+    gst = [json.loads(r[0]) for r in db.execute("SELECT json FROM events WHERE eventType = 'GST'")]
+    for storm in wd.stormRuns(kp, gst):
+        events.append(('storm', storm['startUtc'], storm['startUtc'], storm))
+    # item 10: our own S-events from the >10 MeV protons; DONKI's SEP records, one marker per event
+    protons = db.execute("SELECT tsUtc, value FROM swpc.samples WHERE series = 'goesProtonGE10MeV' ORDER BY tsUtc").fetchall()
+    for event in wd.sEvents(protons):
+        events.append(('sEvent', event['startUtc'], event['startUtc'], event))
+    sep = [json.loads(r[0]) for r in db.execute("SELECT json FROM events WHERE eventType = 'SEP'")]
+    for group in wd.sepGroups(sep):
+        events.append(('sepGroup', group['startUtc'], group['key'], group))
+    # item 12: the CMEs worth showing (one summary each, from the leading-edge analysis), and a daily count of the rest
+    cme = [json.loads(r[0]) for r in db.execute("SELECT json FROM events WHERE eventType = 'CME'")]
+    others = {}
+    for record in cme:
+        if not record.get('activityID') or not record.get('startTime'):
+            continue
+        if wd.cmeShown(record):
+            summary = wd.cmeSummary(record)
+            events.append(('cmeShown', record['startTime'][:16] + ':00Z', record['activityID'], summary))
+        else:
+            others[record['startTime'][:10]] = others.get(record['startTime'][:10], 0) + 1
+    days = sorted(r['startTime'][:10] for r in cme if r.get('startTime') and r.get('activityID'))
+    if days:
+        day = datetime.strptime(days[0], '%Y-%m-%d')
+        while day <= datetime.strptime(days[-1], '%Y-%m-%d'):
+            key = day.strftime('%Y-%m-%d')
+            db.execute('INSERT OR REPLACE INTO samples VALUES (?, ?, ?, ?, ?)',
+                       ('derivedCmeOtherPerDay', key + 'T00:00:00Z', float(others.get(key, 0)), 'count', 'CMEs not shown'))
+            day += timedelta(days=1)
+    # item 13: streams seen at L1, shocks at Earth, and the STEREO-A recurrence hints
+    hss = [json.loads(r[0]) for r in db.execute("SELECT json FROM events WHERE eventType = 'HSS'")]
+    ips = [json.loads(r[0]) for r in db.execute("SELECT json FROM events WHERE eventType = 'IPS'")]
+    streams, shocks, recurrence = wd.earthStreams(hss, ips)
+    events += [('hssL1', r['eventTime'][:16] + ':00Z', r['hssID'], r) for r in streams if r.get('eventTime') and r.get('hssID')]
+    events += [('ipsEarth', r['eventTime'][:16] + ':00Z', r['activityID'], r) for r in shocks
+               if r.get('eventTime') and r.get('activityID')]
+    events += [('hssRecurrence', r['seenUtc'], r['hssID'], r) for r in recurrence]
+    # item 9: the largest flare of each UT day, from the primary GOES satellite only
+    primary = db.execute("SELECT quality FROM swpc.samples WHERE series = 'goesXrayLong' ORDER BY tsUtc DESC LIMIT 1").fetchone()
+    number = re.search(r'GOES-(\d+)', primary[0] or '') if primary else None
+    if number:
+        xra = [json.loads(r[0]) for r in db.execute("SELECT json FROM events WHERE eventType = 'XRA'")]
+        for day, (flux, cls, peak) in sorted(wd.dailyFlareMax(xra, 'G' + number.group(1)).items()):
+            db.execute('INSERT OR REPLACE INTO samples VALUES (?, ?, ?, ?, ?)',
+                       ('derivedFlareMaxDay', day + 'T00:00:00Z', flux, 'W/m2', f'{cls} peak {peak} GOES-{number.group(1)}'))
+    db.executemany('INSERT OR REPLACE INTO events VALUES (?, ?, ?, ?)',
+                   [(kind, start, eid, json.dumps(rec, sort_keys=True, ensure_ascii=False)) for kind, start, eid, rec in events])
+
+
+def publishWeather(tmpPath, now):
+    opened = []
+    try:
+        _buildWeather(tmpPath, now, opened)
+    finally:
+        for db in opened:      # a failed build must not leave the temporary file locked (Windows)
+            try:
+                db.close()
+            except sqlite3.Error:
+                pass
+
+
+def _buildWeather(tmpPath, now, opened):
+    swpcPath = dbPath(SWPC_DB)
+    if not os.path.exists(swpcPath):
+        raise PublishRefused(f'{SWPC_DB} not found')
+    sources = [('swpc', SWPC_DB, 'ingestionSWPC')] + [(s, f, n) for s, f, n in (
+        ('gfz', GFZ_DB, 'ingestionGFZ'), ('donki', DONKI_DB, 'ingestionDONKI'), ('gcr', GCR_DB, 'ingestionGCR'),
+        ('silso', SILSO_DB, 'ingestionSILSO'), ('tec', TEC_DB, 'ingestionTEC')) if os.path.exists(dbPath(f))]
+    nativeCut = (now - timedelta(days=WEATHER_NATIVE_DAYS)).strftime('%Y-%m-%dT%H:%M:%SZ')
+    hourlyCut = (now - timedelta(days=WEATHER_HOURLY_DAYS)).strftime('%Y-%m-%dT%H:00:00Z')
+    fast = ' OR '.join(f"series LIKE '{p}%'" for p in HIGH_RATE_PREFIXES)
+    db = connectUri(tmpPath)
+    opened.append(db)
+    with db:
+        db.executescript('''
+            CREATE TABLE samples (series TEXT NOT NULL, tsUtc TEXT NOT NULL, value REAL, unit TEXT, quality TEXT,
+                                  PRIMARY KEY (series, tsUtc)) WITHOUT ROWID;
+            CREATE TABLE samplesHourly (series TEXT NOT NULL, tsUtc TEXT NOT NULL, value REAL, unit TEXT,
+                                        readings INTEGER, PRIMARY KEY (series, tsUtc)) WITHOUT ROWID;
+            CREATE TABLE events (eventType TEXT NOT NULL, startUtc TEXT, eventID TEXT NOT NULL, json TEXT NOT NULL,
+                                 PRIMARY KEY (eventType, eventID)) WITHOUT ROWID;
+            CREATE INDEX eventsByStart ON events (eventType, startUtc);
+            CREATE TABLE latestMaps (name TEXT PRIMARY KEY, tsUtc TEXT NOT NULL, json TEXT NOT NULL) WITHOUT ROWID;
+            CREATE TABLE tecMaps (source TEXT NOT NULL, product TEXT NOT NULL, issuedUtc TEXT NOT NULL, validUtc TEXT NOT NULL,
+                                  kind TEXT NOT NULL, gz BLOB NOT NULL, PRIMARY KEY (source, product, issuedUtc, validUtc)) WITHOUT ROWID;
+            CREATE INDEX tecMapsByValid ON tecMaps (source, validUtc);
+        ''')
+    for schema, file, _ in sources:
+        attach(db, dbPath(file), schema)
+    with db:
+        for schema, _, _ in sources:
+            # swpcKp1m is a sawtooth that restarts every 3-hour block: only its latest value is published
+            db.execute(f"INSERT OR REPLACE INTO samples SELECT series, tsUtc, value, unit, quality FROM {schema}.samples "
+                       f"WHERE series != 'swpcKp1m' AND (NOT ({fast}) OR tsUtc >= ?)", (nativeCut,))
+            db.execute(f"INSERT OR REPLACE INTO samples SELECT series, tsUtc, value, unit, quality FROM {schema}.samples "
+                       f"WHERE series = 'swpcKp1m' AND tsUtc = (SELECT MAX(tsUtc) FROM {schema}.samples WHERE series = 'swpcKp1m')")
+            minimum = ' '.join(f"WHEN series LIKE '{p}%' THEN {n}" for p, n in HOURLY_MIN_READINGS if p) + f' ELSE {HOURLY_MIN_READINGS[-1][1]}'
+            db.execute(f"INSERT OR REPLACE INTO samplesHourly SELECT series, substr(tsUtc, 1, 13) || ':00:00Z', "
+                       f'AVG(value), MIN(unit), COUNT(value) FROM {schema}.samples WHERE ({fast}) AND tsUtc >= ? '
+                       f'GROUP BY series, substr(tsUtc, 1, 13) HAVING COUNT(value) >= CASE {minimum} END', (hourlyCut,))
+            db.execute(f'INSERT OR IGNORE INTO events SELECT eventType, startUtc, eventID, json FROM {schema}.events')
+            if db.execute(f"SELECT 1 FROM {schema}.sqlite_master WHERE name = 'latestMaps'").fetchone():
+                db.execute(f'INSERT OR REPLACE INTO latestMaps SELECT name, tsUtc, json FROM {schema}.latestMaps')
+            if db.execute(f"SELECT 1 FROM {schema}.sqlite_master WHERE name = 'tecMaps'").fetchone():
+                db.execute(f'INSERT OR REPLACE INTO tecMaps SELECT source, product, issuedUtc, validUtc, kind, gz FROM {schema}.tecMaps')
+        addDerivedWeather(db)
+        addScienceDerived(db, nativeCut, hourlyCut)
+        copyRuns(db, [(schema, name) for schema, _, name in sources])
+    db.close()
+
+
 # --- Other types ----------------------------------------------------------------------
 
 def publishCopy(tmpPath, sourceDb, tables, runsName=None):
@@ -390,6 +581,7 @@ TYPES = {
     'news': SITE_NEWS_DB,
     'sky': SITE_SKY_DB,
     'groundSegment': SITE_GROUND_SEGMENT_DB,
+    'weather': SITE_WEATHER_DB,
 }
 
 
@@ -406,6 +598,8 @@ def build(kind, tmpPath, now, useCelestrak):
         publishCopy(tmpPath, SKY_DB, tables)
     elif kind == 'groundSegment':
         publishCopy(tmpPath, GROUND_SEGMENT_DB, ('ground_segment_assets',))
+    elif kind == 'weather':
+        publishWeather(tmpPath, now)
 
 
 def check(kind, tmpPath, livePath, force):

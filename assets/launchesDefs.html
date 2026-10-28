@@ -1,0 +1,51 @@
+<!-- LAUNCHES definitions page: the contents of #launches-definitions, fetched on first use by
+     applyLaunchesMainView() (assets/launchesPanel.js) through loadHelperHtml() (assets/lcars.js).
+     Keep in step with scripts/orbitStats.py and server.py. -->
+<section class="orbit-chart">
+	<header class="orbit-chart-header"><span>Definitions</span></header>
+	<div class="orbit-defs">
+	<div class="orbit-defs-term">Launch attempt</div>
+	<div class="orbit-defs-text">One rocket launch intended to reach orbit or beyond, counted once however many payloads it carried, whether it succeeded or failed.</div>
+	<div class="orbit-defs-term">Orbital / deep-space</div>
+	<div class="orbit-defs-text">GCAT's launch codes O (to Earth orbit) and D (beyond: the Moon, planets, the Sun's orbit). Suborbital tests (codes N and X) are not counted.</div>
+	<div class="orbit-defs-term">Failed launch</div>
+	<div class="orbit-defs-text">A launch GCAT records as a failure (second letter of its code F): the vehicle did not deliver its payloads to the intended orbit.</div>
+	<div class="orbit-defs-term">Payload</div>
+	<div class="orbit-defs-text">A catalogued object launched to do a job: a satellite, probe, crewed vehicle or station module. Not the rocket stages or debris a launch also leaves behind.</div>
+	<div class="orbit-defs-term">Payload launched</div>
+	<div class="orbit-defs-text">A payload that reached orbit (or beyond), counted in the year it was launched. Payloads lost in a launch failure (GCAT status N, never reached orbit) are not counted.</div>
+	<div class="orbit-defs-term">Sector</div>
+	<div class="orbit-defs-text">GCAT's class for each payload, in the same colours across the site: A academic, amateur or non-profit (blue); B commercial (earth); C civil government (amber); D defence, military or intelligence (red). A payload with no class of its own takes its owner organisation's.</div>
+	<div class="orbit-defs-term">Re-entry</div>
+	<div class="orbit-defs-text">A catalogued object coming back down: re-entering the atmosphere (GCAT status R), deliberately de-orbited (D) or landed (L: crew capsules, returned vehicles), counted in the year it came down.</div>
+	<div class="orbit-defs-term">Rocket body / debris / other</div>
+	<div class="orbit-defs-text">Rocket bodies are spent stages; debris is fragments from break-ups, collisions and launches; other is components such as fairings and adapters that were catalogued.</div>
+	<div class="orbit-defs-term">EX SPACEX</div>
+	<div class="orbit-defs-text">For launch attempts: launches carried out by SpaceX (Falcon 1, Falcon 9, Falcon Heavy, Starship) are left out. For payloads and re-entries: objects SpaceX owns are left out -- almost all Starlink satellites and Falcon upper stages.</div>
+	<div class="orbit-defs-term">Successful launches</div>
+	<div class="orbit-defs-text">The LCH-OK setting (LCH-ALL: every attempt) counts only launches GCAT records as successful (second letter of the launch code S). It applies to the launch-attempts, launches-and-payloads and by-country charts; the payloads-launched chart already counts only payloads that reached orbit, and re-entries are not launches.</div>
+	<div class="orbit-defs-term">Start and end year</div>
+	<div class="orbit-defs-text">The years shown on every chart, typed into the control panel; they default to the full range, from 1957 to this year. A new value is used when you press Enter or leave the field, if it is a year in that range and the start is no later than the end; otherwise the previous value is put back. Totals in the title bars cover the years shown.</div>
+	<div class="orbit-defs-term">Year to date</div>
+	<div class="orbit-defs-text">The current year is still running, so its figures are counts so far. In the launch-attempts chart its point is shown on its own, not joined to the line.</div>
+	</div>
+</section>
+<section class="orbit-chart">
+	<header class="orbit-chart-header"><span>How the charts are built</span></header>
+	<div class="orbit-defs">
+	<div class="orbit-defs-term">Data source</div>
+	<div class="orbit-defs-text"><p>GCAT, the General Catalog of Artificial Space Objects by Jonathan McDowell (planet4589.org), refreshed weekly: its launch log for launches, and its satellite catalogue for payloads and decays. The payload and re-entry figures are recalculated after every refresh; launch attempts are counted each time the chart is drawn.</p></div>
+	<div class="orbit-defs-term">Launch attempts chart</div>
+	<div class="orbit-defs-text"><p>Distinct launches per calendar year since 1957, from GCAT's launch log (one row per payload, so each launch is counted once), orbital and deep-space, successes and failures. Hover over a point for the year's count and how many failed.</p></div>
+	<div class="orbit-defs-term">Launches and payloads chart</div>
+	<div class="orbit-defs-text"><p>Launches and the payloads they carried per year on the left axis, and payloads per launch -- their ratio -- on the right axis (dashed line). All three come from GCAT's launch log, so they agree with one another; payloads here include any lost in a failed launch, so the count is slightly above the payloads-launched chart's. With EX SPACEX, SpaceX launches and everything they carried are left out.</p></div>
+	<div class="orbit-defs-term">Launches by country chart</div>
+	<div class="orbit-defs-text"><p>The launch attempts per year, stacked by the country GCAT gives each launch vehicle -- so each year's bar adds up to the launch-attempts chart's point. Europe combines France (Arianespace), ESA, ELDO, Italy, Germany and the UK. GCAT codes Rocket Lab's Electron as New Zealand, where it launches from, although the company is American. The Soviet Union and Russia are kept separate. Other: Iran, Israel, North and South Korea, Brazil, Australia and the Cayman Islands.</p></div>
+	<div class="orbit-defs-term">Payloads launched chart</div>
+	<div class="orbit-defs-text"><p>Payloads that reached orbit, by launch year, stacked by sector. Starlink is counted within commercial; EX SPACEX takes it out.</p></div>
+	<div class="orbit-defs-term">Re-entries chart</div>
+	<div class="orbit-defs-text"><p>Catalogued objects that came back down, by the year of their decay date, stacked by type. Objects that came down docked or attached to another (e.g. a cargo ship on a station) are not counted again, and departures to deep space are not re-entries. Debris too small to be catalogued is not included, and some decay dates are approximate (the year is normally right).</p></div>
+	<div class="orbit-defs-term">Limitations</div>
+	<div class="orbit-defs-text"><p>Every classification -- success or failure, sector, object type, how an object left orbit -- is GCAT's own. The current year is a count to date.</p></div>
+	</div>
+</section>

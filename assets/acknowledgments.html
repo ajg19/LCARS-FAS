@@ -1,0 +1,401 @@
+<!-- ACKNOWLEDGMENTS tabs (ABOUT, CREDITS, DATA SRCES, METHOD): the contents of the acknowledgments
+     section, fetched on first open by openAcknowledgmentsSection() (assets/lcars.js) through
+     loadHelperHtml(). -->
+<div id="ack-about" class="orbit-defs-panel">
+	<section class="orbit-chart">
+		<header class="orbit-chart-header"><span>What is FAS?</span></header>
+		<div class="about-text">
+			<p>FAS (For All Species) brings together open data about space from sources that were never designed to work together: the NORAD satellite catalogue (via Space-Track), CelesTrak, Jonathan McDowell's General Catalog of Artificial Space Objects (GCAT), SatNOGS, Launch Library 2 and space news feeds. For space weather it adds NOAA&rsquo;s Space Weather Prediction Center, NASA&rsquo;s DONKI database, GFZ Potsdam, the University of Bern, the Oulu cosmic ray station and SILSO: solar wind, flares, storms, aurorae, the ionosphere and cosmic rays, from spacecraft at L1 to ground-based networks.</p>
+			<p>Each source answers part of a question. Combined, the whole is greater than the sum of its parts: matched object by object, reconciled and charted in one place, they answer questions none of them can answer alone. Who owns what is in orbit? Where is the debris, and what did it break off? Which satellites can a ground station hear? What is the Sun doing, and what will it do to satellites, radio links and the aurora? How is all of it changing?</p>
+			<p>FAS is a not-for-profit project, offered freely in the same spirit in which Tim Berners-Lee gave the World Wide Web away and Linus Torvalds released Linux. We hope it will be useful in education: for students, teachers and anyone curious about what is up there, who put it there and what it is doing.</p>
+			<p>The data refreshes automatically; the table on the landing page shows when each source last updated. The site is built to stay usable at 20&nbsp;Mbps with multi-second latency, so it works from anywhere, from a classroom on a slow connection to the ISS.</p>
+		</div>
+	</section>
+	<section class="orbit-chart">
+		<header class="orbit-chart-header"><span>What it covers</span></header>
+		<ul class="about-list">
+			<li><b>On orbit:</b> every catalogued object (payloads, rocket bodies and debris) by orbit, owner, country, sector, mission, manufacturer and radio band, with debris history and origins.</li>
+			<li><b>Ground tracks:</b> live positions, ground tracks and footprints for any catalogued object, computed in the browser.</li>
+			<li><b>Ground station operations:</b> the satellites in view from any location, with link-budget estimates in both directions.</li>
+			<li><b>Launches:</b> orbital launches since 1957 by year, country and outcome, and the payloads they carried.</li>
+			<li><b>Space weather:</b> what the Sun is sending (solar wind, flares, coronal mass ejections), its effect at Earth (geomagnetic storms, the auroral oval, drag on low orbits, satellite and HF radio links) and galactic cosmic rays, combining NOAA SWPC, NASA DONKI, GFZ Potsdam, the CODE ionosphere maps, the Oulu neutron monitors and SILSO, with live images of the Sun. Each chart names the spacecraft behind it, where it is and how far away, in light-seconds.</li>
+			<li><b>Ground segment and news:</b> a map of ground infrastructure (deep-space networks, teleports, SSA sites, launch sites) and a categorised space-news feed.</li>
+		</ul>
+	</section>
+	<section class="orbit-chart">
+		<header class="orbit-chart-header"><span>Built by</span></header>
+		<div class="about-text">
+			<p><b>Dr Al Gill</b>: Natural Sciences at Cambridge (Churchill College), then a PhD in theoretical physics at Imperial College. Postdoctoral research at Los Alamos National Laboratory and in Geneva, including setting up a 13-nation research network. Then the commercial world: through the dot-com boom and 25 years in finance, across private equity, venture capital and investment banking.</p>
+			<p>Co-founder of Geimgar&eth;ur, the Iceland Space Park; runs GAPS (gaps2024.com), long-term monitoring of microplastics. <a href="https://www.linkedin.com/in/alasdairgill/">linkedin.com/in/alasdairgill</a></p>
+		</div>
+	</section>
+</div>
+
+<div id="ack-acknowledgments" style="display:none;">
+<p class="go-big">This project draws on the work, data and tools of a number of individuals and organisations. Their contributions are gratefully acknowledged here.</p>
+<table class="ack-table">
+	<thead>
+		<tr>
+			<th>Name</th>
+			<th>Contribution</th>
+			<th>URL</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td>Astronomical Institute, University of Bern (CODE)</td>
+			<td>Global ionosphere maps of total electron content, observed and predicted one to five days ahead. Dach, R., S. Schaer, D. Arnold, E. Brockmann, M. Kalarus, C. Kobel, M. Lasser, P. Stebler and A. Jaeggi (2026), CODE rapid product series for the IGS, Astronomical Institute, University of Bern, DOI 10.48620/97772</td>
+			<td><a href="https://www.aiub.unibe.ch/download/CODE">aiub.unibe.ch/download/CODE</a></td>
+		</tr>
+		<tr>
+			<td>CelesTrak (Dr T.S. Kelso)</td>
+			<td>Orbital elements and satellite catalogue data, and the active, station and Starlink satellite lists</td>
+			<td><a href="https://celestrak.org">celestrak.org</a></td>
+		</tr>
+		<tr>
+			<td>Claude (Anthropic)</td>
+			<td>LLM development partner &mdash; system design, implementation, testing and debugging</td>
+			<td><a href="https://claude.ai">claude.ai</a></td>
+		</tr>
+		<tr>
+			<td>DB-IP</td>
+			<td>IP geolocation by DB-IP (IP to City Lite, CC&#8209;BY&#8209;4.0), used to count visits by city; no address is stored</td>
+			<td><a href="https://db-ip.com">db-ip.com</a></td>
+		</tr>
+		<tr>
+			<td>Don Cross</td>
+			<td>Astronomy Engine, used to calculate the positions of the Sun, Moon and planets (MIT licence)</td>
+			<td><a href="https://github.com/cosinekitty/astronomy">github.com/cosinekitty/astronomy</a></td>
+		</tr>
+		<tr>
+			<td>E. Anderson &amp; C. Francis</td>
+			<td>XHIP: An Extended Hipparcos Compilation (2012), the source of the star positions, magnitudes and colours</td>
+			<td><a href="https://cdsarc.cds.unistra.fr/viz-bin/cat/V/137D">VizieR V/137D</a></td>
+		</tr>
+		<tr>
+			<td>ESA and NASA SOHO</td>
+			<td>Coronagraph images of the Sun (LASCO) shown on SUN NOW, via NOAA SWPC; SOHO is at the Sun&ndash;Earth Lagrange point L1, about 1.5 million km (5 light-seconds) sunward of Earth</td>
+			<td><a href="https://sohowww.nascom.nasa.gov">sohowww.nascom.nasa.gov</a></td>
+		</tr>
+		<tr>
+			<td>FCC and ITU</td>
+			<td>Public filings used for satellite transmit-power (EIRP) estimates</td>
+			<td><a href="https://www.fcc.gov">fcc.gov</a></td>
+		</tr>
+		<tr>
+			<td>Gemini</td>
+			<td>Advice on datasources, libraries and APIs</td>
+			<td><a href="https://gemini.google.com">gemini.google.com</a></td>
+		</tr>
+		<tr>
+			<td>geojs.io</td>
+			<td>Approximate location from the visitor's internet address</td>
+			<td><a href="https://www.geojs.io">geojs.io</a></td>
+		</tr>
+		<tr>
+			<td>GFZ Helmholtz Centre for Geosciences, Potsdam</td>
+			<td>The official geomagnetic indices Kp, ap, Ap, Hp30 and Hp60 (Geomagnetic Observatory Niemegk), with observed and adjusted F10.7 and the sunspot number (CC&#8209;BY&#8209;4.0). Matzka, J., Stolle, C., Yamazaki, Y., Bronkalla, O. and Morschhauser, A. (2021), The geomagnetic Kp index and derived indices of geomagnetic activity, Space Weather, doi:10.1029/2020SW002641</td>
+			<td><a href="https://kp.gfz.de">kp.gfz.de</a></td>
+		</tr>
+		<tr>
+			<td>Jim Robertus</td>
+			<td>Creator of the LCARS Inspired Website Template used as the design foundation for this interface</td>
+			<td><a href="https://www.thelcars.com">www.thelcars.com</a></td>
+		</tr>
+		<tr>
+			<td>Jonathan C. McDowell</td>
+			<td>Decades of work building and maintaining the General Catalog of Artificial Space Objects (GCAT), used under CC&#8209;BY&#8209;4.0.</td>
+			<td><a href="https://planet4589.org/space/gcat">planet4589.org/space/gcat</a></td>
+		</tr>
+		<tr>
+			<td>J&ouml;rg Dietrich</td>
+			<td>Leaflet.Terminator, the day/night shading on the maps (MIT licence)</td>
+			<td><a href="https://github.com/joergdietrich/Leaflet.Terminator">github.com/joergdietrich/Leaflet.Terminator</a></td>
+		</tr>
+		<tr>
+			<td>Libre Space Foundation</td>
+			<td>The SatNOGS database of satellite radio frequencies, used under CC&#8209;BY&#8209;SA&#8209;4.0</td>
+			<td><a href="https://db.satnogs.org">db.satnogs.org</a></td>
+		</tr>
+		<tr>
+			<td>Mike Bostock</td>
+			<td>TopoJSON client, used to load the map outlines (ISC licence)</td>
+			<td><a href="https://github.com/topojson/topojson-client">github.com/topojson/topojson-client</a></td>
+		</tr>
+		<tr>
+			<td>NASA</td>
+			<td>DONKI, the space-weather database of flares, coronal mass ejections, solar energetic particle events, high-speed streams and geomagnetic storms (via the Community Coordinated Modeling Center); and the Solar Dynamics Observatory (SDO, in geosynchronous orbit, about 0.14 light-seconds from Earth), whose AIA and HMI images of the Sun are shown on SUN NOW</td>
+			<td><a href="https://ccmc.gsfc.nasa.gov/donki">ccmc.gsfc.nasa.gov/donki</a>, <a href="https://sdo.gsfc.nasa.gov">sdo.gsfc.nasa.gov</a></td>
+		</tr>
+		<tr>
+			<td>Natural Earth</td>
+			<td>Country outlines for the maps, via the datasets/geo-countries project (public domain)</td>
+			<td><a href="https://www.naturalearthdata.com">naturalearthdata.com</a></td>
+		</tr>
+		<tr>
+			<td>NOAA Space Weather Prediction Center</td>
+			<td>Real-time solar wind and magnetic field from NOAA&rsquo;s SOLAR-1 spacecraft at the Sun&ndash;Earth Lagrange point L1 (about 1.5 million km, 5 light-seconds, sunward of Earth); X-ray and proton fluxes from the GOES satellites in geostationary orbit (about 0.14 light-seconds); the NOAA space weather scales; Kp, Dst and F10.7; the 3-day forecast, 27-day outlook and 45-day forecast; the OVATION Prime auroral model; D-RAP radio absorption maps; and GloTEC total electron content (US Government work, public domain)</td>
+			<td><a href="https://www.swpc.noaa.gov">swpc.noaa.gov</a></td>
+		</tr>
+		<tr>
+			<td>Olaf Frohn</td>
+			<td>d3-celestial: the star, star-name, constellation, Milky Way and deep-sky object data used for the sky view, compiled from XHIP, the IAU constellation definitions, the Milky Way Outline Catalog and the Saguaro Astronomy Club database (BSD licence)</td>
+			<td><a href="https://github.com/ofrohn/d3-celestial">github.com/ofrohn/d3-celestial</a></td>
+		</tr>
+		<tr>
+			<td>Oulu cosmic ray station, Sodankyl&auml; Geophysical Observatory, University of Oulu</td>
+			<td>Neutron monitor count rates for the galactic cosmic ray view, from the Oulu station and the Antarctic Dome C station (obtained due to support of the French-Italian Concordia Station, IPEV program n903 and PNRA Project LTCPAA PNRA14_00091). Data for research, education and public non-commercial services</td>
+			<td><a href="https://cosmicrays.oulu.fi">cosmicrays.oulu.fi</a></td>
+		</tr>
+		<tr>
+			<td>P. T. Newell and colleagues</td>
+			<td>The solar wind&ndash;magnetosphere coupling function used for the driving indicator: Newell, P. T., T. Sotirelis, K. Liou, C.-I. Meng and F. J. Rich (2007), A nearly universal solar wind-magnetosphere coupling function inferred from 10 magnetospheric state variables, J. Geophys. Res., 112, A01206</td>
+			<td><a href="https://doi.org/10.1029/2006JA012015">doi:10.1029/2006JA012015</a></td>
+		</tr>
+		<tr>
+			<td>Qwen</td>
+			<td>Industry research and translation</td>
+			<td><a href="https://qwen.ai/">qwen.ai</a></td>
+		</tr>
+		<tr>
+			<td>Shashwat Kandadai, UCSC</td>
+			<td>SGP4/SDP4 orbital propagation used for ground track computation (satellite.js)</td>
+			<td><a href="https://github.com/shashwatak/satellite-js">github.com/shashwatak/satellite-js</a></td>
+		</tr>
+		<tr>
+			<td>SILSO, Royal Observatory of Belgium</td>
+			<td>The international sunspot number, used for the solar cycle charts: &ldquo;Source: WDC-SILSO, Royal Observatory of Belgium, Brussels&rdquo; (CC&#8209;BY&#8209;NC&#8209;4.0, DOI 10.24414/qnza-ac80)</td>
+			<td><a href="https://www.sidc.be/SILSO">sidc.be/SILSO</a></td>
+		</tr>
+		<tr>
+			<td>Space news publishers</td>
+			<td>Headlines from 18 feeds, including NASA, ESA, SpaceNews, Space.com, Ars Technica, Spaceflight Now and Universe Today; each links to its source</td>
+			<td>&mdash;</td>
+		</tr>
+		<tr>
+			<td>Space-Track.org</td>
+			<td>The official orbital data and satellite catalogue</td>
+			<td><a href="https://www.space-track.org">space-track.org</a></td>
+		</tr>
+		<tr>
+			<td>The Space Devs</td>
+			<td>The LL2 database covering launches, launch vehicles and agencies</td>
+			<td><a href="https://thespacedevs.com">thespacedevs.com</a></td>
+		</tr>
+		<tr>
+			<td>Vernon Adams</td>
+			<td>The Antonio typeface used throughout (SIL Open Font Licence)</td>
+			<td><a href="https://fonts.google.com/specimen/Antonio">fonts.google.com/specimen/Antonio</a></td>
+		</tr>
+		<tr>
+			<td>Volodymyr Agafonkin</td>
+			<td>Leaflet, the mapping library behind every map (BSD licence)</td>
+			<td><a href="https://leafletjs.com">leafletjs.com</a></td>
+		</tr>
+		<tr>
+			<td>World Data Center for Geomagnetism, Kyoto</td>
+			<td>The Dst index of the ring current (real-time quick-look values, supplied through NOAA SWPC and later revised by Kyoto)</td>
+			<td><a href="https://wdc.kugi.kyoto-u.ac.jp">wdc.kugi.kyoto-u.ac.jp</a></td>
+		</tr>
+		<tr>
+			<td>Dr Al Gill</td>
+			<td>Project Lead</td>
+			<td><a href="https://www.linkedin.com/in/alasdairgill/">linkedin.com/in/alasdairgill</a></td>
+		</tr>
+	</tbody>
+</table>
+</div>
+
+<div id="ack-datasources" style="display:none;">
+<p class="go-big">FAS combines these open data sources. Each section's DEFS page explains how its figures are built from them.</p>
+<table class="ack-table ack-sources-table">
+	<thead>
+		<tr>
+			<th>Source</th>
+			<th>What it provides</th>
+			<th>Licence type</th>
+			<th>Refreshed</th>
+			<th>URL</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td>NORAD catalogue</td>
+			<td>Orbital elements (OMM) for every tracked object, from which positions, ground tracks and passes are computed; each object's type and launch and decay dates. Taken from CelesTrak, with Space-Track.org filling gaps.</td>
+			<td>Space-Track User Agreement (CelesTrak states no licence)</td>
+			<td>Every 12 hours (catalogue details daily)</td>
+			<td><a href="https://celestrak.org">celestrak.org</a></td>
+		</tr>
+		<tr>
+			<td>CelesTrak lists</td>
+			<td>The groupings used to classify objects: active satellites (operational status), space stations and their visiting vehicles, and Starlink.</td>
+			<td>No licence stated; free public service</td>
+			<td>Every 12 hours</td>
+			<td><a href="https://celestrak.org">celestrak.org</a></td>
+		</tr>
+		<tr>
+			<td>GCAT</td>
+			<td>Ownership, country and sector (academic, commercial, civil, defence); mission category; manufacturer and satellite bus; the launch log; the parent object of each debris fragment, and the debris history.</td>
+			<td>CC BY 4.0</td>
+			<td>Weekly</td>
+			<td><a href="https://planet4589.org/space/gcat">planet4589.org/space/gcat</a></td>
+		</tr>
+		<tr>
+			<td>SatNOGS DB</td>
+			<td>Downlink and uplink frequencies, modes and data rates reported by the SatNOGS network of amateur ground stations, for about 1,000 satellites.</td>
+			<td>CC BY-SA 4.0</td>
+			<td>Every 12 hours</td>
+			<td><a href="https://db.satnogs.org">db.satnogs.org</a></td>
+		</tr>
+		<tr>
+			<td>FCC / ITU filings</td>
+			<td>Published transmit power (EIRP) for the large constellations; class-typical estimates by band and orbit for other satellites. Used in the GS OPS link budgets.</td>
+			<td>Public records</td>
+			<td>Static</td>
+			<td><a href="https://www.fcc.gov">fcc.gov</a></td>
+		</tr>
+		<tr>
+			<td>News feeds</td>
+			<td>Headlines and summaries from 18 RSS feeds (NASA, ESA, SpaceNews, Space.com, Ars Technica, Spaceflight Now, Universe Today and others), tagged by topic; each links to the full article.</td>
+			<td>Publishers' copyright (headlines and links only)</td>
+			<td>Every 30 minutes</td>
+			<td>&mdash;</td>
+		</tr>
+		<tr>
+			<td>d3-celestial</td>
+			<td>5,044 stars to magnitude 6 with their colours (B&minus;V), star names, the names and lines of the 88 constellations, the Milky Way outline and 31 bright deep-sky objects; compiled from XHIP, the IAU, the Milky Way Outline Catalog and the Saguaro Astronomy Club database.</td>
+			<td>BSD 3-Clause</td>
+			<td>Static</td>
+			<td><a href="https://github.com/ofrohn/d3-celestial">github.com/ofrohn/d3-celestial</a></td>
+		</tr>
+		<tr>
+			<td>Natural Earth</td>
+			<td>Country outlines for the maps, via the datasets/geo-countries project.</td>
+			<td>Public domain</td>
+			<td>Static</td>
+			<td><a href="https://www.naturalearthdata.com">naturalearthdata.com</a></td>
+		</tr>
+		<tr>
+			<td>NASA DONKI</td>
+			<td>Coronal mass ejections, flares, solar energetic particle events, high-speed streams, interplanetary shocks and geomagnetic storms from NASA&rsquo;s Space Weather Database Of Notifications, Knowledge, Information (90 days kept), for the WEATHER section.</td>
+			<td>US Government work (public domain)</td>
+			<td>Hourly</td>
+			<td><a href="https://ccmc.gsfc.nasa.gov/donki">ccmc.gsfc.nasa.gov/donki</a></td>
+		</tr>
+		<tr>
+			<td>NOAA SWPC: solar wind and particles</td>
+			<td>L1 magnetic field and plasma at 1-minute resolution (NOAA SOLAR-1, at L1, about 1.5 million km or 5 light-seconds sunward of Earth; kept 90 days), GOES X-ray flux, flares and proton flux (GOES satellites, about 0.14 light-seconds from Earth), radio flux and events, hemispheric power.</td>
+			<td>US Government work (public domain); credit NOAA SWPC</td>
+			<td>Every 15 minutes and hourly</td>
+			<td><a href="https://www.swpc.noaa.gov">swpc.noaa.gov</a></td>
+		</tr>
+		<tr>
+			<td>NOAA SWPC: indices and forecasts</td>
+			<td>Kp (observed, estimated, predicted), Dst (real-time quick-look), F10.7, the NOAA space weather scales, the 3-day forecast, the 27-day outlook and the 45-day forecast.</td>
+			<td>US Government work (public domain)</td>
+			<td>Every 15 minutes and hourly</td>
+			<td><a href="https://www.swpc.noaa.gov">swpc.noaa.gov</a></td>
+		</tr>
+		<tr>
+			<td>NOAA SWPC: OVATION Prime and D-RAP</td>
+			<td>Global maps of auroral energy flux (model output, both hemispheres, with its forecast time) and of HF radio absorption (highest affected frequency).</td>
+			<td>US Government work (public domain)</td>
+			<td>Hourly</td>
+			<td><a href="https://www.swpc.noaa.gov">swpc.noaa.gov</a></td>
+		</tr>
+		<tr>
+			<td>NOAA SWPC: GloTEC</td>
+			<td>Global total electron content map with anomaly and F2-layer peak, derived from GNSS signals; 7 days kept.</td>
+			<td>US Government work (public domain)</td>
+			<td>Every 3 hours, and on request</td>
+			<td><a href="https://www.swpc.noaa.gov">swpc.noaa.gov</a></td>
+		</tr>
+		<tr>
+			<td>CODE global ionosphere maps</td>
+			<td>Total electron content, observed for the previous day and predicted 1, 2 and 5 days ahead (model output).</td>
+			<td>Citation requested (Dach et al. 2026)</td>
+			<td>Daily</td>
+			<td><a href="https://www.aiub.unibe.ch/download/CODE">aiub.unibe.ch/download/CODE</a></td>
+		</tr>
+		<tr>
+			<td>GFZ Potsdam</td>
+			<td>Kp, ap, Ap, Hp30, Hp60, observed and adjusted F10.7 and the sunspot number; preliminary until confirmed weeks to months later. 400 days kept.</td>
+			<td>CC BY 4.0 (sunspot numbers CC BY-NC 4.0)</td>
+			<td>Hourly</td>
+			<td><a href="https://kp.gfz.de">kp.gfz.de</a></td>
+		</tr>
+		<tr>
+			<td>Oulu neutron monitors</td>
+			<td>Cosmic ray count rates, pressure-corrected, from the Oulu and Dome C stations; monthly records since 1964 (Oulu) and 2016 (Dome C).</td>
+			<td>Research, education and public non-commercial use, with acknowledgement</td>
+			<td>Hourly</td>
+			<td><a href="https://cosmicrays.oulu.fi">cosmicrays.oulu.fi</a></td>
+		</tr>
+		<tr>
+			<td>SILSO</td>
+			<td>The monthly international sunspot number since 1749.</td>
+			<td>CC BY-NC 4.0</td>
+			<td>Monthly</td>
+			<td><a href="https://www.sidc.be/SILSO">sidc.be/SILSO</a></td>
+		</tr>
+		<tr>
+			<td>Images of the Sun</td>
+			<td>Live pictures of the Sun from NASA SDO and ESA/NASA SOHO, fetched by the visitor&rsquo;s browser from NASA and NOAA when SUN NOW is opened; nothing is stored.</td>
+			<td>US Government and ESA/NASA imagery, credited beneath each image</td>
+			<td>On request (cached 30 minutes)</td>
+			<td><a href="https://sdo.gsfc.nasa.gov">sdo.gsfc.nasa.gov</a></td>
+		</tr>
+		<tr>
+			<td>geojs.io</td>
+			<td>Approximate latitude and longitude from the visitor's internet address, used only when no location has been set.</td>
+			<td>Free service (geojs.io terms of service; data from MaxMind GeoLite)</td>
+			<td>On request</td>
+			<td><a href="https://www.geojs.io">geojs.io</a></td>
+		</tr>
+		<tr>
+			<td>DB-IP</td>
+			<td>IP to city lookup used to count visits by city; the address is looked up in memory and never stored.</td>
+			<td>CC BY 4.0 (&ldquo;IP Geolocation by DB-IP&rdquo;)</td>
+			<td>Static (rebuilt occasionally)</td>
+			<td><a href="https://db-ip.com">db-ip.com</a></td>
+		</tr>
+	</tbody>
+</table>
+</div>
+
+<div id="ack-methodology" class="orbit-defs-panel" style="display:none;">
+	<section class="orbit-chart">
+		<header class="orbit-chart-header"><span>How FAS was built</span></header>
+		<div class="orbit-defs">
+			<div class="orbit-defs-term">Data pipeline</div>
+			<div class="orbit-defs-text">Scheduled scripts on the server fetch each source and store it in its own SQLite database. Orbital elements for the NORAD catalogue (from Space-Track and CelesTrak, OMM JSON) are fetched twice a day, the NORAD satellite catalogue (SATCAT) daily, GCAT weekly and news every 30 minutes. Radio-frequency data from SatNOGS and estimated transmit power are added after each orbital refresh. Derived statistics are recomputed after every refresh, so charts are counted on request from current data.</div>
+			<div class="orbit-defs-term">Combining sources</div>
+			<div class="orbit-defs-text">Objects are matched across sources by NORAD catalogue number. GCAT supplies ownership, sector, mission and manufacturer; CelesTrak's active list supplies operational status. Where a value is estimated rather than published (transmit power, and most satellites' downlink band), it is marked as an estimate. Each section's DEFS page gives its definitions and how its numbers are counted.</div>
+			<div class="orbit-defs-term">Low-bandwidth design</div>
+			<div class="orbit-defs-text">Required to stay usable at 20&nbsp;Mbps with multi-second latency (for example, from the ISS via NASA's optical links). Plain JavaScript with no framework; one module per section, loaded only when opened; self-hosted libraries, no third-party CDNs; an initial load under 5&nbsp;MB. Orbits are propagated (SGP4) in the browser, not on the server.</div>
+			<div class="orbit-defs-term">Space weather</div>
+			<div class="orbit-defs-text">Scheduled scripts fetch each space-weather source into its own database and publish them together into one site file. The 1-minute solar wind and X-ray series are kept for 90 days and then deleted; the indices, events and forecasts are kept longer. Each chart says which spacecraft or network supplied its data, where that spacecraft is, and how far from Earth in light-seconds.</div>
+			<div class="orbit-defs-term">Derived quantities</div>
+			<div class="orbit-defs-text">FAS computes some quantities itself from the stored data: the solar wind coupling indicators (the product of speed and southward field, and the Newell coupling function), the equatorward edge of the auroral oval from the OVATION map, daily flare maxima and storm lists. The tooltip on each chart gives the formula and its limits.</div>
+			<div class="orbit-defs-term">Models and observations</div>
+			<div class="orbit-defs-text">OVATION, D-RAP, GloTEC and the CODE predictions are model output, not direct observations, and are labelled as such. Forecast values are drawn hatched or dashed, with the time they were issued. Values still awaiting confirmation (Dst, Kp, sunspot number) are marked provisional.</div>
+			<div class="orbit-defs-term">Visit counting</div>
+			<div class="orbit-defs-text">Once per browser session the page tells the server it was opened. The server looks the visitor&rsquo;s internet address up in a city table in memory, adds one to that city&rsquo;s count for the day, and discards the address; FAS never writes it to its databases or logs. Only the day, city, country and approximate position are kept. (The web host keeps its own server logs, which FAS does not control.)</div>
+			<div class="orbit-defs-term">Server</div>
+			<div class="orbit-defs-text">A single small Python web application serving the page and its data API, on ordinary shared hosting. It serves only the page and its assets, never the databases or scripts.</div>
+			<div class="orbit-defs-term">Process</div>
+			<div class="orbit-defs-text">A hybrid method. Traditional engineering where the requirements are clear: functional and software requirements, a design and architecture document, and a test plan. Agile iteration where they are not, with exploratory prototypes, and a working system at all times. An automated test suite, a bug log, and version control throughout.</div>
+			<div class="orbit-defs-term">Built with AI</div>
+			<div class="orbit-defs-text">Developed by Al Gill with Claude (Anthropic) as development partner. Al set the direction and requirements and tested the results; Claude co-wrote the design documents and implemented and tested the code.</div>
+		</div>
+	</section>
+</div>
+<div id="ack-usage" style="display:none;">
+	<div class="map-panel"><div id="usage-map" class="leaflet-map"></div></div>
+	<section class="orbit-chart">
+		<header class="orbit-chart-header"><span>How visits are counted</span></header>
+		<div class="about-text">
+			<p>Each circle is a city; its area is proportional to the number of visits from there. A visit is counted once per browser session, by city only: the visitor&rsquo;s internet address is looked up in memory and then discarded, so FAS stores and shares no address. Searches by automated programs are not counted, and a visitor using a VPN or a mobile network may appear in another city. The lookup uses IP Geolocation by <a href="https://db-ip.com">DB-IP</a> (CC&#8209;BY&#8209;4.0).</p>
+		</div>
+	</section>
+</div>

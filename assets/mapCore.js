@@ -183,14 +183,14 @@ async function initBaseMap(containerId) {
 
     L.geoJSON(boundaries, {
         style: {
-            color: '#89f', // --bluey
+            color: lcarsColour('--tng-periwinkle'),
             weight: 1,
-            fillColor: '#1c3a4d',
+            fillColor: lcarsColour('--tng-periwinkle', 0.25),
             fillOpacity: 1,
         },
         onEachFeature: (feature, layer) => {
-            layer.on('mouseover', () => layer.setStyle({ fillColor: '#2a5470' }));
-            layer.on('mouseout', () => layer.setStyle({ fillColor: '#1c3a4d' }));
+            layer.on('mouseover', () => layer.setStyle({ fillColor: lcarsColour('--tng-periwinkle', 0.4) }));
+            layer.on('mouseout', () => layer.setStyle({ fillColor: lcarsColour('--tng-periwinkle', 0.25) }));
         },
     }).addTo(map);
 
@@ -220,7 +220,7 @@ const GRATICULE_LAT_BOUND = 90 - GRATICULE_SPACING_DEG;
 
 function renderLatLonGraticule(map) {
     const lines = [];
-    const style = { color: '#fff', weight: 1, opacity: 0.2, dashArray: '4,6', interactive: false };
+    const style = { color: lcarsColour('--space-white'), weight: 1, opacity: 0.2, dashArray: '4,6', interactive: false };
 
     for (let lon = -180; lon <= 180; lon += GRATICULE_SPACING_DEG) {
         lines.push(L.polyline([[-85, lon], [85, lon]], style));

@@ -1,5 +1,6 @@
 .env
 spacetrack.env
+eoAccess.env
 __pycache__/
 .pytest_cache/
 *.db-wal
@@ -24,3 +25,6 @@ ingestionDBs/*
 
 # API snapshots from 0_tools/apiSnapshot.py -- large, regenerated on demand
 0_testReports/apiSnapshots/
+
+# Output of the Enterprise crew agents (Rand, Spock): working documents, never committed or deployed
+enterpriseCrewOutput/

@@ -71,10 +71,10 @@ async function initGrdTrackMap() {
         // worth recomputing on every animation frame.
         await loadScriptOnce('assets/leaflet/L.Terminator.js');
         terminatorLayer = L.terminator({
-            color: '#3a5a7a',
+            color: lcarsColour('--tng-periwinkle', 0.5),
             weight: 1,
             opacity: 0.6,
-            fillColor: '#050a12',
+            fillColor: lcarsColour('--tng-periwinkle', 0.05),
             fillOpacity: 0.45,
             // Plugin default is 720 (-360..360, two world-widths), sized
             // for maps whose other layers auto-repeat into neighbouring
@@ -257,7 +257,7 @@ function renderUserLocationMarker() {
     }
     userLocationMarker = L.circleMarker(
         [observerLocation.latitude, observerLocation.longitude],
-        { radius: 4, color: '#fff', weight: 1, fillColor: '#fff', fillOpacity: 1 }
+        { radius: 4, color: lcarsColour('--space-white'), weight: 1, fillColor: lcarsColour('--space-white'), fillOpacity: 1 }
     ).addTo(grdTrackMap);
 }
 
@@ -482,7 +482,7 @@ function showUserLocationStatus(message) {
 // leading "+" and an embedded space are both rejected by the browser's
 // own number parser), so free-text with manual parsing/validation in
 // selectUserLocation() is the only way to display that same format here.
-function renderUserLocationFormMarkup() {
+function renderUserLocationFormMarkup(extraRowsHtml = '') {
     return `
         <div id="user-location-form" class="user-location-form">
             <div class="user-location-fields">
@@ -499,6 +499,7 @@ function renderUserLocationFormMarkup() {
                         onchange="autofillFromPlaceSelection(this)">
                     <div id="usrloc-place-suggestions" class="place-suggestions is-hidden"></div>
                 </div>
+                ${extraRowsHtml}
             </div>
             <div class="user-location-actions">
                 <button class="location-btn" onclick="selectUserLocation()">SELECT</button>
@@ -526,7 +527,7 @@ let locationFormRestingRenderer = fetchAndRenderOrbitalObjectsList;
 // empty and the entry form -- checking for the form's own presence rather
 // than tracking a separate open/closed flag, since #default's content is
 // otherwise fully owned by updateControlArea().
-function toggleUserLocationForm(restingRenderer) {
+function toggleUserLocationForm(restingRenderer, extraRowsHtml = '') {
     const wrapper = document.getElementById('default');
     if (!wrapper) {
         return;
@@ -538,7 +539,7 @@ function toggleUserLocationForm(restingRenderer) {
         locationFormRestingRenderer();
         return;
     }
-    wrapper.innerHTML = renderUserLocationFormMarkup();
+    wrapper.innerHTML = renderUserLocationFormMarkup(extraRowsHtml);
     loadCityDataset();
     if (observerLocation) {
         setCoordinateInputValue(document.getElementById('usrloc-lat-input'), observerLocation.latitude);
@@ -736,12 +737,12 @@ async function fetchAndRenderOrbitalObjectsList() {
 // table's KEY column -- reused from classic.css's :root custom
 // properties rather than inventing new ones, picked for maximum hue
 // separation from each other and from colours already used elsewhere on
-// this map (bluey/#89f for country borders, white for the observer-
+// this map (periwinkle for country borders, white for the observer-
 // location dot). Dash patterns are a secondary differentiator, only
 // engaged once the object count exceeds the number of distinct colours --
 // solid lines first, so colour alone distinguishes objects for as long as
 // it can.
-const TRACK_COLORS = ['#fa0', '#c44', '#9cf', '#96f', '#c59', '#993', '#f55', '#fc9', '#dbf', '#56f'];
+const TRACK_COLORS = [lcarsColour('--tng-amber'), lcarsColour('--tng-periwinkle'), lcarsColour('--tng-pink'), lcarsColour('--tng-sand'), lcarsColour('--tng-ice'), lcarsColour('--tng-salmon'), lcarsColour('--tng-lavender'), lcarsColour('--tng-tan'), lcarsColour('--tng-mauve'), lcarsColour('--tng-violet')];
 const TRACK_DASH_PATTERNS = [null, '8,6', '2,6'];
 
 function getTrackStyle(index) {
@@ -791,7 +792,7 @@ function renderOrbitalObjectsList(objects) {
     table.style.marginRight = 'auto';
     table.style.alignSelf = 'flex-start';
     table.style.borderCollapse = 'collapse';
-    table.style.fontSize = '15px';
+    table.style.fontSize = 'var(--status-font-size)';
     table.style.textTransform = 'uppercase';
 
     const COLUMNS = ['NORAD ID', 'NAME', 'COUNTRY', 'INCL', 'PERIGEE', 'APOGEE', 'PERIOD', 'MMOTION', 'KEY'];

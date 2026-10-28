@@ -1,0 +1,60 @@
+[
+ {
+  "catalog": "M2M_CATALOG",
+  "activityID": "2026-09-28T08:32:00-IPS-001",
+  "location": "STEREO A",
+  "eventTime": "2026-09-28T08:32Z",
+  "instruments": [
+   {
+    "displayName": "STEREO A: IMPACT"
+   },
+   {
+    "displayName": "STEREO A: PLASTIC"
+   }
+  ],
+  "linkedEvents": [
+   {
+    "activityID": "2026-09-29T00:34:00-HSS-001"
+   }
+  ],
+  "sentNotifications": null,
+  "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/IPS/48896/-1",
+  "submissionTime": "2026-10-06T15:46Z",
+  "versionId": 2
+ },
+ {
+  "catalog": "M2M_CATALOG",
+  "activityID": "2026-10-03T01:26:00-IPS-001",
+  "location": "Earth",
+  "eventTime": "2026-10-03T01:26Z",
+  "instruments": [
+   {
+    "displayName": "SOLAR-1: MAG"
+   },
+   {
+    "displayName": "ACE: SWEPAM"
+   },
+   {
+    "displayName": "ACE: MAG"
+   },
+   {
+    "displayName": "SOLAR-1: SWiPS"
+   },
+   {
+    "displayName": "IMAP: MAG"
+   },
+   {
+    "displayName": "IMAP: SWAPI"
+   }
+  ],
+  "linkedEvents": [
+   {
+    "activityID": "2026-09-30T03:12:00-CME-001"
+   }
+  ],
+  "sentNotifications": null,
+  "link": "https://ccmc.gsfc.nasa.gov/DONKI/view/IPS/48945/-1",
+  "submissionTime": "2026-10-06T15:44Z",
+  "versionId": 7
+ }
+]

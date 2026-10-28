@@ -1,0 +1,8 @@
+# PURPOSE: This file distributes the geomagnetic planetary three-hour index Kp and associated geomagnetic indices as well as relevant solar indices.
+# LICENSE: CC BY 4.0, except for the sunspot numbers contained in this file, which have the CC BY-NC 4.0 license
+# SOURCE: Geomagnetic Observatory Niemegk, GFZ Helmholtz Centre for Geosciences
+# PLEASE CITE: Matzka, J., Stolle, C., Yamazaki, Y., Bronkalla, O. and Morschhauser, A., 2021. The geomagnetic Kp index 
+# and derived indices of geomagnetic activity. Space Weather, https://doi.org/10.1029/2020SW002641
+2026 09 25 34601 34601.5 2633 24  3.667  3.333  3.667  4.000  3.333  2.667  3.000  4.000   22   18   22   27   18   12   15   27    20  89    105.4    106.0 1
+2026 10 23 34629 34629.5 2634 25  1.667  2.000  2.000  2.000  2.667  2.333  4.333  1.667    6    7    7    7   12    9   32    6    11  39    100.9     99.9 0
+2026 10 24 34630 34630.5 2634 26  1.667  1.333  0.667  1.667  1.000 -1.000 -1.000 -1.000    6    5    3    6    4   -1   -1   -1    -1  26     -1.0     -1.0 0

@@ -2,7 +2,7 @@
 constellation groups the link budget uses -- by our own documented rules,
 with CelesTrak's lists definitive whenever they are available.
 
-Decision A of 0_documentation/dbRefactorPlan.md (extended 2026-10-21).
+Decision A of 0_documentation/plans/dbRefactorPlan.md (extended 2026-10-21).
 Used by the publish step (publishSite.py) to build siteOrbital.db's
 orbital_object_groups.
 

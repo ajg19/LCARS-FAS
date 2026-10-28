@@ -1,0 +1,79 @@
+[
+ {
+  "time_tag": "2026-10-24T10:45:00",
+  "common_name": "San Vito",
+  "details": [
+   {
+    "frequency": 245,
+    "flux": 18,
+    "observed_quality": "Good quality"
+   },
+   {
+    "frequency": 410,
+    "flux": 29,
+    "observed_quality": "Good quality"
+   },
+   {
+    "frequency": 610,
+    "flux": 51,
+    "observed_quality": "Good quality"
+   },
+   {
+    "frequency": 1415,
+    "flux": 47,
+    "observed_quality": "Uncertain – unknown cause"
+   },
+   {
+    "frequency": 2695,
+    "flux": 97,
+    "observed_quality": "Good quality"
+   },
+   {
+    "frequency": 4995,
+    "flux": 127,
+    "observed_quality": "Uncertain – unknown cause"
+   },
+   {
+    "frequency": 8800,
+    "flux": 238,
+    "observed_quality": "Good quality"
+   },
+   {
+    "frequency": 15400,
+    "flux": 542,
+    "observed_quality": "Good quality"
+   }
+  ]
+ },
+ {
+  "time_tag": "2026-10-24T03:41:00",
+  "common_name": "Learmonth",
+  "details": [
+   {
+    "frequency": 1415,
+    "flux": 62,
+    "observed_quality": "Good quality"
+   },
+   {
+    "frequency": 2695,
+    "flux": 87,
+    "observed_quality": "Uncertain – unknown cause"
+   },
+   {
+    "frequency": 4995,
+    "flux": 152,
+    "observed_quality": "Good quality"
+   },
+   {
+    "frequency": 8800,
+    "flux": 238,
+    "observed_quality": "Good quality"
+   },
+   {
+    "frequency": 15400,
+    "flux": 538,
+    "observed_quality": "Good quality"
+   }
+  ]
+ }
+]

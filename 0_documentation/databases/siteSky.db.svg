@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="797" height="546" viewBox="0 0 797 546" font-family="DejaVu Sans Mono, Consolas, Menlo, monospace">
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="30.0" y="14.0" width="736.6" height="44.0" rx="14" fill="#9999FF" stroke="#9999FF" stroke-width="1.2"/>
+<text x="46.0" y="42.0" font-size="18" fill="#000000" text-anchor="start" font-weight="bold">siteSky.db</text>
+<text x="750.6" y="42.0" font-size="12" fill="#000000" text-anchor="end">site database  |  from the database file</text>
+<rect x="30.0" y="78.0" width="200.5" height="92.0" rx="6" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="1.2"/>
+<rect x="30.0" y="78.0" width="200.5" height="30.0" rx="6" fill="#9999FF" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="40.0" y="98.0" font-size="13" fill="#000000" text-anchor="start" font-weight="bold">skyConstellationLines</text>
+<text x="40.0" y="122.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="61.7" y="122.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">desig</text>
+<text x="148.3" y="122.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="40.0" y="140.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="61.7" y="140.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">lineIndex</text>
+<text x="148.3" y="140.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="61.7" y="158.0" font-size="12" fill="#1A1A1A" text-anchor="start">pointsJson</text>
+<text x="148.3" y="158.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<rect x="330.5" y="78.0" width="186.1" height="128.0" rx="6" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="1.2"/>
+<rect x="330.5" y="78.0" width="186.1" height="30.0" rx="6" fill="#9999FF" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="340.5" y="98.0" font-size="13" fill="#000000" text-anchor="start" font-weight="bold">skyConstellations</text>
+<text x="340.5" y="122.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="362.2" y="122.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">desig</text>
+<text x="456.0" y="122.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="340.5" y="140.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="362.2" y="140.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">name</text>
+<text x="456.0" y="140.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="362.2" y="158.0" font-size="12" fill="#1A1A1A" text-anchor="start">labelRaDeg</text>
+<text x="456.0" y="158.0" font-size="12" fill="#666666" text-anchor="start">REAL</text>
+<text x="362.2" y="176.0" font-size="12" fill="#1A1A1A" text-anchor="start">labelDecDeg</text>
+<text x="456.0" y="176.0" font-size="12" fill="#666666" text-anchor="start">REAL</text>
+<text x="362.2" y="194.0" font-size="12" fill="#1A1A1A" text-anchor="start">rank</text>
+<text x="456.0" y="194.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<rect x="616.6" y="78.0" width="150.0" height="164.0" rx="6" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="1.2"/>
+<rect x="616.6" y="78.0" width="150.0" height="30.0" rx="6" fill="#9999FF" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="626.6" y="98.0" font-size="13" fill="#000000" text-anchor="start" font-weight="bold">skyStars</text>
+<text x="626.6" y="122.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="648.2" y="122.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">hip</text>
+<text x="706.0" y="122.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="648.2" y="140.0" font-size="12" fill="#1A1A1A" text-anchor="start">raDeg</text>
+<text x="706.0" y="140.0" font-size="12" fill="#666666" text-anchor="start">REAL</text>
+<text x="648.2" y="158.0" font-size="12" fill="#1A1A1A" text-anchor="start">decDeg</text>
+<text x="706.0" y="158.0" font-size="12" fill="#666666" text-anchor="start">REAL</text>
+<text x="648.2" y="176.0" font-size="12" fill="#1A1A1A" text-anchor="start">mag</text>
+<text x="706.0" y="176.0" font-size="12" fill="#666666" text-anchor="start">REAL</text>
+<text x="648.2" y="194.0" font-size="12" fill="#1A1A1A" text-anchor="start">bv</text>
+<text x="706.0" y="194.0" font-size="12" fill="#666666" text-anchor="start">REAL</text>
+<text x="648.2" y="212.0" font-size="12" fill="#1A1A1A" text-anchor="start">name</text>
+<text x="706.0" y="212.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="626.6" y="230.0" font-size="11" fill="#2B4FB3" text-anchor="start" font-weight="bold">LJ</text>
+<text x="648.2" y="230.0" font-size="12" fill="#1A1A1A" text-anchor="start">desig</text>
+<text x="706.0" y="230.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<rect x="30.0" y="204.0" width="200.5" height="164.0" rx="6" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="1.2"/>
+<rect x="30.0" y="204.0" width="200.5" height="30.0" rx="6" fill="#9999FF" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="40.0" y="224.0" font-size="13" fill="#000000" text-anchor="start" font-weight="bold">ingestionRuns</text>
+<text x="61.7" y="248.0" font-size="12" fill="#1A1A1A" text-anchor="start">sourceDb</text>
+<text x="148.3" y="248.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="61.7" y="266.0" font-size="12" fill="#1A1A1A" text-anchor="start">job</text>
+<text x="148.3" y="266.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="61.7" y="284.0" font-size="12" fill="#1A1A1A" text-anchor="start">startedAt</text>
+<text x="148.3" y="284.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="61.7" y="302.0" font-size="12" fill="#1A1A1A" text-anchor="start">finishedAt</text>
+<text x="148.3" y="302.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="61.7" y="320.0" font-size="12" fill="#1A1A1A" text-anchor="start">succeeded</text>
+<text x="148.3" y="320.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="61.7" y="338.0" font-size="12" fill="#1A1A1A" text-anchor="start">changes</text>
+<text x="148.3" y="338.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="61.7" y="356.0" font-size="12" fill="#1A1A1A" text-anchor="start">note</text>
+<text x="148.3" y="356.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<rect x="330.5" y="240.0" width="186.1" height="92.0" rx="6" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="1.2"/>
+<rect x="330.5" y="240.0" width="186.1" height="30.0" rx="6" fill="#9999FF" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="340.5" y="260.0" font-size="13" fill="#000000" text-anchor="start" font-weight="bold">skyBuild</text>
+<text x="362.2" y="284.0" font-size="12" fill="#1A1A1A" text-anchor="start">source</text>
+<text x="463.2" y="284.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="362.2" y="302.0" font-size="12" fill="#1A1A1A" text-anchor="start">sourceCommit</text>
+<text x="463.2" y="302.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="362.2" y="320.0" font-size="12" fill="#1A1A1A" text-anchor="start">builtAt</text>
+<text x="463.2" y="320.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<rect x="616.6" y="276.0" width="150.0" height="164.0" rx="6" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="1.2"/>
+<rect x="616.6" y="276.0" width="150.0" height="30.0" rx="6" fill="#9999FF" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="626.6" y="296.0" font-size="13" fill="#000000" text-anchor="start" font-weight="bold">skyDeepSky</text>
+<text x="626.6" y="320.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="648.2" y="320.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">id</text>
+<text x="727.6" y="320.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="648.2" y="338.0" font-size="12" fill="#1A1A1A" text-anchor="start">name</text>
+<text x="727.6" y="338.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="648.2" y="356.0" font-size="12" fill="#1A1A1A" text-anchor="start">type</text>
+<text x="727.6" y="356.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="648.2" y="374.0" font-size="12" fill="#1A1A1A" text-anchor="start">raDeg</text>
+<text x="727.6" y="374.0" font-size="12" fill="#666666" text-anchor="start">REAL</text>
+<text x="648.2" y="392.0" font-size="12" fill="#1A1A1A" text-anchor="start">decDeg</text>
+<text x="727.6" y="392.0" font-size="12" fill="#666666" text-anchor="start">REAL</text>
+<text x="648.2" y="410.0" font-size="12" fill="#1A1A1A" text-anchor="start">mag</text>
+<text x="727.6" y="410.0" font-size="12" fill="#666666" text-anchor="start">REAL</text>
+<text x="648.2" y="428.0" font-size="12" fill="#1A1A1A" text-anchor="start">dimArcmin</text>
+<text x="727.6" y="428.0" font-size="12" fill="#666666" text-anchor="start">REAL</text>
+<rect x="330.5" y="366.0" width="186.1" height="92.0" rx="6" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="1.2"/>
+<rect x="330.5" y="366.0" width="186.1" height="30.0" rx="6" fill="#9999FF" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="340.5" y="386.0" font-size="13" fill="#000000" text-anchor="start" font-weight="bold">skyMilkyWay</text>
+<text x="340.5" y="410.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="362.2" y="410.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">level</text>
+<text x="448.8" y="410.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="340.5" y="428.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="362.2" y="428.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">ringIndex</text>
+<text x="448.8" y="428.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="362.2" y="446.0" font-size="12" fill="#1A1A1A" text-anchor="start">pointsJson</text>
+<text x="448.8" y="446.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<path d="M616.6,225.0 C423.5,225.0 423.5,117.0 230.5,117.0" fill="none" stroke="#444444" stroke-width="1.4" stroke-dasharray="7 5"/>
+<polygon points="230.5,117.0 238.9,113.9 238.6,120.9" fill="#444444"/>
+<circle cx="616.6" cy="225.0" r="3.2" fill="#444444"/>
+<path d="M230.5,117.0 C280.5,117.0 280.5,117.0 330.5,117.0" fill="none" stroke="#444444" stroke-width="1.4" stroke-dasharray="7 5"/>
+<polygon points="330.5,117.0 322.2,120.5 322.2,113.5" fill="#444444"/>
+<circle cx="230.5" cy="117.0" r="3.2" fill="#444444"/>
+<path d="M616.6,225.0 C566.6,225.0 566.6,117.0 516.6,117.0" fill="none" stroke="#444444" stroke-width="1.4" stroke-dasharray="7 5"/>
+<polygon points="516.6,117.0 525.3,114.9 524.2,121.8" fill="#444444"/>
+<circle cx="616.6" cy="225.0" r="3.2" fill="#444444"/>
+<path d="M30.0,520.0 L70.0,520.0" fill="none" stroke="#2B4FB3" stroke-width="1.4"/>
+<polygon points="70.0,520.0 61.7,523.5 61.7,516.5" fill="#2B4FB3"/>
+<text x="80.0" y="524.0" font-size="11" fill="#1A1A1A" text-anchor="start">declared foreign key</text>
+<path d="M250.0,520.0 L290.0,520.0" fill="none" stroke="#444444" stroke-width="1.4" stroke-dasharray="7 5"/>
+<polygon points="290.0,520.0 281.7,523.5 281.7,516.5" fill="#444444"/>
+<text x="300.0" y="524.0" font-size="11" fill="#1A1A1A" text-anchor="start">logical join (by column name, not enforced)</text>
+<text x="590.0" y="524.0" font-size="11" fill="#666666" text-anchor="start">PK primary key   FK foreign key   LJ logical-join column   dot = child, arrow = parent</text>
+</svg>

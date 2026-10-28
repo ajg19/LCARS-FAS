@@ -49,7 +49,7 @@ TMPFILE=$(mktemp)
 # the account.
 crontab -l 2>/dev/null | grep -v "$MARKER" > "$TMPFILE"
 
-# Since the database refactor (0_documentation/dbRefactorPlan.md, step 11)
+# Since the database refactor (0_documentation/plans/dbRefactorPlan.md, step 11)
 # every job is one source's ingestion run through scripts/runIngestion.py,
 # which takes the shared writers' lock, runs the ingestion, and publishes
 # the site files that source feeds -- only if the run changed something.
@@ -63,6 +63,27 @@ crontab -l 2>/dev/null | grep -v "$MARKER" > "$TMPFILE"
 #               server's .env has CELESTRAK_ENABLED=0)
 #   gcat        weekly, Sunday 03:00 -- GCAT updates nightly, but its
 #               ~30 MB is not worth re-fetching more often
+#   swpcFast    every 15 min: NOAA scales, 1-minute Kp, GOES protons and
+#               X-ray, hemispheric power (small files)
+#   swpcSlow    hourly at :05: L1 field and plasma, F10.7, forecasts, flare
+#               list, radio flux and events, Kp, Dst
+#   swpcMaps    hourly at :25: OVATION aurora grid and D-RAP absorption (summaries
+#               and the latest map; swpcSlow itself is unchanged)
+#   swpcPrune   daily at 04:50: deletes L1 and GOES X-ray 1-minute rows older
+#               than 90 days (nothing is archived or averaged)
+#   gcr         hourly at :45: Oulu and Dome C neutron monitors, last 3 days
+#   gcrMonthly  monthly (5th, 05:10): the monthly neutron record since 1964
+#   silso       monthly (15th, 05:20): SILSO monthly sunspot number (checks
+#               Last-Modified first, so an unchanged file is not downloaded)
+#   tecCode     daily at 09:15 UTC (02:15 server time, UTC-7): CODE (Bern) total electron content
+#               maps, observed (previous day) and 1, 2 and 5-day predictions; CODE issues them
+#               at about 08:00 to 08:15 UTC, so an earlier run would find nothing
+#   tecGlotec   every 3 hours at :10 server time (the maps come every 10 minutes and are about 20
+#               minutes old when written): NOAA GloTEC, newest map; keeps 7 days
+#   gfz         hourly at :20: GFZ's Kp, ap, Hp30, Hp60, F10.7, sunspot number
+#   donki       hourly at :35: NASA DONKI events, last 7 days
+#               (space-weather plan, section 8; the minutes are staggered so
+#               the jobs queue at the writers' lock less often.)
 # The reference databases (ground segment, sky) have no job: they are
 # built on the laptop and published by the deploy (decision D).
 #
@@ -83,6 +104,17 @@ cat >> "$TMPFILE" << EOF
 30 */12 * * * $RUN satnogs >> $LOG_DIR/satnogs_cron.log 2>&1 $MARKER
 15 4 */3 * * $RUN celesTrak >> $LOG_DIR/celesTrak_cron.log 2>&1 $MARKER
 0 3 * * 0 $RUN gcat >> $LOG_DIR/gcat_cron.log 2>&1 $MARKER
+*/15 * * * * $RUN swpcFast >> $LOG_DIR/swpcFast_cron.log 2>&1 $MARKER
+5 * * * * $RUN swpcSlow >> $LOG_DIR/swpcSlow_cron.log 2>&1 $MARKER
+25 * * * * $RUN swpcMaps >> $LOG_DIR/swpcMaps_cron.log 2>&1 $MARKER
+50 4 * * * $RUN swpcPrune >> $LOG_DIR/swpcPrune_cron.log 2>&1 $MARKER
+20 * * * * $RUN gfz >> $LOG_DIR/gfz_cron.log 2>&1 $MARKER
+35 * * * * $RUN donki >> $LOG_DIR/donki_cron.log 2>&1 $MARKER
+45 * * * * $RUN gcr >> $LOG_DIR/gcr_cron.log 2>&1 $MARKER
+10 5 5 * * $RUN gcrMonthly >> $LOG_DIR/gcrMonthly_cron.log 2>&1 $MARKER
+20 5 15 * * $RUN silso >> $LOG_DIR/silso_cron.log 2>&1 $MARKER
+15 2 * * * $RUN tecCode >> $LOG_DIR/tecCode_cron.log 2>&1 $MARKER
+10 */3 * * * $RUN tecGlotec >> $LOG_DIR/tecGlotec_cron.log 2>&1 $MARKER
 EOF
 
 crontab "$TMPFILE"

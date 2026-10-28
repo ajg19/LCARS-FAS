@@ -85,7 +85,7 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-14 done. LIVE migrated on 2026-
     - Data that looks wrong is still refused by the sanity checks.
 - **D. DECIDED 2026-10-21: reference DBs are built on the laptop and carried by the deploy.**
   - `ingestionGroundSegment.db` (from `grndSgmntAssets_master.xlsx`) and `ingestionSkyCatalogue.db` (from XHIP and the d3-celestial data) have no online feed.
-  - They are built locally, committed to git, and uploaded by `deployToGoDaddy.sh`. Every other file in `databases/` stays excluded from git and from the deploy.
+  - They are built locally, committed to git, and uploaded by `0_tools/deployToGoDaddy.sh`. Every other file in `databases/` stays excluded from git and from the deploy.
   - On LIVE, the deploy (or the migration script) then publishes `siteGroundSegment.db` and `siteSky.db`.
   - The server never needs the xlsx, the star catalogues or openpyxl.
   - The ground-segment builder moves into the repo as `scripts/ingestionGroundSegment.py`, from `DEV/LCARS/rschGrdSgmt/build_ground_segment_db.py`.
@@ -101,7 +101,7 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-14 done. LIVE migrated on 2026-
    - `scripts/common.py`: the `.env` loader, `http_get` (User-Agent and timeout), and one Space-Track client (single login, timeouts, logout).
 
    Point all scripts, `server.py` and `bugs.py` at them; remove the duplicated code.
-4. **Rename the folder.** `ingestionDBs/` becomes `databases/`; update `.gitignore`, the excludes in `deployToGoDaddy.sh`, and the tests.
+4. **Rename the folder.** `ingestionDBs/` becomes `databases/`; update `.gitignore`, the excludes in `0_tools/deployToGoDaddy.sh`, and the tests.
 
 ### One ingestion database per source
 
@@ -333,7 +333,7 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-14 done. LIVE migrated on 2026-
     5. Run a full ingestion, then publish every type.
     6. Restart Passenger and install the new cron.
 
-    Before the migration, change `deployToGoDaddy.sh` so it uploads `databases/ingestionGroundSegment.db` and `databases/ingestionSkyCatalogue.db` and excludes everything else in `databases/`. After any deploy that changes either file, it publishes the matching site file on the server (decision D).
+    Before the migration, change `0_tools/deployToGoDaddy.sh` so it uploads `databases/ingestionGroundSegment.db` and `databases/ingestionSkyCatalogue.db` and excludes everything else in `databases/`. After any deploy that changes either file, it publishes the matching site file on the server (decision D).
 
     **DONE ON LIVE 2026-10-21, 23:04 UTC** (the server clock is UTC−7).
     - **Deploy:** the dry run listed 34 files updated and none deleted. After the real deploy, LIVE ran the new code on the old layout with every endpoint returning 200, and Al checked the site.
@@ -379,8 +379,8 @@ Agreed 2026-10-21 (Al + Claude). Status: steps 1-14 done. LIVE migrated on 2026-
       - `--rollback --apply` restored the old layout: 358 of 359 endpoints were identical to before, the other being the clock-dependent `/api/status`.
     - **Tests:** `0_tests/test_migrateLive.py`. 300 tests pass.
     - **RUN-BOOK FOR LIVE** (only on Al's go-ahead):
-      1. `DRY_RUN=1 ./deployToGoDaddy.sh`, then review what the sync would change or delete.
-      2. `./deployToGoDaddy.sh`. LIVE keeps serving the old layout through the legacy fallback, the old cron keeps running, and the reference uploads are discarded.
+      1. `DRY_RUN=1 0_tools/deployToGoDaddy.sh`, then review what the sync would change or delete.
+      2. `0_tools/deployToGoDaddy.sh`. LIVE keeps serving the old layout through the legacy fallback, the old cron keeps running, and the reference uploads are discarded.
       3. Check the site.
       4. `ssh` to the server, `cd public_html/LCARS-FAS`, and run `…/3.9/bin/python scripts/migrateLive.py`. That is the dry run: review its checks and plan.
       5. Run the same command with `--apply`. Note the backup folder and rollback command it prints.

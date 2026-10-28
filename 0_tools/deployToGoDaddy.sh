@@ -16,10 +16,10 @@
 #
 # Preview what the sync would change and, especially, DELETE on the server
 # without applying anything (the app is not restarted):
-#     DRY_RUN=1 ./deployToGoDaddy.sh
+#     DRY_RUN=1 ./0_tools/deployToGoDaddy.sh
 #
 # Databases never travel in the archive (databases/ is excluded both ways).
-# The one exception, decision D of 0_documentation/dbRefactorPlan.md: the
+# The one exception, decision D of 0_documentation/plans/dbRefactorPlan.md: the
 # two reference databases built on the laptop (REFERENCE_DBS) are uploaded
 # separately after the sync, and scripts/installReferenceDbs.py on the
 # server swaps in any that changed and publishes their site files. Before
@@ -37,12 +37,13 @@ REFERENCE_DBS=(databases/ingestionGroundSegment.db databases/ingestionSkyCatalog
 EXCLUDE_FILE=".deployExcludes"
 STAGE=".deployStage"
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 
 EXCLUDE_PATTERNS=(
     .git
     .env
     spacetrack.env
+    eoAccess.env
     __pycache__
     '*.pyc'
     databases
@@ -53,6 +54,7 @@ EXCLUDE_PATTERNS=(
     0_testReports
     0_codeReviews
     0_tools
+    enterpriseCrewOutput
     bugsDB.xlsx
     bugsDB.xlsx.bak
     '~$*'
@@ -60,7 +62,6 @@ EXCLUDE_PATTERNS=(
     toDo.md
     .gitignore
     .gitattributes
-    deployToGoDaddy.sh
     nodePersistenceTest.js
     persistenceTest.log
     tmp

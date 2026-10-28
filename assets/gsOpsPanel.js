@@ -775,10 +775,10 @@ const VISIBLE_SAT_HEADING_DT_S = 15;
 // Map marker + status-key styling per link-budget state (satelliteLink
 // Status().state). `fill:false` => an outline-only ring.
 const LINK_STATE_STYLE = {
-    both:    { key: 'Tx & Rx',        color: '#33ee66', fill: true,  fillOpacity: 0.95, radius: 3 },
-    one:     { key: 'Downlink only',  color: '#9cf',    fill: true,  fillOpacity: 0.9,  radius: 2.5 },
-    none:    { key: 'No comms',       color: '#8a94a6', fill: true,  fillOpacity: 0.9,  radius: 2.5 },
-    unknown: { key: 'Unknown',        color: '#bcdcff', fill: false, fillOpacity: 0,    radius: 3 },
+    both:    { key: 'Tx & Rx',        color: lcarsColour('--green'), fill: true,  fillOpacity: 0.95, radius: 3 },
+    one:     { key: 'Downlink only',  color: lcarsColour('--tng-ice'), fill: true,  fillOpacity: 0.9,  radius: 2.5 },
+    none:    { key: 'No comms',       color: lcarsColour('--tng-mauve'), fill: true,  fillOpacity: 0.9,  radius: 2.5 },
+    unknown: { key: 'Unknown',        color: lcarsColour('--tng-periwinkle'), fill: false, fillOpacity: 0,    radius: 3 },
 };
 
 // { satrec, meta } per active payload -- fetched and built once per
@@ -1297,7 +1297,7 @@ function renderVisibleSats() {
                 interactive: false,
                 icon: L.divIcon({
                     className: 'sat-arrow',
-                    html: `<svg viewBox="0 0 22 22" width="22" height="22"><path transform="rotate(${sat.headingDeg.toFixed(1)} 11 11)" d="M11 1 L16.5 19 L11 14.5 L5.5 19 Z" fill="${markColor}" stroke="#03121d" stroke-width="1.3" stroke-linejoin="round"/></svg>`,
+                    html: `<svg viewBox="0 0 22 22" width="22" height="22"><path transform="rotate(${sat.headingDeg.toFixed(1)} 11 11)" d="M11 1 L16.5 19 L11 14.5 L5.5 19 Z" fill="${markColor}" stroke="${lcarsColour('--tng-periwinkle', 0.05)}" stroke-width="1.3" stroke-linejoin="round"/></svg>`,
                     iconSize: [22, 22],
                     iconAnchor: [11, 11],
                 }),

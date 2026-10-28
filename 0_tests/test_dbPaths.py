@@ -50,3 +50,15 @@ def test_new_folder_wins_when_both_exist(tmp_path, paths):
     p = paths(tmp_path)
     assert not p.LEGACY
     assert p.dbPath(p.GCAT_DB).endswith(os.path.join('databases', 'ingestionGCAT.db'))
+
+
+def test_space_weather_databases_have_the_same_name_in_both_layouts(tmp_path, paths):
+    names = {'SWPC_DB': 'ingestionSWPC.db', 'GFZ_DB': 'ingestionGFZ.db', 'DONKI_DB': 'ingestionDONKI.db'}
+    for folder in ('databases', 'ingestionDBs'):
+        (tmp_path / folder).mkdir(exist_ok=True)
+        if folder == 'ingestionDBs':
+            (tmp_path / 'databases').rmdir()
+        p = paths(tmp_path)
+        for constant, name in names.items():
+            assert getattr(p, constant) == name
+            assert p.dbPath(getattr(p, constant)) == str(tmp_path / folder / name)

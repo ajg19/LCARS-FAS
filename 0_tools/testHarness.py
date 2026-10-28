@@ -132,7 +132,17 @@ UNITS = [
     (SPINE, 'GRND SGMNT', 'Ground-segment map data answers with 100+ sites with coordinates', 'site',
      ['endpoint:Ground segment map']),
     (SPINE, 'ORGANISATIONS', 'No automated tests yet', 'none', []),
-    (SPINE, 'WEATHER', 'No automated tests yet', 'none', []),
+    (SPINE, 'WEATHER', 'Weather APIs (now, series, events, map, value at any latitude and longitude): native and hourly series, bad input refused (400), '
+                       'unknown names (404), no weather file (503), gzip and 304; the freshness rows', 'code',
+     [('test_serverWeather.py', None)]),
+    (SPINE, 'WEATHER', 'TEC APIs (index, CODE map by day and hour, latest GloTEC refreshed on demand with one fetch at a time and a '
+                       'stale fallback, TEC and foF2 at a place, 7-day series at a place) and the TEC part of the weather publish: bad input '
+                       '(400), unknown map (404), no weather file (503), gzip and 304', 'code',
+     [('test_serverTEC.py', None)]),
+    (SPINE, 'WEATHER', 'Weather endpoints answer on the live site: latest readings, a 24-hour series, CME events, '
+                       'the aurora map, the aurora and absorption at a given latitude and longitude', 'site',
+     ['endpoint:WEATHER now', 'endpoint:WEATHER solar wind speed', 'endpoint:WEATHER solar events',
+      'endpoint:WEATHER aurora map', 'endpoint:WEATHER aurora at a place']),
     (SPINE, 'EO', 'No automated tests yet', 'none', []),
     (SPINE, 'ACKNOWLEDGMENTS', 'No automated tests yet', 'none', []),
     (SPINE, 'BUG REPORT (every section)', 'Visitor bug reports: stored without the IP address, field checks, size limits, '
@@ -155,11 +165,52 @@ UNITS = [
     (BACKEND, 'Ingestion · SatNOGS', 'Transmitters, plus the TLE feed used only as an ID crosswalk (designators), from '
                                      'recorded SatNOGS data', 'code',
      [('test_ingestionSatNOGS.py', None)]),
-    (BACKEND, 'Ingestion · GCAT', 'Parsing GCAT\'s TSV conventions (owners, programmes, mass, dates) and loading them', 'code',
+    (BACKEND, 'Ingestion · cosmic rays (Oulu)', 'Neutron-monitor CSV (Oulu, Dome C): hourly and monthly, provisional month, '
+                                                'rejected headers and values, re-runs, failed runs, from recorded data', 'code',
+     [('test_ingestionGCR.py', None)]),
+    (BACKEND, 'Ingestion · SILSO sunspot number', 'Monthly sunspot file: parsing, definitive never replaced by provisional, '
+                                                  'unchanged file not downloaded, rejected shapes', 'code',
+     [('test_ingestionSILSO.py', None)]),
+    (BACKEND, 'Ingestion · total electron content (CODE, GloTEC)', 'CODE IONEX files (rapid and 1, 2, 5-day predictions: grid, '
+                                                                    '9999 = no value, issue time, the product the name promises) and NOAA GloTEC maps (72 x 72 cells, '
+                                                                    'listing and computed-name fallback, never re-fetched, 7-day deletion), from recorded files', 'code',
+     [('test_ingestionTEC.py', None)]),
+    (BACKEND, 'Ingestion · NOAA SWPC maps', 'OVATION aurora grid and D-RAP absorption table: per-hemisphere maxima, '
+                                            'oval edge, the full global maps, incomplete grids and shape surprises rejected, '
+                                            'the daily deletion of 1-minute rows past 90 days', 'code',
+     [('test_ingestionSWPC.py', ('test_ovation_', 'test_drap_', 'test_maps_job', 'test_a_newer_map',
+                                 'test_prune_job'))]),
+    (BACKEND, 'Ingestion · NOAA SWPC', 'Solar wind (active spacecraft only, gaps), GOES X-ray and protons (interleaved '
+                                       'channels, misspelt key), Kp, F10.7, forecasts, events: validation, idempotent '
+                                       're-runs, failed runs, from recorded data', 'code',
+     [('test_ingestionSWPC.py', None)]),
+    (BACKEND, 'Ingestion · GFZ Potsdam', 'Nowcast file and JSON API (Kp, ap, Ap, Hp30, Hp60, F10.7, sunspot number): '
+                                         'missing values, definitive over preliminary, backfill, from recorded data', 'code',
+     [('test_ingestionGFZ.py', None)]),
+    (BACKEND, 'Ingestion · NASA DONKI', 'CME, HSS, GST, SEP, FLR and IPS events: rolling window, backfill, revised '
+                                        'events, rejected shapes, from recorded data', 'code',
+     [('test_ingestionDONKI.py', None)]),
+    (BACKEND, 'Ingestion · space-weather samples', 'The shared samples and events tables: upserts, the 90-day live '
+                                                   'window and deleting older 1-minute rows, the paced fetcher', 'code',
+     [('test_spaceWeatherSamples.py', None)]),
+    (BACKEND, 'Ingestion · GCAT','Parsing GCAT\'s TSV conventions (owners, programmes, mass, dates) and loading them', 'code',
      [('test_ingestGcat.py', None)]),
     (BACKEND, 'Ingestion · news feeds', 'RSS parsing (dates, entities, CDATA); filler and topic rules; pruning and '
                                         'tagging; database set-up', 'code',
      [('test_readNews.py', None), ('test_newsRules.py', None)]),
+    (BACKEND, 'Publish · weather', 'siteWeather.db from the SWPC, GFZ and DONKI databases: native and hourly series, '
+                                   'events, maps, derived F10.7A and storm scale, refusals, atomic swap', 'code',
+     [('test_publishWeather.py', None)]),
+    (BACKEND, 'Front end · chart code', 'assets/chartCore.js: the LAUNCHES charts and the pie drawn by the shared code are '
+                                        'the same as the old per-panel code (node comparison); every assets/*.js passes '
+                                        'node --check', 'code',
+     [('test_chartCompare.py', None)]),
+    (BACKEND, 'Publish · derived weather science', 'Spock\'s review: Newell function, G levels, storm list, S-events, DONKI SEP '
+                                                   'grouping, CME filter, streams at L1, daily flare maximum', 'code',
+     [('test_weatherDerived.py', None)]),
+    (BACKEND, 'Documentation · database diagrams', 'dbDiagrams.py: schema reading, logical-join detection, Mermaid and SVG '
+                                                   'output, a full run into a temporary folder', 'code',
+     [('test_dbDiagrams.py', None)]),
     (BACKEND, 'Publish · site databases', 'publishSite.py: object selection, transmitter linking, sanity checks, '
                                           'atomic swap, publish records', 'code',
      [('test_publishSite.py', None)]),

@@ -20,30 +20,31 @@
 	  set of hues repeated, and one vivid red-orange kept for alerts. The
 	  older names below are kept so every rule that uses them follows -- each
 	  is now its nearest TNG colour, so several deliberately share a value.
-	  (Previous, brighter values: see git history before this change.)
+	  (2026-10-25: values pulled back in chroma per a Grok review, to try out. The
+		  previous values are in the scratchpad backup classic.css.beforeGrokPalette.)
 	*/
-	--tng-terracotta: #c97e61;  /* frames and elbows */
-	--tng-periwinkle: #87a6d4;
-	--tng-ice: #afcbd6;
-	--tng-amber: #ea9e41;
-	--tng-sand: #f1c274;
-	--tng-tan: #d9a060;
-	--tng-salmon: #d08968;
-	--tng-mauve: #a3768a;
-	--tng-pink: #ca9bc0;
-	--tng-lavender: #9999d2;
-	--tng-violet: #7d6fab;
-	--tng-plum: #634a4b;        /* dark accent -- never under black text */
-	--tng-alert: #cb4d00;       /* alerts and errors only */
+	--tng-terracotta: #b87a5e;  /* frames and elbows */
+	--tng-periwinkle: #7f9bc4;
+	--tng-ice: #a3c0cb;
+	--tng-amber: #d9923a;
+	--tng-sand: #e0b56a;
+	--tng-tan: #c99558;
+	--tng-salmon: #c07d62;
+	--tng-mauve: #95708a;
+	--tng-pink: #b98bb0;
+	--tng-lavender: #8e8ec4;
+	--tng-violet: #71649c;
+	--tng-plum: #5c4546;        /* dark accent -- never under black text */
+	--tng-alert: #c44a00;       /* alerts and errors only */
 
 	/* GCAT sector classes -- the same colour wherever a sector is shown
 	   (ON-ORBIT sector pie, LAUNCHES payloads chart, ...). Academic blue,
 	   commercial earthy, civil amber, defence brick red (kept clear of
 	   --tng-alert, which is for alerts only). */
 	--sector-academic: var(--tng-periwinkle);
-	--sector-commercial: #a08a66;
+	--sector-commercial: #95866a;
 	--sector-civil: var(--tng-amber);
-	--sector-defence: #c45a50;
+	--sector-defence: #b85a52;
 	--sector-unknown: var(--tng-mauve);
 
 	--african-violet: var(--tng-pink);
@@ -54,19 +55,19 @@
 	--butterscotch: var(--tng-terracotta);
 	--gold: var(--tng-sand);     /* text labels and headings */
 	--golden-orange: var(--tng-amber);
-	--gray: #646670;
-	--green: #993;
+	--gray: #5e6068;
+	--green: #8a8a3a;
 	--ice: var(--tng-ice);
 	--lilac: var(--tng-lavender);
 	--lima-bean: var(--tng-sand);
-	--magenta: #c16091;
+	--magenta: #b05a82;
 	--mars: var(--tng-alert);
 	--moonlit-violet: var(--tng-violet);
 	--orange: var(--tng-tan);
 	--peach: var(--tng-salmon);
 	--red: var(--tng-alert);
 	--sky: var(--tng-lavender);
-	--space-white: #f5f6fa;
+	--space-white: #f0f1f5;
 	--sunflower: var(--tng-sand);
 	--tomato: var(--tng-alert);
 	--violet-creme: var(--tng-pink);
@@ -113,15 +114,15 @@
 	--bar-5-10-width: 4%;
 	--bar-1-color: var(--tng-terracotta);   /* continues the top elbow */
 	--bar-2-color: var(--tng-amber);
-	--bar-3-color: var(--tng-periwinkle);
-	--bar-4-color: var(--tng-mauve);
-	--bar-5-color: var(--tng-sand);
+	--bar-3-color: var(--tng-sand);
+	--bar-4-color: var(--tng-periwinkle);
+	--bar-5-color: var(--tng-tan);
 	--bar-6-color: var(--tng-terracotta);   /* continues the lower elbow */
-	--bar-7-color: var(--tng-tan);
-	--bar-8a-color: var(--tng-amber);
-	--bar-8b-color: var(--tng-ice);
-	--bar-9-color: var(--tng-plum);
-	--bar-10-color: var(--tng-periwinkle);
+	--bar-7-color: var(--tng-amber);
+	--bar-8a-color: var(--tng-tan);
+	--bar-8b-color: var(--tng-sand);
+	--bar-9-color: var(--tng-lavender);
+	--bar-10-color: var(--tng-tan);
 
 /* Ultra layout elements */
 
@@ -158,12 +159,12 @@
 		4. images with the *border* class border color
 */
 	--font-color: var(--african-violet);
-	--sub-fonts: .875rem;
-	--dc-font-size: .875rem;
+	--sub-fonts: var(--status-font-size);
+	--dc-font-size: var(--status-font-size);
 	--dc-row-height: calc(var(--dc-font-size) + .125rem);
-	--banner-color: var(--orange);
+	--banner-color: var(--tng-amber);
 	--meta-data-color: var(--african-violet);
-	--data-cascade-color: var(--orange);
+	--data-cascade-color: var(--tng-amber);
 	/* Text colours, site-wide -- the labels-versus-data convention
 	   (2026-10-09; design doc, GUI > Colour Conventions): text is amber,
 	   data is blue.
@@ -176,9 +177,9 @@
 	--status-font: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
 	--status-font-size: 1rem;   /* same as the control-panel buttons (.875rem at <=1300px, below) */
 	--status-label-color: var(--gold);
-	--status-text-color: #c98b4a;
+	--status-text-color: #b8844f;
 	--status-data-color: var(--tng-ice);
-	--status-data-light-color: #f0f0f4;
+	--status-data-light-color: #e8e9ed;
 	/* Slightly lighter than --bluey, same hue family -- used for actual
 	   data values (the plotted-objects table's rows, LAT/LON/UTC) as
 	   distinct from --bluey itself, which stays in use elsewhere (map
@@ -192,7 +193,7 @@
 	--h3-color: var(--african-violet);
 	--h4-color: var(--african-violet);
 	--link-color: var(--tng-lavender);
-	--code-color: var(--orange);
+	--code-color: var(--tng-amber);
 	--nav-width: 170px;
 	--nav-1-color: var(--bluey);
 	--nav-2-color: var(--butterscotch);
@@ -223,7 +224,7 @@
 		--radius-bottom: 130px 0 0 0;
 		--divider-height: .4rem;
 		--nav-width: 210px;
-		--dc-font-size: .75rem;
+		--dc-font-size: var(--status-font-size);
 		--bar-height: 24px;
 	}
 }
@@ -232,7 +233,7 @@
 	:root {
 		font-size: 1.2rem;
 		--status-font-size: .875rem;  /* matches the nav buttons' own .875rem step here */
-		--sub-fonts: .9rem;
+		--sub-fonts: var(--status-font-size);
 		--lfw: 180px;
 		--nav-width: 180px;
 		--radius-top: 0 0 0 100px;
@@ -290,6 +291,11 @@
 	margin: 0;
 	padding: 0;
 	font: inherit;
+}
+
+/* Text with no size of its own matches the control buttons at every width. */
+body {
+	font-size: var(--status-font-size);
 }
 
 img {
@@ -1133,7 +1139,7 @@ button:active {
 	width: 100%;
 	align-self: flex-start;
 	text-align: left;
-	font-size: .95rem;
+	font-size: var(--status-font-size);
 	line-height: 1.3;
 	color: var(--status-data-color);
 }
@@ -1295,7 +1301,7 @@ button:active {
 	grid-template-columns: auto auto;
 	column-gap: .5em;
 	row-gap: .15em;
-	font-size: 1.1rem;
+	font-size: var(--status-font-size);
 	font-weight: bold;
 	text-transform: uppercase;
 	/* Fallback for the plain-text states ("LOCATION: UNAVAILABLE",
@@ -1333,7 +1339,7 @@ button:active {
 	border: 2px solid var(--tng-amber);
 	border-radius: 12px;
 	font-family: var(--status-font);
-	font-size: .9rem;
+	font-size: var(--status-font-size);
 }
 
 .grd-view-popup-title {
@@ -1601,6 +1607,268 @@ button:active {
 	color: var(--data-cascade-color);
 }
 
+/* EO control panel: eight drop-downs in two columns of four (LEVEL, FREQUENCY, RESOLUTION, SATELLITE and
+   ORGANISATION, USE CASE, MAX CLOUD COVER, MAX LOOKBACK), each column one above the other, drawn into #default (renderEoSelectors() in eoPanel.js). Same layout and label
+   style as the location form above; the selects use .location-input. */
+.eo-selector-form {
+	/* The height of the control buttons beside it: two buttons (nav's own height formula) and the gap
+	   between nav's two rows, which steps down at the same width as nav's does. */
+	--eo-ctrl-height: calc(var(--nav-width) / 1.4 + .65rem);
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	flex-wrap: wrap;   /* when the SOURCE table no longer fits beside the filters it drops under them, and the filter columns stack if need be */
+	align-content: center;
+	gap: 1rem 3rem;   /* between lines, then between columns (black space) */
+	width: 100%;
+}
+
+@media (max-width: 1500px) {
+	.eo-selector-form {
+		--eo-ctrl-height: calc(var(--nav-width) / 1.4 + .5rem);
+	}
+}
+
+.eo-selector-fields {
+	display: grid;
+	grid-template-columns: auto auto;
+	align-items: center;
+	align-content: space-between;   /* first row at the top, last at the bottom of the column */
+	height: calc(var(--eo-ctrl-height) * .85);   /* a little shorter than the buttons, so the rows sit closer */
+	column-gap: .6rem;
+	row-gap: .2rem;   /* four rows a column: little black space between them */
+	font-size: var(--status-font-size);
+}
+
+.eo-selector-fields label {
+	text-align: left;
+	font-weight: bold;
+	text-transform: uppercase;
+	white-space: nowrap;
+	color: var(--data-cascade-color);
+}
+
+.eo-selector-fields select.location-input {
+	width: 8rem;
+	padding: .05rem .4rem;
+	font-size: var(--status-font-size);
+	text-transform: uppercase;
+}
+
+/* EO control panel's SOURCE table: the third column, a scrollable list of the real sources matching
+   the filters, the same height as the control buttons and the two filter columns. Styled like the
+   parameters table beside the map: a lilac pill title bar, labels in the label colour, data in the
+   data colour, thin grey rules between lines, and a chosen line lit in LCARS amber. It takes all the
+   width left beside the two filter columns. */
+.eo-source {
+	flex: 1 1 24rem;
+	min-width: 24rem;
+	align-self: center;
+	height: var(--eo-ctrl-height);   /* the control buttons' height, title included */
+	display: flex;
+	flex-direction: column;
+	font-size: var(--status-font-size);
+	text-transform: uppercase;
+}
+
+.eo-source-title {
+	display: flex;
+	justify-content: space-between;
+	gap: 1rem;
+	flex: none;
+	padding: .1rem 1rem;
+	background: var(--lilac);
+	color: black;
+	font-weight: bold;
+	border-radius: 100vmax;
+	border-bottom: .25rem solid black;
+	background-clip: padding-box;
+}
+
+/* The match count sits in a black gap cut into the title bar, near its right end. */
+#eo-source-count {
+	margin-block: -.1rem;
+	padding: .1rem .8rem;
+	background: black;
+	color: var(--status-data-color);
+}
+
+.eo-source-list {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	color: var(--status-data-color);
+}
+
+/* EO map: an error shown over the middle of the map (NOT YET AVAILABLE, NO CLEAR SCENE, IMAGE FETCH FAILED):
+   red LCARS pill, three times the control-button text. */
+.eo-map-error {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	z-index: 1000;
+	max-width: 85%;
+	padding: .2em .8em;
+	background: rgba(0, 0, 0, .85);
+	color: var(--tng-alert);
+	border: .12em solid var(--tng-alert);
+	border-radius: 100vmax;
+	font-size: calc(var(--status-font-size) * 3);
+	font-weight: bold;
+	line-height: 1.1;
+	letter-spacing: .08em;
+	text-align: center;
+	text-transform: uppercase;
+	pointer-events: none;
+}
+
+.eo-source-list:focus-visible {
+	outline: .12em solid var(--tng-amber);
+	outline-offset: .12em;
+}
+
+.eo-source-row {
+	padding: 0 .75rem 0 .5rem;
+	line-height: 1.35;
+	border-bottom: 1px solid var(--gray);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	cursor: pointer;
+}
+
+.eo-source-row:hover {
+	background: color-mix(in srgb, var(--tng-periwinkle) 25%, black);
+}
+
+.eo-source-row.is-selected {
+	background: var(--tng-amber);
+	color: black;
+}
+
+/* EO payload: the parameters table (filled when SELECT is pressed; empty before) to the left of the map. */
+.eo-layout {
+	display: flex;
+	align-items: flex-start;
+	gap: 1rem;
+}
+
+.eo-layout > .map-panel {
+	flex: 1;
+	min-width: 12rem;
+}
+
+/* The parameters table and the description under it are fluid: they take up to 34rem, never more than
+   45% of the width, and shrink with the window (down to 12rem); the text wraps, so they grow taller
+   instead. Below 900px they drop below the map, at the full width. */
+.eo-params {
+	flex: 0 1 34rem;
+	min-width: 12rem;
+	max-width: 45%;
+	font-family: var(--status-font);
+	font-size: var(--status-font-size);
+}
+
+.eo-params-table {
+	width: 100%;
+	border-collapse: separate;   /* so the title row can be a rounded bar */
+	border-spacing: 0;
+	text-transform: uppercase;
+}
+
+.eo-params-table th,
+.eo-params-table td {
+	padding: .3rem .5rem;
+	text-align: left;
+	vertical-align: top;
+	border-bottom: 1px solid var(--gray);
+	font-weight: normal;
+}
+
+/* The title row is an LCARS pill bar: a filled, fully rounded bar with black bold text and a black
+   gap beneath it, like the site's text bars. */
+.eo-params-table thead th {
+	padding: .1rem 1rem;
+	background: var(--lilac);
+	background-clip: padding-box;
+	color: black;
+	font-weight: bold;
+	border-radius: 100vmax;
+	border-bottom: .4rem solid black;
+}
+
+.eo-params-table tbody th {
+	color: var(--status-label-color);
+	width: 1%;   /* as narrow as the longest label (they do not wrap: that stays the minimum), leaving the rest to the value */
+	white-space: nowrap;
+}
+
+.eo-params-table td {
+	color: var(--status-data-color);
+	overflow-wrap: anywhere;
+}
+
+/* SOURCE DESCRIPTION: under the parameters table, with the same lilac pill title. */
+.eo-desc {
+	margin-top: 1.5rem;
+	text-transform: none;
+}
+
+.eo-desc-title {
+	padding: .1rem 1rem;
+	background: var(--lilac);
+	background-clip: padding-box;
+	color: black;
+	font-weight: bold;
+	text-transform: uppercase;
+	border-radius: 100vmax;
+	border-bottom: .4rem solid black;
+}
+
+.eo-desc-text {
+	overflow-wrap: anywhere;
+	margin: 0;
+	padding: .3rem .5rem;
+	line-height: 1.4;
+	text-box: normal;
+	color: var(--status-data-color);
+}
+
+@media (max-width: 900px) {
+	.eo-layout {
+		flex-direction: column;
+	}
+
+	.eo-params {
+		flex: none;
+		order: 1;   /* the map first, the tables (in the markup before it) below it */
+		width: 100%;
+		max-width: none;
+	}
+
+	.eo-layout > .map-panel {
+		width: 100%;
+	}
+}
+
+/* EO's control area (the wrapper #default): the site's fixed height and its hiding at narrow widths are
+   lifted, so the filters and the SOURCE table can stack (filters above, table below) instead of being
+   clipped or lost. The wrapper is never narrower than 18rem; below that the buttons wrap under it. */
+#default[data-control-section="eo"] {
+	display: flex;
+	height: auto;
+	min-height: calc(var(--dc-row-height) * 9);
+	min-width: 18rem;
+	overflow: visible;
+}
+
+/* The control buttons never shrink (zero flex), whatever the window width. */
+.data-cascade-button-group > nav,
+.data-cascade-button-group > .control-area-groups {
+	flex: none;
+}
+
 .user-location-actions {
 	display: flex;
 	flex-direction: column;
@@ -1705,8 +1973,8 @@ button:active {
 
 .add-object-results-table {
 	border-collapse: collapse;
-	font-family: Arial, Helvetica, sans-serif;
-	font-size: 14px;
+	font-family: var(--status-font);
+	font-size: var(--status-font-size);
 	text-transform: uppercase;
 	width: 100%;
 }
@@ -3105,7 +3373,7 @@ nav button:nth-child(4n) {
 }
 
 .bug-privacy {
-	font-size: .85rem;
+	font-size: var(--status-font-size);
 }
 
 .bug-field {
@@ -3160,8 +3428,7 @@ nav button:nth-child(4n) {
 	background: #111;
 	color: var(--space-white);
 	font: inherit;
-	font-family: Arial, sans-serif;
-	font-size: .95rem;
+	font-size: var(--status-font-size);
 }
 
 .bug-field textarea {
@@ -3600,8 +3867,8 @@ strong {
 }
 
 code {
-	font-family: monospace;
-	font-size: .9rem;
+	font-family: var(--status-font);
+	font-size: var(--status-font-size);
 	color: var(--code-color);
 }
 
@@ -3613,8 +3880,8 @@ code {
 	background-color: black;
 	border-color: var(--code-color);
 	tab-size: 4;
-	font-family: monospace;
-	font-size: .85rem;
+	font-family: var(--status-font);
+	font-size: var(--status-font-size);
 	color: var(--code-color);
 }
 
@@ -4558,7 +4825,7 @@ footer:has(.footer-frame) {
 	width: 100%;
 	border-collapse: collapse;
 	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
-	font-size: 1rem;
+	font-size: var(--status-font-size);
 	text-transform: uppercase;
 	table-layout: fixed;
 }
@@ -4725,11 +4992,11 @@ footer:has(.footer-frame) {
 }
 
 /* Landing page, CSS only. Every size in the group is in em of one font
-   size, set here: 1.2 x the control-panel buttons' size
-   (--status-font-size: 1rem, or .875rem at <=1300px), i.e. 21.1px or
-   18.5px. So the wreath, the leaves, the elliptical text box, the type and
+   size, set here: the control-panel buttons' size
+   (--status-font-size: 1rem, or .875rem at <=1300px), i.e. 17.6px or
+   16.8px. So the wreath, the leaves, the elliptical text box, the type and
    the spacing keep exact proportions -- text that fits and is centred once
-   is centred everywhere. The group is about 54.35em wide (1150px at the
+   is centred everywhere. The group is about 54.35em wide (956px at the
    full size), so on a panel too narrow for that the size is capped at
    1.656cqi -- the group then fills 90% of the panel's width -- and
    everything shrinks with it. Below 780px the ellipse gives way to plain
@@ -4740,10 +5007,10 @@ footer:has(.footer-frame) {
 
 .landing-group {
 	font-family: var(--status-font);
-	font-size: min(calc(1.2 * var(--status-font-size)), 1.656cqi);
+	font-size: min(var(--status-font-size), 1.656cqi);
 	line-height: 1.3;
 	/* Top: puts the leaves about 110px below the top of main. */
-	padding-block: 4.1em 3em;
+	padding-block: 2.8em 3em;   /* one line (1.3em) higher than the original 4.1em */
 }
 
 .landing-wreath {
@@ -4824,7 +5091,7 @@ footer:has(.footer-frame) {
 /* The by-line: one blank line below the leaves, centred, in the same type
    as the ellipse text (inherited from .landing-group). */
 .landing-byline {
-	margin: 1.3em 0 0;   /* one line at line-height 1.3 */
+	margin: 3.3em 0 0;   /* below the sign-in boxes: a line more than before */
 	text-align: center;
 	text-transform: uppercase;
 	text-box: normal;
@@ -4860,7 +5127,7 @@ footer:has(.footer-frame) {
 	}
 
 	.landing-group {
-		font-size: calc(1.2 * var(--status-font-size));   /* no cap: plain text wraps */
+		font-size: var(--status-font-size);   /* no cap: plain text wraps */
 	}
 }
 
@@ -4956,7 +5223,7 @@ footer:has(.footer-frame) {
 	writing-mode: vertical-rl;
 	transform: rotate(180deg);
 	padding: .3rem 0;
-	font-size: .85rem;
+	font-size: var(--status-font-size);
 	line-height: 1;
 	white-space: nowrap;
 	font-variant-numeric: tabular-nums;
@@ -5628,7 +5895,7 @@ footer:has(.footer-frame) {
 	width: 100%;
 	border-collapse: collapse;
 	font-family: 'Antonio', 'Arial Narrow', 'Avenir Next Condensed', sans-serif;
-	font-size: 1rem;
+	font-size: var(--status-font-size);
 	text-transform: uppercase;
 	margin-top: 1rem;
 }
@@ -6028,3 +6295,675 @@ footer:has(.footer-frame) {
 	border-right-color: transparent;
 }
 
+
+/* WEATHER panel (assets/weatherPanel.js) */
+.weather-view ul.weather-shows {
+	margin: 0.6rem 0 0 1.2rem;
+	padding: 0;
+}
+
+.weather-view .weather-status {
+	color: var(--tng-amber);
+	text-transform: uppercase;
+}
+
+.weather-defs .orbit-defs > p,
+.weather-defs .orbit-defs > ul {
+	grid-column: 1 / -1;
+	margin: 0;
+}
+
+.weather-defs .weather-defs-note,
+.weather-defs .weather-defs-list {
+	color: var(--status-data-color);
+	line-height: 1.45;
+}
+
+.weather-defs > .weather-defs-note {
+	margin: 0 0 .5rem;
+}
+
+.weather-defs code {
+	color: var(--status-label-color);
+}
+
+/* Pulled up under the first table (the sections' 2.75rem gap collapses with the
+   negative top margin to 1rem), with room below before the next section. */
+.weather-defs > .weather-defs-key {
+	margin: -1.75rem 0 1.5rem;
+}
+
+/* Space-weather definitions: term | definition | units, range, thresholds | affects. */
+.weather-defs .orbit-defs {
+	grid-template-columns: 14% 1fr 22% 10%;
+}
+
+.weather-defs .orbit-defs-units,
+.weather-defs .orbit-defs-affects {
+	color: var(--status-data-color);
+}
+
+.weather-defs .orbit-defs-units b {
+	color: var(--status-label-color);
+	font-weight: normal;
+}
+
+.weather-defs .orbit-defs-colhead {
+	color: var(--status-label-color);
+	text-transform: uppercase;
+	opacity: .7;
+}
+
+/* NOAA scales: a full-width table, level then the five thresholds. */
+.weather-defs .weather-scales {
+	grid-template-columns: 14% repeat(5, 1fr);
+}
+
+/* Glossary of acronyms: acronym | meaning, full width. */
+.weather-defs .weather-glossary {
+	grid-template-columns: 14% 1fr;
+}
+
+/* WEATHER > SUN NOW: the live solar images. Fully fluid: two to a row where
+   there is room (each at least 240px wide), one per row where there is not. */
+.weather-sun-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(max(240px, calc(50% - 1.25rem)), 1fr));
+	gap: 3.5rem 2.5rem;   /* row gap, column gap */
+	margin-top: 1rem;
+}
+
+.weather-sun-grid figure {
+	margin: 0;
+	width: 90%;
+	justify-self: center;
+}
+
+.weather-sun-pill,
+.chart-pill {
+	position: relative;   /* anchors the tooltip */
+	margin-bottom: .5rem;
+	cursor: help;
+}
+
+.weather-sun-pill:focus,
+.chart-pill:focus {
+	outline: none;
+}
+
+/* The picture's date-time group: a black gap cut into the pill, near its
+   right end, with the blue continuing beyond it. */
+.weather-sun-dtg {
+	align-self: stretch;
+	display: flex;
+	align-items: center;
+	margin: -.2rem 0;
+	padding: 0 .9rem;
+	background: #000;
+	color: var(--tng-amber);
+	font-weight: normal;
+	letter-spacing: .04em;
+	line-height: 1;
+}
+
+/* The tooltip: hover, keyboard focus or a tap on the title bar. */
+.weather-sun-tip,
+.chart-tip {
+	display: none;
+	position: absolute;
+	top: calc(100% + .4rem);
+	left: 0;
+	z-index: 30;
+	width: min(400px, 100%);
+	box-sizing: border-box;
+	padding: .6rem .9rem;
+	background: #000;
+	border: 2px solid var(--tng-amber);
+	border-radius: .4rem;
+	color: var(--status-data-color);
+	font-weight: normal;
+	text-transform: none;
+	text-align: left;
+	font-size: var(--status-font-size);
+	line-height: 1.35;
+	cursor: default;
+}
+
+.weather-sun-tip p,
+.chart-tip p {
+	margin: 0 0 .45rem;
+}
+
+.weather-sun-tip p:last-child,
+.chart-tip p:last-child {
+	margin-bottom: 0;
+}
+
+.weather-sun-tip b,
+.chart-tip b {
+	color: var(--status-label-color);
+	font-weight: normal;
+	text-transform: uppercase;
+}
+
+.weather-sun-pill:hover .weather-sun-tip,
+.weather-sun-pill:focus .weather-sun-tip,
+.chart-pill:hover .chart-tip,
+.chart-pill:focus .chart-tip {
+	display: block;
+}
+
+.weather-sun-grid img {
+	display: block;
+	width: 100%;
+	height: auto;
+	background: #000;
+}
+
+.weather-sun-credit,
+.chart-credit {
+	color: var(--status-data-color);
+	opacity: .6;
+	font-size: .75rem;
+	margin-top: .3rem;
+}
+
+/* WEATHER time charts (assets/chartTime.js). The pill with a detailed tooltip
+   shares the SUN NOW pill's look (above); the tooltip is wider because it
+   carries the formulas and the citation. */
+.chart-tip {
+	width: min(600px, 100%);
+}
+
+/* A section bar (NOW, PREDICTIVE): full width, a black gap above, larger type. */
+.chart-section-bar {
+	margin: 3rem 0 1.4rem;
+	font-size: 1.15em;
+	letter-spacing: .04em;
+}
+
+.chart-section-bar:first-child {
+	margin-top: 1rem;
+}
+
+/* Marks inside the time charts. */
+.chart-zero {
+	stroke: var(--status-label-color);
+	stroke-width: 1;
+	opacity: .7;
+}
+
+.chart-threshold {
+	stroke-width: 1;
+	opacity: .8;
+}
+
+.chart-threshold-label {
+	font-size: .8em;
+	opacity: .9;
+}
+
+.chart-forecast-line {
+	stroke-dasharray: 3 4;
+	opacity: .8;
+}
+
+.chart-shade {
+	opacity: .22;
+}
+
+.chart-class-band {
+	fill: rgba(245, 246, 250, .05);
+}
+
+.chart-class-letter {
+	opacity: .55;
+}
+
+.chart-panel-title {
+	fill: var(--status-label-color);
+	opacity: .85;
+}
+
+.chart-event line {
+	stroke-width: 1.5;
+	stroke-dasharray: 2 4;
+	opacity: .9;
+}
+
+.chart-event circle {
+	stroke-width: 2;
+	cursor: help;
+}
+
+.chart-credit {
+	margin-top: .3rem;
+}
+
+/* In the time charts only the hover strips and the marks that carry a tooltip of their own take the pointer. */
+.chart-time-body * {
+	pointer-events: none;
+}
+
+.chart-time-body .lcars-hover-strip,
+.chart-time-body .chart-hit {
+	pointer-events: auto;
+	cursor: help;
+}
+
+.chart-bar-label {
+	font-size: .8em;
+}
+
+.chart-span {
+	stroke-linecap: round;
+}
+
+/* Two charts side by side where there is room (SOL DRVR: flares beside the flare record), one above the other where not. */
+.chart-row {
+	display: grid;
+	grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+	gap: 0 2rem;
+}
+
+@media (max-width: 1100px) {
+	.chart-row {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+/* ERTH NOW tiles and forecast bars (assets/weatherEarth.js). */
+.weather-tiles {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+	gap: .8rem;
+}
+
+.weather-tile {
+	display: flex;
+	flex-direction: column;
+	padding: .5rem .9rem;
+	background: #000;
+	border-left: .5rem solid var(--tng-periwinkle);
+	border-radius: .4rem 0 0 .4rem;
+}
+
+.weather-tile-label,
+.weather-scale-name {
+	color: var(--status-label-color);
+	text-transform: uppercase;
+	font-size: .8em;
+}
+
+.weather-tile-value {
+	font-size: 2rem;
+	line-height: 1.1;
+}
+
+.weather-tile-note,
+.weather-scale-line {
+	color: var(--status-data-color);
+	opacity: .75;
+	font-size: .8em;
+}
+
+.weather-scale-tiles {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+	gap: 1rem;
+}
+
+.weather-scale-tile {
+	padding: .6rem 1rem;
+	background: #000;
+	border: 2px solid var(--tng-periwinkle);
+	border-radius: .6rem;
+}
+
+.weather-scale-level {
+	font-size: 3rem;
+	line-height: 1.1;
+}
+
+.weather-scale-trigger {
+	margin-top: .3rem;
+	opacity: .55;
+}
+
+.weather-prob {
+	display: grid;
+	grid-template-columns: max-content repeat(3, minmax(0, 1fr));
+	gap: .35rem .6rem;
+	align-items: center;
+}
+
+.weather-prob-head,
+.weather-prob-label {
+	color: var(--status-label-color);
+	font-size: .8em;
+	text-transform: uppercase;
+}
+
+.weather-prob-cell {
+	position: relative;
+	height: 1.6rem;
+	background: #111;
+}
+
+.weather-prob-bar {
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	opacity: .55;
+}
+
+.weather-prob-text {
+	position: relative;
+	padding-left: .4rem;
+	line-height: 1.6rem;
+}
+
+/* HF COMMS aviation board: a lamp and its words. */
+.weather-lamps {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+	gap: .8rem;
+}
+
+.weather-lamp-card {
+	display: flex;
+	align-items: center;
+	gap: .9rem;
+	padding: .5rem .9rem;
+	background: #000;
+	border-radius: .6rem;
+}
+
+.weather-lamp {
+	flex: none;
+	width: 2.2rem;
+	height: 2.2rem;
+	border-radius: 50%;
+}
+
+.weather-lamp-text {
+	display: flex;
+	flex-direction: column;
+}
+
+.weather-lamp-word {
+	font-size: 1.3rem;
+}
+
+/* The WEATHER world map (assets/weatherMap.js): scales to its slot; the readout under it follows the pointer. */
+.weather-map {
+	display: block;
+	width: 100%;
+	height: auto;
+	margin-top: .6rem;
+	cursor: crosshair;
+	touch-action: pan-y;
+}
+
+.weather-map-graticule {
+	stroke: var(--status-label-color);
+	stroke-width: 1;
+	opacity: .25;
+}
+
+.weather-map-readout {
+	min-height: 1.2em;
+	margin-top: .3rem;
+	color: var(--status-data-color);
+	font-size: .85em;
+}
+
+/* SAT COMMS (assets/weatherSat.js): the buttons above a map, the map with its tiles beside it, the band table. */
+.weather-switches {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .5rem 1.6rem;
+	margin: .4rem 0;
+}
+
+.weather-switch-group {
+	display: inline-flex;
+	align-items: center;
+	gap: .35rem;
+}
+
+.weather-switch-label {
+	color: var(--status-label-color);
+	font-size: .8em;
+}
+
+.weather-switch {
+	padding: .15rem .8rem;
+	border: 0;
+	border-radius: 1rem;
+	background: #222;
+	color: var(--status-data-color);
+	font: inherit;
+	font-size: .85em;
+	text-transform: uppercase;
+	cursor: pointer;
+}
+
+.weather-switch.is-on {
+	background: var(--tng-periwinkle);
+	color: #000;
+}
+
+.weather-hour {
+	width: 11rem;
+	accent-color: var(--tng-periwinkle);
+}
+
+.weather-map-side {
+	display: grid;
+	grid-template-columns: minmax(0, 2.3fr) minmax(10rem, 1fr);
+	gap: 0 1.2rem;
+	align-items: start;
+}
+
+.weather-tiles.weather-tiles-column {
+	grid-template-columns: 1fr;
+	margin-top: .6rem;
+}
+
+@media (max-width: 1100px) {
+	.weather-map-side {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+/* AURORAE (assets/weatherAurora.js): the round maps, the per-hemisphere summary, Kp now against Kp needed. */
+.weather-sphere {
+	max-width: 640px;
+	margin-inline: auto;
+}
+
+.weather-sphere.is-draggable {
+	cursor: grab;
+	touch-action: none;
+}
+
+.weather-sphere.is-draggable:active {
+	cursor: grabbing;
+}
+
+.aurora-summary .aurora-hemisphere {
+	margin-top: .6rem;
+}
+
+.aurora-summary .weather-tiles {
+	grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+	margin-top: .3rem;
+}
+
+/* GLOBE / N POLE / S POLE under the text beside the oval map: the chosen one in LCARS white. */
+.aurora-view-switch {
+	margin-top: 1rem;
+}
+
+.aurora-view-switch .weather-switch.is-on {
+	background: var(--space-white);
+	color: #000;
+}
+
+.aurora-kp {
+	margin-top: .8rem;
+}
+
+.aurora-kp-bar {
+	margin-top: .3rem;
+}
+
+.weather-band-table {
+	width: 100%;
+	border-collapse: collapse;
+	margin-top: .5rem;
+}
+
+.weather-band-table th {
+	color: var(--status-label-color);
+	font-weight: normal;
+	font-size: .8em;
+	text-align: left;
+	padding: 0 1rem .3rem 0;
+}
+
+.weather-band-table td {
+	padding: .15rem 1rem .15rem 0;
+	border-top: 1px solid #222;
+}
+
+/* Two charts of equal width side by side where there is room. */
+.chart-row.chart-row-even {
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+@media (max-width: 1100px) {
+	.chart-row.chart-row-even {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+/* ABOUT > USAGE: the control-area summary (assets/usagePanel.js). */
+.usage-summary {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .6rem 1.5rem;
+	align-items: flex-start;
+	width: 100%;
+	color: var(--status-data-color);
+	font-size: var(--status-font-size);
+}
+
+.usage-table {
+	border-collapse: collapse;
+}
+
+.usage-table th {
+	color: var(--status-label-color);
+	font-weight: normal;
+	text-align: left;
+	padding: 0 1.2rem .2rem 0;
+}
+
+.usage-table td {
+	padding: .05rem 1.2rem .05rem 0;
+}
+
+.usage-table td:last-child,
+.usage-table th:last-child {
+	text-align: right;
+	padding-right: 0;
+}
+
+.usage-table .usage-total td {
+	color: var(--status-label-color);
+	border-top: 1px solid var(--status-label-color);
+}
+
+.usage-graph-title {
+	color: var(--status-label-color);
+	margin-bottom: .2rem;
+}
+
+.usage-graph svg {
+	display: block;
+	width: 220px;
+	max-width: 100%;
+	height: auto;
+}
+
+/* The LCARS font everywhere, maps included. Leaflet's own stylesheet (loaded after this
+   one) sets Helvetica Neue, Arial, Tahoma and Lucida Console for popups, tooltips and
+   controls; these compound selectors outrank it without editing the library. */
+.leaflet-map.leaflet-container,
+.leaflet-map .leaflet-popup-content-wrapper,
+.leaflet-map .leaflet-popup-content,
+.leaflet-map .leaflet-tooltip,
+.leaflet-map .leaflet-control-attribution,
+.leaflet-map .leaflet-control-zoom a,
+.leaflet-map .leaflet-bar a,
+.leaflet-map .leaflet-control-layers {
+	font-family: var(--status-font);
+}
+
+/* Landing page sign-in boxes: a coloured label cap, a black gap, then the dark entry
+   field with a rounded end, one row for the user ID and one for the password. All in em
+   of the landing group's size, so they scale with the rest of it. */
+.landing-login {
+	width: min(24em, 90%);
+	margin: 2.9em auto 0;   /* a line more room above than before */
+	display: grid;
+	gap: .5em;
+}
+
+.landing-login-row {
+	display: flex;
+	align-items: stretch;
+	text-transform: uppercase;
+}
+
+.landing-login-label {
+	flex: 0 0 7.5em;
+	box-sizing: border-box;
+	padding: .15em .9em .15em 1em;
+	background: var(--tng-periwinkle);
+	color: black;
+	font-weight: bold;
+	text-align: right;
+	border-radius: 100vmax 0 0 100vmax;
+}
+
+.landing-login input {
+	flex: 1;
+	min-width: 0;
+	box-sizing: border-box;
+	padding: .15em 1em;
+	background: black;
+	color: var(--status-data-color);
+	border: .12em solid var(--tng-periwinkle);
+	border-left: .3em solid black;   /* the black gap after the label */
+	border-radius: 0 100vmax 100vmax 0;
+	font: inherit;
+	text-transform: none;
+}
+
+.landing-login-password .landing-login-label {
+	background: var(--tng-lavender);
+}
+
+.landing-login-password input {
+	border-color: var(--tng-lavender);
+	border-left-color: black;
+}
+
+.landing-login input:focus-visible {
+	outline: .12em solid var(--tng-amber);
+	outline-offset: .12em;
+}

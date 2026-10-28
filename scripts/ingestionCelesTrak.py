@@ -2,7 +2,7 @@
 membership of CelesTrak's satellite groups (active, stations, starlink,
 gps-ops, ...) -- which objects are in which group, nothing else.
 
-Step 6 of 0_documentation/dbRefactorPlan.md. Since the refactor CelesTrak
+Step 6 of 0_documentation/plans/dbRefactorPlan.md. Since the refactor CelesTrak
 supplies no orbital elements (Space-Track does, see
 ingestionSpaceTrack.py); it is kept for its group lists only. Under
 decision A, the publish step treats a group list as definitive for the

@@ -1,0 +1,233 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1184" height="798" viewBox="0 0 1184 798" font-family="DejaVu Sans Mono, Consolas, Menlo, monospace">
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="30.0" y="14.0" width="1123.7" height="44.0" rx="14" fill="#BBBBBB" stroke="#BBBBBB" stroke-width="1.2"/>
+<text x="46.0" y="42.0" font-size="18" fill="#000000" text-anchor="start" font-weight="bold">onOrbitStats.db</text>
+<text x="1137.7" y="42.0" font-size="12" fill="#000000" text-anchor="end">legacy database  |  from the database file</text>
+<rect x="30.0" y="78.0" width="207.7" height="128.0" rx="6" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="1.2"/>
+<rect x="30.0" y="78.0" width="207.7" height="30.0" rx="6" fill="#BBBBBB" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="40.0" y="98.0" font-size="13" fill="#000000" text-anchor="start" font-weight="bold">launchPayloadsLaunched</text>
+<text x="40.0" y="122.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="61.7" y="122.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">spacexFilter</text>
+<text x="162.7" y="122.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="40.0" y="140.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="61.7" y="140.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">year</text>
+<text x="162.7" y="140.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="40.0" y="158.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="61.7" y="158.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">series</text>
+<text x="162.7" y="158.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="61.7" y="176.0" font-size="12" fill="#1A1A1A" text-anchor="start">sortOrder</text>
+<text x="162.7" y="176.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="61.7" y="194.0" font-size="12" fill="#1A1A1A" text-anchor="start">payloads</text>
+<text x="162.7" y="194.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<rect x="337.7" y="78.0" width="222.2" height="128.0" rx="6" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="1.2"/>
+<rect x="337.7" y="78.0" width="222.2" height="30.0" rx="6" fill="#BBBBBB" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="347.7" y="98.0" font-size="13" fill="#000000" text-anchor="start" font-weight="bold">launchReentries</text>
+<text x="347.7" y="122.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="369.4" y="122.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">spacexFilter</text>
+<text x="470.5" y="122.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="347.7" y="140.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="369.4" y="140.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">year</text>
+<text x="470.5" y="140.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="347.7" y="158.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="369.4" y="158.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">kind</text>
+<text x="470.5" y="158.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="369.4" y="176.0" font-size="12" fill="#1A1A1A" text-anchor="start">sortOrder</text>
+<text x="470.5" y="176.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="369.4" y="194.0" font-size="12" fill="#1A1A1A" text-anchor="start">objects</text>
+<text x="470.5" y="194.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<rect x="659.9" y="78.0" width="193.3" height="128.0" rx="6" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="1.2"/>
+<rect x="659.9" y="78.0" width="193.3" height="30.0" rx="6" fill="#BBBBBB" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="669.9" y="98.0" font-size="13" fill="#000000" text-anchor="start" font-weight="bold">onOrbitDebrisByYear</text>
+<text x="669.9" y="122.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="691.5" y="122.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">spacexFilter</text>
+<text x="792.6" y="122.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="669.9" y="140.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="691.5" y="140.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">year</text>
+<text x="792.6" y="140.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="691.5" y="158.0" font-size="12" fill="#1A1A1A" text-anchor="start">created</text>
+<text x="792.6" y="158.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="691.5" y="176.0" font-size="12" fill="#1A1A1A" text-anchor="start">reentered</text>
+<text x="792.6" y="176.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="691.5" y="194.0" font-size="12" fill="#1A1A1A" text-anchor="start">inOrbit</text>
+<text x="792.6" y="194.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<rect x="953.2" y="78.0" width="200.5" height="146.0" rx="6" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="1.2"/>
+<rect x="953.2" y="78.0" width="200.5" height="30.0" rx="6" fill="#BBBBBB" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="963.2" y="98.0" font-size="13" fill="#000000" text-anchor="start" font-weight="bold">onOrbitInclination</text>
+<text x="984.8" y="122.0" font-size="12" fill="#1A1A1A" text-anchor="start">statusFilter</text>
+<text x="1085.9" y="122.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="984.8" y="140.0" font-size="12" fill="#1A1A1A" text-anchor="start">kindFilter</text>
+<text x="1085.9" y="140.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="984.8" y="158.0" font-size="12" fill="#1A1A1A" text-anchor="start">spacexFilter</text>
+<text x="1085.9" y="158.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="984.8" y="176.0" font-size="12" fill="#1A1A1A" text-anchor="start">bucketStart</text>
+<text x="1085.9" y="176.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="984.8" y="194.0" font-size="12" fill="#1A1A1A" text-anchor="start">bucketEnd</text>
+<text x="1085.9" y="194.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="984.8" y="212.0" font-size="12" fill="#1A1A1A" text-anchor="start">payloads</text>
+<text x="1085.9" y="212.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<rect x="30.0" y="240.0" width="207.7" height="164.0" rx="6" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="1.2"/>
+<rect x="30.0" y="240.0" width="207.7" height="30.0" rx="6" fill="#BBBBBB" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="40.0" y="260.0" font-size="13" fill="#000000" text-anchor="start" font-weight="bold">onOrbitNationality</text>
+<text x="40.0" y="284.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="61.7" y="284.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">statusFilter</text>
+<text x="162.7" y="284.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="40.0" y="302.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="61.7" y="302.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">kindFilter</text>
+<text x="162.7" y="302.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="40.0" y="320.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="61.7" y="320.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">spacexFilter</text>
+<text x="162.7" y="320.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="40.0" y="338.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="61.7" y="338.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">rank</text>
+<text x="162.7" y="338.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="61.7" y="356.0" font-size="12" fill="#1A1A1A" text-anchor="start">label</text>
+<text x="162.7" y="356.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="61.7" y="374.0" font-size="12" fill="#1A1A1A" text-anchor="start">stateCode</text>
+<text x="162.7" y="374.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="61.7" y="392.0" font-size="12" fill="#1A1A1A" text-anchor="start">payloads</text>
+<text x="162.7" y="392.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<rect x="337.7" y="240.0" width="222.2" height="470.0" rx="6" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="1.2"/>
+<rect x="337.7" y="240.0" width="222.2" height="30.0" rx="6" fill="#BBBBBB" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="347.7" y="260.0" font-size="13" fill="#000000" text-anchor="start" font-weight="bold">onOrbitObjects</text>
+<text x="369.4" y="284.0" font-size="12" fill="#1A1A1A" text-anchor="start">noradID</text>
+<text x="499.3" y="284.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="369.4" y="302.0" font-size="12" fill="#1A1A1A" text-anchor="start">active</text>
+<text x="499.3" y="302.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="369.4" y="320.0" font-size="12" fill="#1A1A1A" text-anchor="start">payload</text>
+<text x="499.3" y="320.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="369.4" y="338.0" font-size="12" fill="#1A1A1A" text-anchor="start">satellite</text>
+<text x="499.3" y="338.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="369.4" y="356.0" font-size="12" fill="#1A1A1A" text-anchor="start">spacex</text>
+<text x="499.3" y="356.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="369.4" y="374.0" font-size="12" fill="#1A1A1A" text-anchor="start">regime</text>
+<text x="499.3" y="374.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="369.4" y="392.0" font-size="12" fill="#1A1A1A" text-anchor="start">meanAltitudeKm</text>
+<text x="499.3" y="392.0" font-size="12" fill="#666666" text-anchor="start">REAL</text>
+<text x="369.4" y="410.0" font-size="12" fill="#1A1A1A" text-anchor="start">inclination</text>
+<text x="499.3" y="410.0" font-size="12" fill="#666666" text-anchor="start">REAL</text>
+<text x="369.4" y="428.0" font-size="12" fill="#1A1A1A" text-anchor="start">sector</text>
+<text x="499.3" y="428.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="369.4" y="446.0" font-size="12" fill="#1A1A1A" text-anchor="start">category</text>
+<text x="499.3" y="446.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="369.4" y="464.0" font-size="12" fill="#1A1A1A" text-anchor="start">stateCode</text>
+<text x="499.3" y="464.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="369.4" y="482.0" font-size="12" fill="#1A1A1A" text-anchor="start">ownerCode</text>
+<text x="499.3" y="482.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="369.4" y="500.0" font-size="12" fill="#1A1A1A" text-anchor="start">ownerName</text>
+<text x="499.3" y="500.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="369.4" y="518.0" font-size="12" fill="#1A1A1A" text-anchor="start">manufacturerCode</text>
+<text x="499.3" y="518.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="369.4" y="536.0" font-size="12" fill="#1A1A1A" text-anchor="start">manufacturerName</text>
+<text x="499.3" y="536.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="369.4" y="554.0" font-size="12" fill="#1A1A1A" text-anchor="start">bus</text>
+<text x="499.3" y="554.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="369.4" y="572.0" font-size="12" fill="#1A1A1A" text-anchor="start">launchYear</text>
+<text x="499.3" y="572.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="369.4" y="590.0" font-size="12" fill="#1A1A1A" text-anchor="start">geoLongitude</text>
+<text x="499.3" y="590.0" font-size="12" fill="#666666" text-anchor="start">REAL</text>
+<text x="369.4" y="608.0" font-size="12" fill="#1A1A1A" text-anchor="start">objectType</text>
+<text x="499.3" y="608.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="369.4" y="626.0" font-size="12" fill="#1A1A1A" text-anchor="start">downlinkBand</text>
+<text x="499.3" y="626.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="369.4" y="644.0" font-size="12" fill="#1A1A1A" text-anchor="start">parentJcat</text>
+<text x="499.3" y="644.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="369.4" y="662.0" font-size="12" fill="#1A1A1A" text-anchor="start">parentName</text>
+<text x="499.3" y="662.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="369.4" y="680.0" font-size="12" fill="#1A1A1A" text-anchor="start">parentLaunchYear</text>
+<text x="499.3" y="680.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="369.4" y="698.0" font-size="12" fill="#1A1A1A" text-anchor="start">launchVehicle</text>
+<text x="499.3" y="698.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<rect x="659.9" y="240.0" width="193.3" height="200.0" rx="6" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="1.2"/>
+<rect x="659.9" y="240.0" width="193.3" height="30.0" rx="6" fill="#BBBBBB" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="669.9" y="260.0" font-size="13" fill="#000000" text-anchor="start" font-weight="bold">onOrbitOwners</text>
+<text x="669.9" y="284.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="691.5" y="284.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">statusFilter</text>
+<text x="792.6" y="284.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="669.9" y="302.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="691.5" y="302.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">kindFilter</text>
+<text x="792.6" y="302.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="669.9" y="320.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="691.5" y="320.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">spacexFilter</text>
+<text x="792.6" y="320.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="669.9" y="338.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="691.5" y="338.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">rank</text>
+<text x="792.6" y="338.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="691.5" y="356.0" font-size="12" fill="#1A1A1A" text-anchor="start">ownerCode</text>
+<text x="792.6" y="356.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="691.5" y="374.0" font-size="12" fill="#1A1A1A" text-anchor="start">label</text>
+<text x="792.6" y="374.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="691.5" y="392.0" font-size="12" fill="#1A1A1A" text-anchor="start">fullName</text>
+<text x="792.6" y="392.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="691.5" y="410.0" font-size="12" fill="#1A1A1A" text-anchor="start">stateCode</text>
+<text x="792.6" y="410.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="691.5" y="428.0" font-size="12" fill="#1A1A1A" text-anchor="start">payloads</text>
+<text x="792.6" y="428.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<rect x="953.2" y="258.0" width="200.5" height="128.0" rx="6" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="1.2"/>
+<rect x="953.2" y="258.0" width="200.5" height="30.0" rx="6" fill="#BBBBBB" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="963.2" y="278.0" font-size="13" fill="#000000" text-anchor="start" font-weight="bold">onOrbitPayloadsByYear</text>
+<text x="963.2" y="302.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="984.8" y="302.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">spacexFilter</text>
+<text x="1085.9" y="302.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="963.2" y="320.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="984.8" y="320.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">year</text>
+<text x="1085.9" y="320.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="963.2" y="338.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="984.8" y="338.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">sector</text>
+<text x="1085.9" y="338.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="984.8" y="356.0" font-size="12" fill="#1A1A1A" text-anchor="start">sortOrder</text>
+<text x="1085.9" y="356.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="984.8" y="374.0" font-size="12" fill="#1A1A1A" text-anchor="start">payloads</text>
+<text x="1085.9" y="374.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<rect x="953.2" y="420.0" width="200.5" height="146.0" rx="6" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="1.2"/>
+<rect x="953.2" y="420.0" width="200.5" height="30.0" rx="6" fill="#BBBBBB" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="963.2" y="440.0" font-size="13" fill="#000000" text-anchor="start" font-weight="bold">onOrbitRegimes</text>
+<text x="963.2" y="464.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="984.8" y="464.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">statusFilter</text>
+<text x="1085.9" y="464.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="963.2" y="482.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="984.8" y="482.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">kindFilter</text>
+<text x="1085.9" y="482.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="963.2" y="500.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="984.8" y="500.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">regime</text>
+<text x="1085.9" y="500.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="984.8" y="518.0" font-size="12" fill="#1A1A1A" text-anchor="start">sortOrder</text>
+<text x="1085.9" y="518.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="984.8" y="536.0" font-size="12" fill="#1A1A1A" text-anchor="start">allPayloads</text>
+<text x="1085.9" y="536.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="984.8" y="554.0" font-size="12" fill="#1A1A1A" text-anchor="start">exclSpacex</text>
+<text x="1085.9" y="554.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<rect x="30.0" y="438.0" width="207.7" height="146.0" rx="6" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="1.2"/>
+<rect x="30.0" y="438.0" width="207.7" height="30.0" rx="6" fill="#BBBBBB" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="40.0" y="458.0" font-size="13" fill="#000000" text-anchor="start" font-weight="bold">onOrbitSector</text>
+<text x="40.0" y="482.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="61.7" y="482.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">statusFilter</text>
+<text x="162.7" y="482.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="40.0" y="500.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="61.7" y="500.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">kindFilter</text>
+<text x="162.7" y="500.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="40.0" y="518.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="61.7" y="518.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">spacexFilter</text>
+<text x="162.7" y="518.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="40.0" y="536.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="61.7" y="536.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">sector</text>
+<text x="162.7" y="536.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="61.7" y="554.0" font-size="12" fill="#1A1A1A" text-anchor="start">sortOrder</text>
+<text x="162.7" y="554.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<text x="61.7" y="572.0" font-size="12" fill="#1A1A1A" text-anchor="start">payloads</text>
+<text x="162.7" y="572.0" font-size="12" fill="#666666" text-anchor="start">INTEGER</text>
+<rect x="659.9" y="474.0" width="193.3" height="74.0" rx="6" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="1.2"/>
+<rect x="659.9" y="474.0" width="193.3" height="30.0" rx="6" fill="#BBBBBB" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="669.9" y="494.0" font-size="13" fill="#000000" text-anchor="start" font-weight="bold">statsUpdated</text>
+<text x="669.9" y="518.0" font-size="11" fill="#B35C00" text-anchor="start" font-weight="bold">PK</text>
+<text x="691.5" y="518.0" font-size="12" fill="#1A1A1A" text-anchor="start" font-weight="bold">statTable</text>
+<text x="771.0" y="518.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<text x="691.5" y="536.0" font-size="12" fill="#1A1A1A" text-anchor="start">updatedAt</text>
+<text x="771.0" y="536.0" font-size="12" fill="#666666" text-anchor="start">TEXT</text>
+<path d="M30.0,772.0 L70.0,772.0" fill="none" stroke="#2B4FB3" stroke-width="1.4"/>
+<polygon points="70.0,772.0 61.7,775.5 61.7,768.5" fill="#2B4FB3"/>
+<text x="80.0" y="776.0" font-size="11" fill="#1A1A1A" text-anchor="start">declared foreign key</text>
+<path d="M250.0,772.0 L290.0,772.0" fill="none" stroke="#444444" stroke-width="1.4" stroke-dasharray="7 5"/>
+<polygon points="290.0,772.0 281.7,775.5 281.7,768.5" fill="#444444"/>
+<text x="300.0" y="776.0" font-size="11" fill="#1A1A1A" text-anchor="start">logical join (by column name, not enforced)</text>
+<text x="590.0" y="776.0" font-size="11" fill="#666666" text-anchor="start">PK primary key   FK foreign key   LJ logical-join column   dot = child, arrow = parent</text>
+</svg>

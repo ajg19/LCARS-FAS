@@ -1,7 +1,7 @@
 """Where every database lives -- the single place DB paths and names are
 defined, for the ingestion scripts, server.py and 0_tools/bugs.py.
 
-The folder is databases/ (0_documentation/dbRefactorPlan.md, step 4) and
+The folder is databases/ (0_documentation/plans/dbRefactorPlan.md, step 4) and
 the files follow the ingestion<Source>.db / site<Type>.db / inbox<Name>.db
 convention (step 8 onward). Until the live server is migrated (step 12)
 it still has the old folder, ingestionDBs/, with the old file names. So
@@ -42,6 +42,13 @@ GCAT_DB = 'ingestionGCAT.db'
 NEWS_DB = 'ingestionNews.db'
 GROUND_SEGMENT_DB = 'ingestionGroundSegment.db'
 SKY_DB = 'ingestionSkyCatalogue.db'
+GEOIP_DB = 'ingestionGeoIP.db'   # address ranges to cities (DB-IP), built on the laptop by 0_tools/buildGeoIPDb.py
+SWPC_DB = 'ingestionSWPC.db'     # NOAA space weather: solar wind, X-ray, protons, Kp, F10.7, forecasts
+GFZ_DB = 'ingestionGFZ.db'       # GFZ Potsdam: Kp, ap, Ap, Hp30, Hp60, F10.7, sunspot number
+DONKI_DB = 'ingestionDONKI.db'   # NASA CCMC DONKI: CME, HSS, GST, SEP, FLR, IPS events
+GCR_DB = 'ingestionGCR.db'       # Oulu cosmic ray station: neutron monitor count rates (Oulu, Dome C), hourly and monthly
+SILSO_DB = 'ingestionSILSO.db'   # WDC-SILSO: monthly mean sunspot number since 1749
+TEC_DB = 'ingestionTEC.db'       # total electron content maps: CODE (Bern) observed and predicted, NOAA GloTEC; 7 days
 
 # Site databases: what the website reads, one per type of data, each
 # built and swapped in whole by scripts/publishSite.py (step 9).
@@ -49,6 +56,7 @@ SITE_ORBITAL_DB = 'siteOrbital.db'
 SITE_NEWS_DB = 'siteNews.db'
 SITE_SKY_DB = 'siteSky.db'
 SITE_GROUND_SEGMENT_DB = 'siteGroundSegment.db'
+SITE_WEATHER_DB = 'siteWeather.db'
 
 # Pre-refactor databases the website still reads until the publish step
 # (step 9) replaces them with site<Type>.db files.
@@ -57,6 +65,7 @@ STATS_DB = 'onOrbitStats.db'
 
 # Written by the website: visitor submissions (inbox<Name>.db).
 BUG_REPORTS_DB = 'inboxBugReports.db'
+USAGE_DB = 'inboxUsage.db'   # logins per day and city, written by the login counter
 
 # New name -> the name the file still has in a legacy ingestionDBs/ folder.
 LEGACY_NAMES = {
